@@ -1,7 +1,3 @@
-@import url("https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;700&display=swap");
-
 /* Fonts loaded via index.html for better CLS performance */
 
 /* Fallback font adjustments to reduce CLS */
@@ -30,116 +26,48 @@
 @layer base {
   :root {
     /* Fursan Royal - Warm Cream and Gold Theme */
-    --background: 0 0% 96%;
+    --background: 45 50% 96%;
     /* Warm Cream #FAF6F0 */
-    --foreground: 0 0% 9%;
+    --foreground: 30 20% 15%;
     /* Dark brown for text */
 
-    --card: 0 0% 98%;
+    --card: 45 40% 98%;
     /* Off-white cards */
-    --card-foreground: 0 0% 9%;
+    --card-foreground: 30 20% 15%;
 
-    --popover: 0 0% 89%;
-    --popover-foreground: 0 0% 9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 30 20% 15%;
 
-    --primary: 161 93% 30%;
+    --primary: 43 96% 56%;
     /* Rich Gold #F5C842 */
-    --primary-foreground: 151 80% 95%;
+    --primary-foreground: 30 20% 10%;
 
-    --secondary: 0 0% 32%;
+    --secondary: 39 35% 92%;
     /* Soft cream #F0EBE3 */
-    --secondary-foreground: 0 0% 98%;
+    --secondary-foreground: 30 20% 20%;
 
-    --muted: 0 0% 63%;
-    --muted-foreground: 0 0% 9%;
+    --muted: 45 30% 85%;
+    --muted-foreground: 30 10% 40%;
 
-    --accent: 166 76% 96%;
+    --accent: 145 50% 40%;
     /* Deep Emerald for accents */
-    --accent-foreground: 173 80% 40%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 72% 50%;
-    --destructive-foreground: 0 85% 97%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
 
     --success: 145 50% 40%;
     --success-foreground: 0 0% 100%;
 
-    --border: 0 0% 83%;
+    --border: 43 40% 75%;
     /* Gold-tinted border */
-    --input: 0 0% 83%;
-    --ring: 161 93% 30%;
+    --input: 45 30% 90%;
+    --ring: 43 96% 56%;
 
     --radius: 0.75rem;
 
     --font-display: 'Bebas Neue', 'Bebas Neue Fallback', Arial, sans-serif;
     --font-body: 'Inter', 'Inter Fallback', Arial, sans-serif;
-    --chart-1: 158 64% 51%;
-    --chart-2: 141 69% 58%;
-    --chart-3: 172 66% 50%;
-    --chart-4: 82 77% 55%;
-    --chart-5: 0 0% 45%;
-    --sidebar: 0 0% 98%;
-    --sidebar-foreground: 0 0% 9%;
-    --sidebar-primary: 161 93% 30%;
-    --sidebar-primary-foreground: 151 80% 95%;
-    --sidebar-accent: 0 0% 32%;
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 0 0% 83%;
-    --sidebar-ring: 161 93% 30%;
-    --font-sans: 'Work Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
-    --font-serif: 'Lora', ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
-    --font-mono: 'Inconsolata', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
-    --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
-    --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
-    --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
-    --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
-    --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 2px 4px -1px hsl(0 0% 0% / 0.1);
-    --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 4px 6px -1px hsl(0 0% 0% / 0.1);
-    --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 8px 10px -1px hsl(0 0% 0% / 0.1);
-    --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
-    --tracking-normal: 0em;
-    --spacing: 0.25rem;
-  }
-  .dark {
-    --background: 0 0% 9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 14%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 25%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 158 64% 51%;
-    --primary-foreground: 165 91% 9%;
-    --secondary: 0 0% 45%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 45%;
-    --muted-foreground: 0 0% 98%;
-    --accent: 178 84% 10%;
-    --accent-foreground: 172 66% 50%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 85% 97%;
-    --border: 0 0% 32%;
-    --input: 0 0% 32%;
-    --ring: 158 64% 51%;
-    --chart-1: 156 71% 66%;
-    --chart-2: 141 76% 73%;
-    --chart-3: 170 76% 64%;
-    --chart-4: 81 84% 67%;
-    --chart-5: 0 0% 45%;
-    --sidebar: 0 0% 14%;
-    --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 158 64% 51%;
-    --sidebar-primary-foreground: 165 91% 9%;
-    --sidebar-accent: 172 66% 50%;
-    --sidebar-accent-foreground: 178 84% 10%;
-    --sidebar-border: 0 0% 32%;
-    --sidebar-ring: 158 64% 51%;
-    --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
-    --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
-    --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
-    --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
-    --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 2px 4px -1px hsl(0 0% 0% / 0.1);
-    --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 4px 6px -1px hsl(0 0% 0% / 0.1);
-    --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 8px 10px -1px hsl(0 0% 0% / 0.1);
-    --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
   }
 }
 
