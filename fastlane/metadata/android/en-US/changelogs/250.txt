@@ -1,0 +1,10 @@
+Fursan v2.5.0 - performance and privacy release.
+
+- Code splitting: main bundle 714 KB to 325 KB
+- Prayer times cached per day (no constant GPS polling)
+- Fixed cloud backup/restore using wrong storage keys
+- Stale cloud backups can no longer roll back newer streaks
+- Fixed theme unlocks and identity import
+- Accessibility: 44 px touch targets, screen-reader labels, reduced motion
+- Toasts no longer block the bottom navigation
+- Removed all Google Play Services references

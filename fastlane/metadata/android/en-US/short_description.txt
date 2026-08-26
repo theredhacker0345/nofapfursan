@@ -1,1 +1,1 @@
-Decentralized Nostr chat client for privacy and discipline.
+Private Nostr-based discipline tracker with streaks, journal and community chat

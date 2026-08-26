@@ -1,7 +1,7 @@
 {
   "name": "nofapfursan",
   "private": true,
-  "version": "1.0.0",
+  "version": "2.5.0",
   "description": "A privacy-first, decentralized NoFap streak tracker and community built on the Nostr protocol.",
   "type": "module",
   "scripts": {

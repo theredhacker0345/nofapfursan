@@ -35,3 +35,9 @@ android/app/*.keystore
 
 # Playwright audit artifacts
 scripts/shots
+
+# Build artifacts (F-Droid builds from source; never commit binaries)
+*.apk
+android/build_log*.txt
+android/build_error.txt
+android/verify_result.txt

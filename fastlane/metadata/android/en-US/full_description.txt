@@ -1,10 +1,20 @@
-NoFap Hydra is a privacy-first, decentralized streak tracker and community designed to help you build discipline and self-mastery. Built on the Nostr protocol, Hydra ensures your data remains yours—encrypted, decentralized, and censorship-resistant.
+Fursan is a privacy-first, decentralized discipline and streak tracker built on the Nostr protocol. There are no accounts and no central servers: your identity is a locally stored key pair, and your progress lives on a global network of independent relays.
 
-Key Features:
-- Decentralized Privacy: All streak and journal data are encrypted end-to-end using NIP-44 (v2) encryption.
-- No Central Servers: No accounts or central databases. Your data lives on a global network of independent relays.
-- Community & Chat: Connect with other warriors using a high-performance, real-time chat interface with automatic identity discovery.
-- Neo-Brutalist Design: A unique visual style designed for focus and impact.
-- Offline-First: Intelligent offline queue ensures your progress is saved and synced automatically when you're back online.
+FEATURES
 
-Stay strong. Stay disciplined. Become legendary. 🐉
+- Streak tracking: start your protocol, track days of Sabr (patience), milestones, ranks and longest-streak records.
+- End-to-end encrypted sync: streak and journal data are synced to Nostr relays encrypted with NIP-44 (v2). Only your key can read them.
+- Daily journal: record your battles, thoughts and triggers in a private, encrypted log.
+- Community chat: real-time decentralized chat rooms (general, SOS, motivation, fiqh) with automatic identity discovery, optimistic sending and delivery status.
+- Prayer times: local offline prayer-time calculation with configurable calculation methods, GPS or manual location, and anti-cheat check-in windows.
+- Daily health check: mindset and biological protocol check-ins with streak-aware insights and an emergency lock intervention.
+- Offline-first: an intelligent queue stores your events while offline and publishes them automatically when you are back online.
+- Motivation archive: daily wisdom quotes and activity history.
+
+PRIVACY
+
+- No trackers, no analytics, no advertising SDKs, no Google Play Services.
+- All data stays on your device (encrypted preferences) or on Nostr relays under your own key.
+- The full source code is available under the MIT license.
+
+Stay strong. Stay disciplined. Become legendary.

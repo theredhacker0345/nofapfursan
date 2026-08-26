@@ -60,7 +60,33 @@
     ```
 
 ### 📦 Releases
-Visit the **[Releases](https://github.com/darkmaster0345/nofapfursan/releases)** page for the latest APK.
+Visit the **[Releases](https://gitlab.com/theredhacker0345/nofapfursan/-/releases)** page for the latest APK.
+
+### 🤖 F-Droid
+
+Fursan is prepared for inclusion in the F-Droid repository:
+
+- **License**: MIT (fully FOSS — no Google Play Services, no Firebase, no trackers)
+- **Application ID**: `com.nofapfursan.app`
+- **Build metadata**: `metadata/com.nofapfursan.app.yml`
+- **Store listing**: `fastlane/metadata/android/en-US/` (descriptions, icon, screenshots, changelogs)
+
+F-Droid builds the app from source with this recipe:
+
+```bash
+npm ci
+npm run build
+npx cap sync android
+cd android && gradle assembleRelease   # signed by F-Droid
+```
+
+Release process for maintainers:
+
+1. Bump `versionCode`/`versionName` in `android/app/build.gradle`.
+2. Add a changelog entry at `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`.
+3. Commit and tag: `git tag vX.Y.Z && git push origin main --tags`.
+4. Add a matching `Builds:` block for the new version in `metadata/com.nofapfursan.app.yml`.
+5. Propose the app via a merge request to [fdroiddata](https://gitlab.com/fdroid/fdroiddata).
 
 ---
 

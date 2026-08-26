@@ -1,0 +1,29 @@
+Categories:
+  - Internet
+  - Sports & Health
+License: MIT
+AuthorName: Ubaid ur Rehman
+SourceCode: https://gitlab.com/theredhacker0345/nofapfursan
+IssueTracker: https://gitlab.com/theredhacker0345/nofapfursan/-/issues
+Changelog: https://gitlab.com/theredhacker0345/nofapfursan/-/releases
+
+RepoType: git
+Repo: https://gitlab.com/theredhacker0345/nofapfursan.git
+
+Builds:
+  - versionName: 2.5.0
+    versionCode: 250
+    commit: v2.5.0
+    subdir: android
+    init:
+      - cd ..
+      - npm ci
+      - npm run build
+      - npx cap sync android
+    gradle:
+      - yes
+
+AutoUpdateMode: Version v%v
+UpdateCheckMode: Tags
+CurrentVersion: 2.5.0
+CurrentVersionCode: 250

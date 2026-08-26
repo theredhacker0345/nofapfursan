@@ -1,5 +1,0 @@
-Initial release of NoFap Fursan.
-- Decentralized chat powered by the Nostr protocol.
-- Full NIP-01 metadata support for user identities.
-- Royal Gold, privacy-focused interface.
-- Lightweight optimized build.
