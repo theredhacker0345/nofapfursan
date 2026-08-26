@@ -48,7 +48,7 @@ export function StreakActions({ isActive, onStart, onReset }: StreakActionsProps
         {!isActive ? (
           <Button
             size="xl"
-            className="flex-1 rounded-xl h-16 bg-primary text-primary-foreground font-semibold text-base hover:bg-primary/90 active:scale-[0.99] transition-all"
+            className="flex-1 h-16 bg-primary text-primary-foreground font-semibold text-base hover:bg-primary/95 hover:shadow-md active:scale-[0.99] transition-all"
             onClick={handleStart}
           >
             <Play className="w-5 h-5 mr-2" />
@@ -60,7 +60,7 @@ export function StreakActions({ isActive, onStart, onReset }: StreakActionsProps
               <Button
                 variant="outline"
                 size="lg"
-                className="flex-1 rounded-xl h-14 border-border text-destructive hover:bg-destructive/5 font-medium transition-all"
+                className="flex-1 h-14 border-outline-variant text-destructive hover:bg-destructive/5 font-medium transition-all"
               >
                 <RotateCcw className="w-4 h-4 mr-2" />
                 Reset My Streak

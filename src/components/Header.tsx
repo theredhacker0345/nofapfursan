@@ -26,11 +26,11 @@ export function Header() {
   return (
     <header className="flex flex-col items-center justify-center gap-3 py-8 page-transition">
       <div className="relative">
-        <div className="p-3 bg-card rounded-2xl border border-border">
-          <FursanLogo className="w-14 h-14 text-primary" />
+        <div className="p-3 bg-primary-container rounded-2xl">
+          <FursanLogo className="w-14 h-14 text-on-primary-container" />
         </div>
         {level && (
-          <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 bg-secondary text-foreground text-[11px] font-medium px-3 py-1 rounded-full border border-border whitespace-nowrap">
+          <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 bg-secondary-container text-on-secondary-container text-[11px] font-medium px-3 py-1 rounded-full whitespace-nowrap">
             {level.emoji} {level.name}
           </div>
         )}

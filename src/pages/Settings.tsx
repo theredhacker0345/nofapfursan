@@ -99,8 +99,8 @@ export default function Settings() {
 
                     {/* Appearance */}
                     <section className="bg-card border border-border rounded-2xl overflow-hidden">
-                        <div className="px-5 pt-5 pb-3 flex items-center gap-2">
-                            <Palette className="w-4 h-4 text-primary" aria-hidden="true" />
+                        <div className="px-5 pt-5 pb-3 flex items-center gap-3">
+                            <span className="flex items-center justify-center w-8 h-8 rounded-full bg-secondary-container"><Palette className="w-4 h-4 text-on-secondary-container" aria-hidden="true" /></span>
                             <h2 className="text-sm font-semibold text-foreground">Appearance</h2>
                         </div>
                         <div className="px-5 pb-5 space-y-4">
@@ -125,8 +125,8 @@ export default function Settings() {
                     {/* Reminders */}
                     {isSupported && (
                         <section className="bg-card border border-border rounded-2xl overflow-hidden">
-                            <div className="px-5 pt-5 pb-3 flex items-center gap-2">
-                                <Bell className="w-4 h-4 text-primary" aria-hidden="true" />
+                            <div className="px-5 pt-5 pb-3 flex items-center gap-3">
+                                <span className="flex items-center justify-center w-8 h-8 rounded-full bg-secondary-container"><Bell className="w-4 h-4 text-on-secondary-container" aria-hidden="true" /></span>
                                 <h2 className="text-sm font-semibold text-foreground">Reminders</h2>
                             </div>
                             <div className="px-5 pb-5 space-y-5">
@@ -157,8 +157,8 @@ export default function Settings() {
 
                     {/* Privacy */}
                     <section className="bg-card border border-border rounded-2xl overflow-hidden">
-                        <div className="px-5 pt-5 pb-3 flex items-center gap-2">
-                            <Moon className="w-4 h-4 text-primary" aria-hidden="true" />
+                        <div className="px-5 pt-5 pb-3 flex items-center gap-3">
+                            <span className="flex items-center justify-center w-8 h-8 rounded-full bg-secondary-container"><Moon className="w-4 h-4 text-on-secondary-container" aria-hidden="true" /></span>
                             <h2 className="text-sm font-semibold text-foreground">Privacy &amp; Security</h2>
                         </div>
                         <div className="px-5 pb-5">
@@ -168,8 +168,8 @@ export default function Settings() {
 
                     {/* Companion app */}
                     <section className="bg-card border border-border rounded-2xl overflow-hidden">
-                        <div className="px-5 pt-5 pb-3 flex items-center gap-2">
-                            <ExternalLink className="w-4 h-4 text-primary" aria-hidden="true" />
+                        <div className="px-5 pt-5 pb-3 flex items-center gap-3">
+                            <span className="flex items-center justify-center w-8 h-8 rounded-full bg-secondary-container"><ExternalLink className="w-4 h-4 text-on-secondary-container" aria-hidden="true" /></span>
                             <h2 className="text-sm font-semibold text-foreground">Noor Connect</h2>
                         </div>
                         <div className="px-5 pb-5 space-y-3">
@@ -189,8 +189,8 @@ export default function Settings() {
 
                     {/* Your data */}
                     <section className="bg-card border border-border rounded-2xl overflow-hidden">
-                        <div className="px-5 pt-5 pb-3 flex items-center gap-2">
-                            <Download className="w-4 h-4 text-primary" aria-hidden="true" />
+                        <div className="px-5 pt-5 pb-3 flex items-center gap-3">
+                            <span className="flex items-center justify-center w-8 h-8 rounded-full bg-secondary-container"><Download className="w-4 h-4 text-on-secondary-container" aria-hidden="true" /></span>
                             <h2 className="text-sm font-semibold text-foreground">Your Data</h2>
                         </div>
                         <div className="px-5 pb-5 space-y-2">
@@ -239,8 +239,8 @@ export default function Settings() {
 
                     {/* Support */}
                     <section className="bg-card border border-border rounded-2xl overflow-hidden">
-                        <div className="px-5 pt-5 pb-3 flex items-center gap-2">
-                            <Heart className="w-4 h-4 text-primary" aria-hidden="true" />
+                        <div className="px-5 pt-5 pb-3 flex items-center gap-3">
+                            <span className="flex items-center justify-center w-8 h-8 rounded-full bg-secondary-container"><Heart className="w-4 h-4 text-on-secondary-container" aria-hidden="true" /></span>
                             <h2 className="text-sm font-semibold text-foreground">Support</h2>
                         </div>
                         <div className="px-5 pb-5 grid grid-cols-2 gap-2">

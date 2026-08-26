@@ -27,14 +27,35 @@ export default {
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
+          container: "hsl(var(--primary-container))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
           foreground: "hsl(var(--secondary-foreground))",
+          container: "hsl(var(--secondary-container))",
+        },
+        tertiary: {
+          DEFAULT: "hsl(var(--tertiary))",
+          foreground: "hsl(var(--on-tertiary))",
+          container: "hsl(var(--tertiary-container))",
         },
         destructive: {
           DEFAULT: "hsl(var(--destructive))",
           foreground: "hsl(var(--destructive-foreground))",
+          container: "hsl(var(--error-container))",
+        },
+        /* Material 3 "on" roles (flat keys so utilities generate) */
+        "on-primary-container": "hsl(var(--on-primary-container))",
+        "on-secondary-container": "hsl(var(--on-secondary-container))",
+        "on-tertiary": "hsl(var(--on-tertiary))",
+        "on-tertiary-container": "hsl(var(--on-tertiary-container))",
+        "on-error-container": "hsl(var(--on-error-container))",
+        "error-container": "hsl(var(--error-container))",
+        "on-surface-variant": "hsl(var(--on-surface-variant))",
+        "surface-variant": "hsl(var(--surface-variant))",
+        outline: {
+          DEFAULT: "hsl(var(--outline))",
+          variant: "hsl(var(--outline-variant))",
         },
         muted: {
           DEFAULT: "hsl(var(--muted))",

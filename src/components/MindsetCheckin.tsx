@@ -20,27 +20,27 @@ export function MindsetCheckin({ onCheckin, saving }: MindsetCheckinProps) {
                     onClick={() => { luxuryClickVibrate(); onCheckin('sharp'); }}
                     disabled={saving}
                     aria-label="Feeling sharp"
-                    className="flex flex-col items-center justify-center gap-2 py-4 rounded-xl border border-border bg-background hover:bg-secondary transition-colors text-foreground text-xs font-medium active:scale-[0.98]"
+                    className="flex flex-col items-center justify-center gap-2 py-4 rounded-2xl bg-tertiary-container text-on-tertiary-container hover:brightness-[0.97] transition-all text-xs font-semibold active:scale-[0.98]"
                 >
-                    <Sun className="w-5 h-5 text-accent" />
+                    <Sun className="w-5 h-5" />
                     Sharp
                 </button>
                 <button
                     onClick={() => { luxuryClickVibrate(); onCheckin('foggy'); }}
                     disabled={saving}
                     aria-label="Feeling foggy"
-                    className="flex flex-col items-center justify-center gap-2 py-4 rounded-xl border border-border bg-background hover:bg-secondary transition-colors text-foreground text-xs font-medium active:scale-[0.98]"
+                    className="flex flex-col items-center justify-center gap-2 py-4 rounded-2xl bg-secondary-container text-on-secondary-container hover:brightness-[0.97] transition-all text-xs font-semibold active:scale-[0.98]"
                 >
-                    <CloudLightning className="w-5 h-5 text-muted-foreground" />
+                    <CloudLightning className="w-5 h-5" />
                     Foggy
                 </button>
                 <button
                     onClick={() => { luxuryClickVibrate(); onCheckin('stormy'); }}
                     disabled={saving}
                     aria-label="Feeling stormy"
-                    className="flex flex-col items-center justify-center gap-2 py-4 rounded-xl border border-border bg-background hover:bg-secondary transition-colors text-foreground text-xs font-medium active:scale-[0.98]"
+                    className="flex flex-col items-center justify-center gap-2 py-4 rounded-2xl bg-error-container text-on-error-container hover:brightness-[0.97] transition-all text-xs font-semibold active:scale-[0.98]"
                 >
-                    <CloudLightning className="w-5 h-5 text-destructive" />
+                    <CloudLightning className="w-5 h-5" />
                     Stormy
                 </button>
             </div>

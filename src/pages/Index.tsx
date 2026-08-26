@@ -53,9 +53,9 @@ const Index = () => {
                   : "Start your streak to unlock full tracking and get your first win."}
               </p>
             </div>
-            <div className="rounded-xl bg-secondary px-3.5 py-2 text-center min-w-[72px]">
-              <p className="text-[11px] font-medium text-muted-foreground">Day</p>
-              <p className="text-2xl font-bold text-primary leading-tight">{liveStreak.days}</p>
+            <div className="rounded-2xl bg-primary-container px-3.5 py-2 text-center min-w-[72px]">
+              <p className="text-[11px] font-medium text-on-primary-container/70">Day</p>
+              <p className="text-2xl font-bold text-on-primary-container leading-tight">{liveStreak.days}</p>
             </div>
           </div>
         </section>

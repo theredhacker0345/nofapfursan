@@ -29,9 +29,9 @@ export function SyncIndicator({
             return {
                 icon: <Loader2 className="h-4 w-4 animate-spin" />,
                 text: "Syncing...",
-                color: "text-primary",
-                bgColor: "bg-primary/10",
-                borderColor: "border-primary/30",
+                color: "text-on-surface-variant",
+                bgColor: "bg-secondary-container",
+                borderColor: "border-transparent",
             };
         }
 
@@ -39,9 +39,9 @@ export function SyncIndicator({
             return {
                 icon: <CloudOff className="h-4 w-4" />,
                 text: pendingCount > 0 ? `Offline (${pendingCount} pending)` : "Offline",
-                color: "text-primary",
-                bgColor: "bg-secondary/10",
-                borderColor: "border-primary/30",
+                color: "text-on-primary-container",
+                bgColor: "bg-primary-container",
+                borderColor: "border-transparent",
             };
         }
 
@@ -49,9 +49,9 @@ export function SyncIndicator({
             return {
                 icon: <Cloud className="h-4 w-4" />,
                 text: `${pendingCount} pending`,
-                color: "text-primary",
-                bgColor: "bg-secondary/10",
-                borderColor: "border-primary/30",
+                color: "text-on-primary-container",
+                bgColor: "bg-primary-container",
+                borderColor: "border-transparent",
             };
         }
 
@@ -59,9 +59,9 @@ export function SyncIndicator({
         return {
             icon: <CheckCircle2 className="h-4 w-4" />,
             text: "Synced",
-            color: "text-accent",
-            bgColor: "bg-secondary/10",
-            borderColor: "border-accent/30",
+            color: "text-on-tertiary-container",
+            bgColor: "bg-tertiary-container",
+            borderColor: "border-transparent",
         };
     };
 
@@ -71,7 +71,7 @@ export function SyncIndicator({
         <div
             className={cn(
                 "inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium",
-                "border transition-all duration-300",
+                "border transition-colors duration-300",
                 status.color,
                 status.bgColor,
                 status.borderColor,

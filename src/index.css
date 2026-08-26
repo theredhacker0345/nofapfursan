@@ -64,6 +64,29 @@
     --input: 36 15% 90%;
     --ring: 33 45% 40%;
 
+    /* ── Material 3 tonal tokens ─────────────────────────── */
+    --primary-container: 32 48% 88%;
+    /* soft bronze wash */
+    --on-primary-container: 28 45% 24%;
+
+    --secondary-container: 38 32% 89%;
+    /* warm sand */
+    --on-secondary-container: 28 22% 26%;
+
+    --tertiary: 152 30% 34%;
+    --on-tertiary: 0 0% 100%;
+    --tertiary-container: 148 22% 87%;
+    /* soft sage */
+    --on-tertiary-container: 152 28% 22%;
+
+    --surface-variant: 38 22% 92%;
+    --on-surface-variant: 28 10% 38%;
+    --outline: 30 10% 62%;
+    --outline-variant: 33 15% 86%;
+
+    --error-container: 4 64% 90%;
+    --on-error-container: 0 55% 28%;
+
     --radius: 0.75rem;
 
     --font-display: 'Bebas Neue', 'Bebas Neue Fallback', Arial, sans-serif;

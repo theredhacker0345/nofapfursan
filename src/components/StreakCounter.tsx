@@ -33,7 +33,7 @@ export function StreakCounter({ startDate, isSyncing, isOnline, pendingCount }: 
         </div>
 
         {startDate && (
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary text-muted-foreground text-[11px] font-medium">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary-container text-on-secondary-container text-[11px] font-medium">
             {isSyncing ? (
               <>
                 <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
@@ -41,7 +41,7 @@ export function StreakCounter({ startDate, isSyncing, isOnline, pendingCount }: 
               </>
             ) : isOnline ? (
               <>
-                <div className="w-1.5 h-1.5 bg-accent rounded-full" />
+                <div className="w-1.5 h-1.5 bg-tertiary rounded-full" />
                 Synced
               </>
             ) : (
@@ -55,9 +55,9 @@ export function StreakCounter({ startDate, isSyncing, isOnline, pendingCount }: 
       </div>
 
       {isNewUser ? (
-        <div className="text-center py-10 rounded-xl bg-secondary/50">
-          <p className="text-2xl font-bold tracking-tight mb-2 text-foreground">Begin your journey</p>
-          <p className="text-muted-foreground text-sm">
+        <div className="text-center py-10 rounded-xl bg-secondary-container/60">
+          <p className="text-2xl font-bold tracking-tight mb-2 text-on-secondary-container">Begin your journey</p>
+          <p className="text-on-secondary-container/70 text-sm">
             Start your streak today and see how far you can go
           </p>
         </div>
@@ -76,18 +76,18 @@ export function StreakCounter({ startDate, isSyncing, isOnline, pendingCount }: 
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <div className="flex items-center gap-3 p-3.5 rounded-xl bg-secondary/60">
-              <Clock className="w-4 h-4 text-primary flex-shrink-0" />
+            <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-secondary-container">
+              <Clock className="w-4 h-4 text-on-secondary-container/70 flex-shrink-0" />
               <div className="min-w-0">
-                <p className="text-lg font-semibold leading-none text-foreground truncate">{streak.hours}</p>
-                <p className="text-[11px] text-muted-foreground truncate">hours</p>
+                <p className="text-lg font-semibold leading-none text-on-secondary-container truncate">{streak.hours}</p>
+                <p className="text-[11px] text-on-secondary-container/60 truncate">hours</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 p-3.5 rounded-xl bg-secondary/60">
-              <Calendar className="w-4 h-4 text-primary flex-shrink-0" />
+            <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-secondary-container">
+              <Calendar className="w-4 h-4 text-on-secondary-container/70 flex-shrink-0" />
               <div className="min-w-0">
-                <p className="text-lg font-semibold leading-none text-foreground truncate">{streak.minutes}</p>
-                <p className="text-[11px] text-muted-foreground truncate">minutes</p>
+                <p className="text-lg font-semibold leading-none text-on-secondary-container truncate">{streak.minutes}</p>
+                <p className="text-[11px] text-on-secondary-container/60 truncate">minutes</p>
               </div>
             </div>
           </div>

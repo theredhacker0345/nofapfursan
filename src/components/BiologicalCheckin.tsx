@@ -19,17 +19,17 @@ export function BiologicalCheckin({ onCheckin, saving }: BiologicalCheckinProps)
                     onClick={() => { luxuryClickVibrate(); onCheckin(true); }}
                     disabled={saving}
                     aria-label="Yes, healthy signs"
-                    className="h-14 rounded-xl border border-border bg-background hover:bg-secondary text-foreground font-medium text-base transition-colors active:scale-[0.98]"
+                    className="h-14 rounded-2xl bg-tertiary-container text-on-tertiary-container hover:bg-tertiary-container/80 font-semibold text-base transition-colors active:scale-[0.98]"
                 >
-                    Yes <CheckCircle2 className="ml-2 w-4 h-4 text-accent" />
+                    Yes <CheckCircle2 className="ml-2 w-4 h-4" />
                 </Button>
                 <Button
                     onClick={() => { luxuryClickVibrate(); onCheckin(false); }}
                     disabled={saving}
                     aria-label="No healthy signs"
-                    className="h-14 rounded-xl border border-border bg-background hover:bg-secondary text-foreground font-medium text-base transition-colors active:scale-[0.98]"
+                    className="h-14 rounded-2xl bg-error-container text-on-error-container hover:bg-error-container/80 font-semibold text-base transition-colors active:scale-[0.98]"
                 >
-                    No <AlertCircle className="ml-2 w-4 h-4 text-destructive" />
+                    No <AlertCircle className="ml-2 w-4 h-4" />
                 </Button>
             </div>
         </div>

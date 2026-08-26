@@ -28,13 +28,17 @@ export function BottomNav() {
             to={item.to}
             end={item.to === "/"}
             aria-label={item.label}
-            className="flex flex-col items-center justify-center gap-1 px-2 sm:px-4 py-2 text-muted-foreground transition-colors duration-200 hover:text-foreground min-w-[48px] min-h-[48px]"
-            activeClassName="text-primary font-medium"
+            className="flex flex-col items-center justify-center gap-0.5 px-2 sm:px-3 py-1.5 text-muted-foreground transition-colors duration-200 hover:text-foreground min-w-[48px] min-h-[48px]"
+            activeClassName="text-on-secondary-container"
           >
             {({ isActive }) => (
               <>
-                <item.icon className="h-5 w-5" aria-hidden="true" />
-                <span className={`text-[11px] ${isActive ? 'text-primary' : ''}`}>
+                <div
+                  className={`flex items-center justify-center h-7 w-14 rounded-full transition-colors duration-200 ${isActive ? "bg-secondary-container" : ""}`}
+                >
+                  <item.icon className="h-5 w-5" aria-hidden="true" />
+                </div>
+                <span className={`text-[11px] ${isActive ? "text-on-secondary-container font-semibold" : "font-medium"}`}>
                   {item.label}
                 </span>
               </>
