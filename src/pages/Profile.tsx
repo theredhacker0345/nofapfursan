@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { saveStreak, fetchStreak, StreakPayload } from "@/services/nostr";
 import { getStreakData, saveStreakData } from "@/lib/streakUtils";
-import { Download, ArrowLeft, Loader2, LogOut, Settings, ShieldCheck, User, Network, Sparkles, Bell, Scale, Map } from "lucide-react";
+import { Download, ArrowLeft, Loader2, LogOut, Settings, ShieldCheck, User, Network, Sparkles, Bell, Moon, ExternalLink } from "lucide-react";
 import { useNostr } from "@/hooks/useNostr";
 import { IdentityManagement } from "@/components/IdentityManagement";
 import { Button } from "@/components/ui/button";
@@ -16,11 +16,11 @@ import { SecuritySettings } from "@/components/SecuritySettings";
 import { ThemeSelector } from "@/components/ThemeSelector";
 import { PrivacySettings } from "@/components/PrivacySettings";
 import { NotificationSettings } from "@/components/NotificationSettings";
-import { PrayerFiqhSettings } from "@/components/PrayerFiqhSettings";
-import { LocationSettings } from "@/components/LocationSettings";
 import { Haptics, ImpactStyle } from "@capacitor/haptics";
 import { Capacitor } from "@capacitor/core";
 import { Header } from "@/components/Header";
+
+const NOOR_CONNECT_URL = "https://f-droid.org/en/packages/com.noorconnect.app/";
 
 const Profile = () => {
   const [username, setUsername] = useState("");
@@ -144,8 +144,8 @@ const Profile = () => {
                 <Settings className="w-5 h-5 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="text-xl font-display text-foreground tracking-tight">Knight Settings</h1>
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Identity & Protocol Control</p>
+                <h1 className="text-xl font-display text-foreground tracking-tight">App Settings</h1>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Account & Preferences</p>
               </div>
             </div>
           </div>
@@ -180,7 +180,7 @@ const Profile = () => {
               <div className="space-y-4">
                 <div className="flex items-center gap-2 text-foreground font-bold text-sm uppercase tracking-widest px-1">
                   <ShieldCheck className="w-4 h-4 text-primary" />
-                  Security Protocol
+                  Security
                 </div>
                 <SecuritySettings />
               </div>
@@ -192,31 +192,35 @@ const Profile = () => {
               <div className="space-y-4">
                 <div className="flex items-center gap-2 text-foreground font-bold text-sm uppercase tracking-widest px-1">
                   <Bell className="w-4 h-4 text-primary" />
-                  Notification Protocol
+                  Reminders
                 </div>
                 <NotificationSettings />
               </div>
 
               <div className="space-y-4">
                 <div className="flex items-center gap-2 text-foreground font-bold text-sm uppercase tracking-widest px-1">
-                  <Map className="w-4 h-4 text-primary" />
-                  Location Protocol
+                  <Moon className="w-4 h-4 text-primary" />
+                  Noor Connect — Our Islamic App
                 </div>
-                <LocationSettings />
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 text-foreground font-bold text-sm uppercase tracking-widest px-1">
-                  <Scale className="w-4 h-4 text-primary" />
-                  Fiqh Protocol
+                <div className="royal-card !w-full p-5">
+                  <p className="text-xs text-muted-foreground leading-relaxed mb-4">
+                    Fursan focuses on your streak and community. For prayer times, adhan alerts and more, try our free companion app.
+                  </p>
+                  <Button
+                    variant="outline"
+                    className="w-full h-12 justify-center gap-3 border-primary/40 bg-card hover:bg-secondary text-primary rounded-2xl transition-all"
+                    onClick={() => window.open(NOOR_CONNECT_URL, '_blank')}
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Get Noor Connect on F-Droid</span>
+                  </Button>
                 </div>
-                <PrayerFiqhSettings />
               </div>
 
               <div className="space-y-4">
                 <div className="flex items-center gap-2 text-foreground font-bold text-sm uppercase tracking-widest px-1">
                   <Sparkles className="w-4 h-4 text-primary" />
-                  Visual Aesthetics
+                  Themes
                 </div>
                 <ThemeSelector />
               </div>
@@ -225,8 +229,8 @@ const Profile = () => {
             <div className="pt-8 border-t border-border">
 
               <div className="flex flex-col items-center gap-2 mt-8 text-center">
-                <p className="text-[10px] text-muted-foreground/30 font-bold uppercase tracking-[0.3em]">NoFap Fursan v2.5 Elite</p>
-                <p className="text-[9px] text-muted-foreground/10 font-mono tracking-widest">BITCOIN // NOSTR // SABR</p>
+                <p className="text-[10px] text-muted-foreground/60 font-bold uppercase tracking-[0.3em]">NoFap Fursan v2.5</p>
+                <p className="text-[9px] text-muted-foreground/40 font-mono tracking-widest">PRIVATE // DECENTRALIZED // YOURS</p>
               </div>
             </div>
           </div>

@@ -26,10 +26,10 @@ export function PrivacySettings() {
             setTimeout(() => {
                 window.location.reload();
             }, 1500);
-            toast.success("Protocol Incinerated. All local data destroyed.");
+            toast.success("Done. All local data has been erased.");
         } catch (error) {
-            console.error("Incineration failed", error);
-            toast.error("Incineration failed. Manually clear app data.");
+            console.error("Data erase failed", error);
+            toast.error("Could not erase data. Please clear app data manually.");
             setIncinerating(false);
         }
     };
@@ -40,10 +40,10 @@ export function PrivacySettings() {
                 <ShieldAlert className="w-8 h-8 text-emerald-600 flex-shrink-0" />
                 <div className="min-w-0 flex-1">
                     <h3 className="text-sm font-black uppercase tracking-widest text-emerald-800 truncate">
-                        Fortress Active
+                        Your Data Is Safe
                     </h3>
                     <p className="text-[10px] text-emerald-700/60 font-medium break-words leading-tight">
-                        Your identity and streak data are encrypted at rest using Native Secure Storage.
+                        Your identity and streak are stored encrypted on this device only.
                     </p>
                 </div>
                 <CheckCircle2 className="w-5 h-5 text-emerald-500 ml-auto flex-shrink-0" />
@@ -62,13 +62,13 @@ export function PrivacySettings() {
                             className="w-full h-14 bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-widest shadow-lg shadow-red-500/20"
                             disabled={incinerating}
                         >
-                            {incinerating ? "INCINERATING..." : "INCINERATE IDENTITY"}
+                            {incinerating ? "ERASING..." : "ERASE EVERYTHING"}
                         </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent className="border-2 border-red-500 bg-white">
                         <AlertDialogHeader>
                             <AlertDialogTitle className="text-red-600 font-black uppercase tracking-widest">
-                                Confirm Protocol Destruction
+                                Erase All Data?
                             </AlertDialogTitle>
                             <AlertDialogDescription className="text-stone-600 font-medium">
                                 This will PERMANENTLY delete your private key, streak history, and all local data from this device.

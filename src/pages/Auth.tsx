@@ -91,7 +91,7 @@ const Auth = () => {
           onClick={() => navigate("/")}
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Abort Protocol
+          Cancel
         </Button>
 
         <div className="royal-card p-10 md:p-12 space-y-10">
@@ -101,8 +101,8 @@ const Auth = () => {
               <FursanLogo className="w-20 h-20 fursan-logo-glow relative z-10" />
             </div>
             <div className="text-center">
-              <h1 className="text-4xl font-display tracking-tight text-amber-900">Knight Sync</h1>
-              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-amber-600/40 mt-1">Identity Encryption Protocol</p>
+              <h1 className="text-4xl font-display tracking-tight text-amber-900">Welcome Back</h1>
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-amber-600/40 mt-1">Your Identity, Encrypted</p>
               <p className="text-xs font-medium text-amber-700/60 italic mt-2">"Discipline over desire."</p>
             </div>
           </div>

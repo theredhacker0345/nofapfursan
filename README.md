@@ -25,9 +25,9 @@
 *   **Identity Discovery**: Automatically fetches profiles from the global Nostr network.
 
 ### 🕌 Spiritual & Mental Tools
-*   **Prayer Times (Adhan)**: Built-in local calculation for prayer times based on location (Privacy-preserving, runs locally).
 *   **Panic Button**: Instant redirection and motivational content for urgent moments.
 *   **Journal**: Encrypted daily logs to track your mental state (Clear, Foggy, Stormy).
+*   **Prayer times & Adhan**: Available in our companion app **[Noor Connect](https://f-droid.org/en/packages/com.noorconnect.app/)** — free and open source on F-Droid.
 
 ### 🎨 Premium Experience
 *   **Dynamic Theming**:
@@ -90,6 +90,14 @@ Release process for maintainers:
 
 ---
 
+## 📚 Companion App: Noor Connect
+
+Looking for prayer times, adhan alerts and more? Check out our free Islamic companion app:
+
+**[Noor Connect on F-Droid](https://f-droid.org/en/packages/com.noorconnect.app/)**
+
+---
+
 ## 💰 Support the Mission
 
 Fursan is developed by **Ubaid**. If this tool helps you in your journey, consider supporting the development.
@@ -106,6 +114,6 @@ Fursan is developed by **Ubaid**. If this tool helps you in your journey, consid
 
 **License**: MIT License. Free to fork, modify, and distribute.
 
-**Privacy Policy**: This app does NOT collect usage data. Location data is processed LOCALLY on your device for Prayer Times and is never transmitted. Chat messages are public (Signed Events) but stored on decentralized relays, not our servers. Encrypted data (Journal) is readable only by YOU.
+**Privacy Policy**: This app does NOT collect usage data. It does NOT use your location. Chat messages are public (Signed Events) but stored on decentralized relays, not our servers. Encrypted data (Journal, Streak) is readable only by YOU.
 
 *"Stay strong. Stay disciplined. Become legendary."* ⚔️

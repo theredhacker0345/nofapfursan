@@ -20,7 +20,7 @@ await page.goto(`${BASE}/#/`, { waitUntil: 'domcontentloaded' });
 await page.waitForTimeout(3000);
 await page.screenshot({ path: 'scripts/shots/flow-1-home.png' });
 
-const startBtn = page.getByRole('button', { name: /initiate protocol/i });
+const startBtn = page.getByRole('button', { name: /start my streak/i });
 if (await startBtn.count()) {
   await startBtn.click();
   await page.waitForTimeout(1200);
@@ -29,8 +29,8 @@ if (await startBtn.count()) {
   console.log('START STREAK: button not found');
 }
 
-const dayText = await page.locator('text=/Protocol Active/i').count();
-console.log('PROTOCOL ACTIVE VISIBLE:', dayText > 0 ? 'YES' : 'NO');
+const dayText = await page.locator('text=/Streak Active/i').count();
+console.log('STREAK ACTIVE VISIBLE:', dayText > 0 ? 'YES' : 'NO');
 
 // Reset flow via confirm dialog
 const resetBtn = page.getByRole('button', { name: /reset sabr count/i }).first();
@@ -50,8 +50,8 @@ if (await resetBtn.count()) {
 }
 
 // Start again so app is in active state
-if (await page.getByRole('button', { name: /initiate protocol/i }).count()) {
-  await page.getByRole('button', { name: /initiate protocol/i }).click();
+if (await page.getByRole('button', { name: /start my streak/i }).count()) {
+  await page.getByRole('button', { name: /start my streak/i }).click();
   await page.waitForTimeout(800);
 }
 

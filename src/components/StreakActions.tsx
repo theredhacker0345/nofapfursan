@@ -26,8 +26,8 @@ export function StreakActions({ isActive, onStart, onReset }: StreakActionsProps
     await luxuryClickVibrate();
 
     toast({
-      title: "Protocol Initiated!",
-      description: "Your journey to Fursanhood begins now. Stay disciplined!",
+      title: "Streak Started!",
+      description: "Your journey begins now. Stay strong!",
     });
   };
 
@@ -36,8 +36,8 @@ export function StreakActions({ isActive, onStart, onReset }: StreakActionsProps
     await warningVibrate();
 
     toast({
-      title: "Sabr Count Reset",
-      description: "A Knight may fall, but he always rises. Start again with wisdom.",
+      title: "Streak Reset",
+      description: "Falling once does not define you. Start again, wiser.",
       variant: "destructive",
     });
   };
@@ -52,7 +52,7 @@ export function StreakActions({ isActive, onStart, onReset }: StreakActionsProps
             onClick={handleStart}
           >
             <Swords className="w-6 h-6 sm:w-8 sm:h-8 mr-2 sm:mr-4 group-hover:rotate-12 transition-transform" />
-            <span className="truncate">INITIATE PROTOCOL</span>
+            <span className="truncate">START MY STREAK</span>
             <Sparkles className="ml-2 sm:ml-4 w-4 h-4 sm:w-6 sm:h-6 animate-pulse" />
           </Button>
         ) : (
@@ -64,7 +64,7 @@ export function StreakActions({ isActive, onStart, onReset }: StreakActionsProps
                 className="flex-1 rounded-xl h-14 border-2 border-rose-200 text-rose-500 hover:bg-rose-50 font-bold uppercase tracking-wider shadow-md hover:border-rose-300 transition-all"
               >
                 <RotateCcw className="w-4 h-4 mr-2" />
-                Reset Sabr Count
+                Reset My Streak
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent className="rounded-2xl border-amber-200 p-8 shadow-2xl">
@@ -74,7 +74,7 @@ export function StreakActions({ isActive, onStart, onReset }: StreakActionsProps
                   Request Full Reset?
                 </AlertDialogTitle>
                 <AlertDialogDescription className="text-amber-800/70 font-medium text-base pt-4">
-                  This will reset your current Sabr Count to zero. Your record of persistence will be archived.
+                  This will set your streak back to zero. Your past progress will stay in your history.
                   <br /><br />
                   <span className="italic">"The path to mastery is paved with persistence, not perfection."</span>
                 </AlertDialogDescription>

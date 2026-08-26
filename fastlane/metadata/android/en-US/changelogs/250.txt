@@ -1,10 +1,13 @@
-Fursan v2.5.0 - performance and privacy release.
+Fursan v2.5.0 - simpler, faster, more private.
 
+- Simpler words everywhere - easier to read and use
+- Removed prayer times and location tracking (get them in our
+  companion app Noor Connect on F-Droid)
+- No more location permission
 - Code splitting: main bundle 714 KB to 325 KB
-- Prayer times cached per day (no constant GPS polling)
 - Fixed cloud backup/restore using wrong storage keys
 - Stale cloud backups can no longer roll back newer streaks
 - Fixed theme unlocks and identity import
-- Accessibility: 44 px touch targets, screen-reader labels, reduced motion
+- Accessibility: 44 px touch targets, screen-reader labels
 - Toasts no longer block the bottom navigation
 - Removed all Google Play Services references

@@ -47,12 +47,12 @@ export function NotificationToggle() {
           <div className="min-w-0 flex-1">
             <h3 className="font-bold text-amber-800 flex items-center gap-1.5 truncate">
               <Sparkles className="w-4 h-4 text-amber-500 flex-shrink-0" />
-              Honor Protocol
+              Daily Reminders
             </h3>
             <p className="text-[11px] text-amber-600/70 font-medium leading-tight truncate">
               {enabled
-                ? `Active • Adhan & Quran each ${intervalHours}h`
-                : "Enable Adhan alerts & daily wisdom"}
+                ? `On • Motivational reminders every ${intervalHours}h`
+                : "Get motivational reminders"}
             </p>
           </div>
         </div>

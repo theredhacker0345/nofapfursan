@@ -71,7 +71,7 @@ const Community = () => {
                   className="rounded-xl border-amber-200 bg-white text-amber-800 hover:bg-amber-50 uppercase text-[10px] font-black tracking-widest px-6 h-12 shadow-sm"
                 >
                   <UserIcon className="w-4 h-4 mr-2" />
-                  My Knight ID
+                  My Profile
                 </Button>
                 <Button
                   variant="outline"

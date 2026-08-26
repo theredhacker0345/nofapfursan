@@ -98,7 +98,7 @@ export const ISLAMIC_MOTIVATIONS: MotivationalMessage[] = [
 
     // Islamic Wisdom
     {
-        text: "Your Sabr today is your Sabr tomorrow. Each day of discipline builds upon the last. يا صبور",
+        text: "The patience you keep today becomes your strength tomorrow.",
         type: 'wisdom'
     },
     {
@@ -110,7 +110,7 @@ export const ISLAMIC_MOTIVATIONS: MotivationalMessage[] = [
         type: 'wisdom'
     },
     {
-        text: "If today is difficult, remember: the night is darkest just before Fajr.",
+        text: "If today is difficult, remember: the night is darkest just before dawn.",
         type: 'wisdom'
     },
     {
@@ -118,15 +118,15 @@ export const ISLAMIC_MOTIVATIONS: MotivationalMessage[] = [
         type: 'wisdom'
     },
     {
-        text: "The Faris (Knight) does not flee from battle. Stand firm, ya Mujahid.",
+        text: "A strong person does not run from a hard day. Stand firm.",
         type: 'wisdom'
     },
     {
-        text: "Your body is an Amanah (trust) from Allah. Guard it as you would guard the most precious gift.",
+        text: "Your body is a trust from Allah. Guard it like the most precious gift.",
         type: 'wisdom'
     },
     {
-        text: "The path of the Fursan is not easy, but it is the path of honor. ⚔️",
+        text: "The path of Fursan is not easy, but it is the path of honor. ⚔️",
         type: 'wisdom'
     },
 

@@ -12,7 +12,7 @@ export function NotificationSettings() {
 
     const handleIntervalChange = (value: number[]) => {
         setIntervalHours(value[0]);
-        toast.success(`Protocol signals updated to every ${value[0]} hours.`);
+        toast.success(`Reminders will now arrive every ${value[0]} hours.`);
     };
 
     return (
@@ -21,12 +21,12 @@ export function NotificationSettings() {
                 <Bell className={`w-8 h-8 ${enabled ? 'text-amber-600' : 'text-amber-300'} flex-shrink-0`} />
                 <div className="min-w-0 flex-1">
                     <h3 className="text-sm font-black uppercase tracking-widest text-amber-800 truncate">
-                        Honor Protocol Reminders
+                        Daily Reminders
                     </h3>
                     <p className="text-[10px] text-amber-700/60 font-medium break-words leading-tight">
                         {enabled
-                            ? "Motivational signals and Adhan alerts are active."
-                            : "Enable notifications to receive spiritual reinforcements."}
+                            ? "Motivational reminders are active."
+                            : "Turn on notifications to get motivational reminders."}
                     </p>
                 </div>
             </div>
@@ -35,7 +35,7 @@ export function NotificationSettings() {
                 <div className="flex justify-between items-center mb-2">
                     <Label className="flex items-center gap-2 text-[11px] uppercase font-black tracking-widest text-amber-900">
                         <Clock className="w-4 h-4 text-amber-500" />
-                        Signal Frequency
+                        How often
                     </Label>
                     <span className="text-amber-600 font-black text-sm">{intervalHours}h</span>
                 </div>
@@ -53,13 +53,13 @@ export function NotificationSettings() {
                 </div>
 
                 <div className="flex justify-between text-[10px] text-amber-600/40 font-bold uppercase tracking-tighter">
-                    <span>High Frequency (1h)</span>
-                    <span>Low Frequency (24h)</span>
+                    <span>Often (1h)</span>
+                    <span>Sometimes (24h)</span>
                 </div>
 
                 {!enabled ? (
                     <p className="text-[10px] text-rose-500 font-bold uppercase text-center mt-2 animate-pulse">
-                        Enable Honor Protocol to adjust frequency
+                        Turn on reminders first to adjust this
                     </p>
                 ) : (
                     <div className="flex justify-center pt-2">
@@ -70,7 +70,7 @@ export function NotificationSettings() {
                             onClick={showTestNotification}
                         >
                             <Sparkles className="w-3.5 h-3.5 mr-2 text-amber-500 group-hover:animate-spin" />
-                            Test Signal
+                            Send Test Reminder
                         </Button>
                     </div>
                 )}
@@ -83,7 +83,7 @@ export function NotificationSettings() {
                         "Verily, in the remembrance of Allah do hearts find rest." (13:28)
                         <br />
                         <span className="not-italic text-[10px] block mt-1 opacity-60">
-                            Signals will be sent every {intervalHours} hours to keep your resolve firm.
+                            Reminders arrive every {intervalHours} hours to keep you going.
                         </span>
                     </p>
                 </div>

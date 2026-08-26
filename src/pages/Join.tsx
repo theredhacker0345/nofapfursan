@@ -10,7 +10,7 @@ const Join = () => {
       <h1 className="text-4xl font-display text-gradient-fire mb-4">You're Invited!</h1>
       {streak && (
         <p className="text-xl text-muted-foreground mb-8">
-          Your friend has a {streak}-day Sabr Count. Can you beat them?
+          Your friend has a {streak}-day streak. Can you beat it?
         </p>
       )}
       <p className="text-lg text-muted-foreground mb-8">

@@ -38,7 +38,7 @@ const CHANNELS = [
     { id: 'fursan_general', label: 'General', icon: MessageSquare, desc: 'Public Chat' },
     { id: 'fursan_sos', label: 'SOS', icon: AlertTriangle, desc: 'Help Needed' },
     { id: 'fursan_motivation', label: 'Motivation', icon: Sparkles, desc: 'Be Inspired' },
-    { id: 'fursan_fiqh', label: 'Fiqh', icon: Scroll, desc: 'Questions' },
+    { id: 'fursan_fiqh', label: 'Learn', icon: Scroll, desc: 'Questions & Answers' },
 ];
 
 export default function Vanguard() {
@@ -268,7 +268,7 @@ export default function Vanguard() {
                         <div className="flex items-center gap-2 bg-secondary px-3 py-1.5 rounded-full border border-border">
                             <div className={`w-2 h-2 rounded-full ${connectedRelays.length > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-red-500 animate-ping'}`} />
                             <span className="text-[9px] font-black uppercase tracking-widest text-secondary-foreground">
-                                {connectedRelays.length > 0 ? `${connectedRelays.length} NODES` : 'LINKING...'}
+                                {connectedRelays.length > 0 ? `${connectedRelays.length} ONLINE` : 'CONNECTING...'}
                             </span>
                         </div>
                     </div>

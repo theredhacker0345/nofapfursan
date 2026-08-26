@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from "react";
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Capacitor } from '@capacitor/core';
 import { MOTIVATIONAL_MESSAGES, getFormattedMotivation } from "@/data/motivation";
-import { getPrayerNotificationTimes } from "@/lib/prayerUtils";
 
 const STORAGE_KEY = "fursan_notifications_enabled";
 const INTERVAL_STORAGE_KEY = "fursan_notification_interval_hours";
@@ -48,23 +47,7 @@ export function useNotifications() {
       const notifications = [];
       let notificationId = 1;
 
-      // 2. Schedule Adhan (Prayer Time) Notifications
-      const prayerTimes = await getPrayerNotificationTimes();
-      const isFriday = new Date().getDay() === 5;
-
-      prayerTimes.forEach(p => {
-        const prayerName = (p.name === 'Dhuhr' && isFriday) ? 'Jumu\'ah' : p.name;
-        notifications.push({
-          title: `Adhan: ${prayerName} 🕌`,
-          body: `It is time for ${prayerName}. Rise, ya Faris, for the success is in Salah.`,
-          id: notificationId++,
-          schedule: { at: p.time },
-          smallIcon: "res://ic_stat_icon",
-          sound: "adhan.wav", // Native apps can play a custom adhan sound if provided
-        });
-      });
-
-      // 3. Schedule periodic motivational signals
+      // Schedule periodic motivational reminders
       const intervalMs = intervalHours * 60 * 60 * 1000;
       for (let i = 1; i <= 10; i++) {
         notifications.push({
@@ -82,7 +65,7 @@ export function useNotifications() {
         console.log("[FURSAN] Web notifications scheduled (SIMULATED):", notifications);
       }
 
-      console.log(`[FURSAN] scheduled ${notifications.length} protocol signals (Interval: ${intervalHours}h).`);
+      console.log(`[FURSAN] scheduled ${notifications.length} reminders (Interval: ${intervalHours}h).`);
     } catch (err) {
       console.error("Failed to schedule notifications", err);
     }
@@ -169,8 +152,6 @@ export function useNotifications() {
   };
 
   const handleUpdate = useCallback(() => {
-    // Clear the prayer cache before rescheduling
-    import("@/lib/prayerUtils").then(m => m.clearPrayerCache());
     if (enabled && (permission === "granted" || permission === "provisional")) {
       scheduleNotifications();
     }
@@ -181,9 +162,6 @@ export function useNotifications() {
     if (enabled && (permission === "granted" || permission === "provisional")) {
       scheduleNotifications();
     }
-
-    window.addEventListener('fursan_prayer_settings_updated', handleUpdate);
-    return () => window.removeEventListener('fursan_prayer_settings_updated', handleUpdate);
   }, [enabled, permission, scheduleNotifications, handleUpdate]);
 
   return {

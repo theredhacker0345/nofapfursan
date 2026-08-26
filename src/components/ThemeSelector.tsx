@@ -9,8 +9,8 @@ export function ThemeSelector() {
 
     const handleSetTheme = (themeId: string, isUnlocked: boolean) => {
         if (!isUnlocked) {
-            toast.error("Protocol Locked", {
-                description: "Deepen your Sabr to unlock this visual realm."
+            toast.error("Theme Locked", {
+                description: "Build a longer streak to unlock this theme."
             });
             return;
         }
@@ -23,7 +23,7 @@ export function ThemeSelector() {
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between px-1">
-                <h3 className="text-xs font-black uppercase tracking-[0.3em] text-foreground">Visual Protocols</h3>
+                <h3 className="text-xs font-black uppercase tracking-[0.3em] text-foreground">Themes</h3>
                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest bg-secondary px-3 py-1 rounded-full border border-border">
                     {unlockedThemes.length}/{THEMES.length} Unlocked
                 </span>

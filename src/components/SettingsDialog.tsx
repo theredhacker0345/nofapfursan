@@ -8,8 +8,6 @@ import {
     DialogTrigger
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
-import { LocationSettings } from "./LocationSettings";
 import { ThemeSelector } from "./ThemeSelector";
 import { PrivacySettings } from "./PrivacySettings";
 import { NotificationToggle } from "./NotificationToggle";
@@ -20,8 +18,6 @@ import { toast } from "sonner";
 import {
     Settings,
     Bell,
-    Shield,
-    MapPin,
     Palette,
     Download,
     Trash2,
@@ -31,15 +27,14 @@ import {
     Mail,
     Heart,
     Copy,
-    Check
+    ExternalLink,
+    Moon
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export function SettingsDialog() {
-    const [volume, setVolume] = useState(() => {
-        return parseInt(localStorage.getItem('fursan_adhan_volume') || '80');
-    });
+const NOOR_CONNECT_URL = "https://f-droid.org/en/packages/com.noorconnect.app/";
 
+export function SettingsDialog() {
     const [minimalist, setMinimalist] = useState(() => {
         return localStorage.getItem('fursan_minimalist_mode') === 'true';
     });
@@ -57,17 +52,17 @@ export function SettingsDialog() {
         const keys = await exportKeys();
         if (keys && keys.nsec) {
             await navigator.clipboard.writeText(keys.nsec);
-            toast.success("Identity Secured", {
-                description: "NSEC Private Key copied to clipboard."
+            toast.success("Key Copied", {
+                description: "Your private key was copied to the clipboard."
             });
             luxuryClickVibrate();
         } else {
-            toast.error("Export Failed", { description: "Could not retrieve identity keys." });
+            toast.error("Export Failed", { description: "Could not get your key." });
         }
     };
 
     const handleWipeData = () => {
-        if (window.confirm("CRITICAL: This will wipe all local data and reset your identity. Are you sure?")) {
+        if (window.confirm("This will erase all data on this device and create a fresh start. Are you sure?")) {
             clearKeys();
             localStorage.clear();
             window.location.reload();
@@ -93,68 +88,43 @@ export function SettingsDialog() {
                         <div className="w-16 h-16 rounded-2xl bg-card border-2 border-border flex items-center justify-center mx-auto shadow-[0_0_20px_hsl(var(--primary)/0.2)]">
                             <Lock className="w-8 h-8 text-primary" />
                         </div>
-                        <DialogTitle className="text-3xl font-black text-foreground uppercase tracking-tighter">Command Center</DialogTitle>
-                        <DialogDescription className="text-muted-foreground text-[10px] font-black uppercase tracking-[0.3em]">System Configuration Hub</DialogDescription>
+                        <DialogTitle className="text-3xl font-black text-foreground uppercase tracking-tighter">Settings</DialogTitle>
+                        <DialogDescription className="text-muted-foreground text-[10px] font-black uppercase tracking-[0.3em]">Make the app yours</DialogDescription>
                     </DialogHeader>
 
                     <div className="space-y-4">
-                        {/* Sector Settings */}
-                        <DropdownSection
-                            icon={<MapPin className="w-4 h-4 text-primary" />}
-                            title="Sector Settings"
-                            description="GPS & Coordinate Protocol"
-                        >
-                            <LocationSettings />
-                        </DropdownSection>
-
-                        {/* Privacy Protocol */}
+                        {/* Privacy */}
                         <DropdownSection
                             icon={<Fingerprint className="w-4 h-4 text-primary" />}
-                            title="Privacy Protocol"
-                            description="NIP-44 encryption & Identity"
+                            title="Privacy & Security"
+                            description="Encryption and your identity"
                         >
                             <PrivacySettings />
                         </DropdownSection>
 
-                        {/* Notification Protocol */}
+                        {/* Notifications */}
                         <DropdownSection
                             icon={<Bell className="w-4 h-4 text-primary" />}
-                            title="Notification Protocol"
-                            description="System Alerts & Volume"
+                            title="Reminders"
+                            description="Motivation alerts"
                         >
-                            <div className="space-y-6 pt-2">
+                            <div className="pt-2">
                                 <NotificationToggle />
-                                <div className="space-y-4">
-                                    <div className="flex justify-between items-center px-1">
-                                        <span className="text-[10px] font-black uppercase text-muted-foreground">Adhan Volume</span>
-                                        <span className="text-[10px] font-black text-primary">{volume}%</span>
-                                    </div>
-                                    <Slider
-                                        value={[volume]}
-                                        onValueChange={(v) => {
-                                            setVolume(v[0]);
-                                            localStorage.setItem('fursan_adhan_volume', v[0].toString());
-                                        }}
-                                        max={100}
-                                        step={1}
-                                        className="py-2"
-                                    />
-                                </div>
                             </div>
                         </DropdownSection>
 
-                        {/* Display Protocol */}
+                        {/* Appearance */}
                         <DropdownSection
                             icon={<Palette className="w-4 h-4 text-primary" />}
-                            title="Display Protocol"
-                            description="Interface Selection"
+                            title="Appearance"
+                            description="Themes and display"
                         >
                             <div className="space-y-6 pt-2">
                                 <ThemeSelector />
                                 <div className="flex items-center justify-between p-4 rounded-xl bg-card border border-border">
                                     <div className="space-y-0.5">
-                                        <p className="text-[10px] font-black uppercase text-primary tracking-tighter">Minimalist Mode</p>
-                                        <p className="text-[8px] font-bold uppercase text-muted-foreground tracking-widest leading-none">Clean & Simple UI</p>
+                                        <p className="text-[10px] font-black uppercase text-primary tracking-tighter">Simple Mode</p>
+                                        <p className="text-[8px] font-bold uppercase text-muted-foreground tracking-widest leading-none">Less decoration, easier to read</p>
                                     </div>
                                     <Switch
                                         checked={minimalist}
@@ -162,18 +132,39 @@ export function SettingsDialog() {
                                             setMinimalist(checked);
                                             luxuryClickVibrate();
                                         }}
-                                        aria-label="Toggle minimalist mode"
+                                        aria-label="Toggle simple mode"
                                     />
                                 </div>
+                            </div>
+                        </DropdownSection>
+
+                        {/* Companion app */}
+                        <DropdownSection
+                            icon={<Moon className="w-4 h-4 text-primary" />}
+                            title="Noor Connect"
+                            description="Prayer times & adhan — our other app"
+                        >
+                            <div className="pt-2 space-y-3">
+                                <p className="text-xs text-muted-foreground leading-relaxed">
+                                    Fursan focuses on your streak and community. For prayer times, adhan alerts and more, try our free companion app.
+                                </p>
+                                <Button
+                                    variant="outline"
+                                    className="w-full h-12 justify-center gap-3 border-primary/40 bg-card hover:bg-secondary text-primary rounded-2xl transition-all"
+                                    onClick={() => window.open(NOOR_CONNECT_URL, '_blank')}
+                                >
+                                    <ExternalLink className="w-4 h-4" />
+                                    <span className="text-[10px] font-black uppercase tracking-widest">Get Noor Connect on F-Droid</span>
+                                </Button>
                             </div>
                         </DropdownSection>
                     </div>
 
                     <div className="h-[1px] bg-border my-2" />
 
-                    {/* Data Fortress */}
+                    {/* Your data */}
                     <div className="space-y-3">
-                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/40 px-2">Data Fortress</p>
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/40 px-2">Your Data</p>
                         <div className="grid grid-cols-1 gap-2">
                             <Button
                                 variant="outline"
@@ -181,7 +172,7 @@ export function SettingsDialog() {
                                 onClick={handleExportKey}
                             >
                                 <Download className="w-4 h-4" />
-                                <span className="text-[10px] font-black uppercase tracking-widest">Export Private Key</span>
+                                <span className="text-[10px] font-black uppercase tracking-widest">Save My Private Key</span>
                             </Button>
                             <Button
                                 variant="outline"
@@ -189,11 +180,11 @@ export function SettingsDialog() {
                                 onClick={handleWipeData}
                             >
                                 <Trash2 className="w-4 h-4" />
-                                <span className="text-[10px] font-black uppercase tracking-widest">Wipe Data Fortress</span>
+                                <span className="text-[10px] font-black uppercase tracking-widest">Erase All Data</span>
                             </Button>
                         </div>
                     </div>
-                    {/* Support Protocol */}
+                    {/* Support */}
                     <div className="grid grid-cols-2 gap-3 pt-2">
                         <Button
                             variant="outline"
@@ -214,9 +205,9 @@ export function SettingsDialog() {
                             </DialogTrigger>
                             <DialogContent className="max-w-[90%] rounded-2xl bg-background border-2 border-border p-6 shadow-2xl">
                                 <DialogHeader>
-                                    <DialogTitle className="text-xl font-black uppercase tracking-tight text-center text-foreground">Support the Mission</DialogTitle>
+                                    <DialogTitle className="text-xl font-black uppercase tracking-tight text-center text-foreground">Support the App</DialogTitle>
                                     <DialogDescription className="text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                                        Fuel the Fursan Development
+                                        Help Fursan grow
                                     </DialogDescription>
                                 </DialogHeader>
                                 <div className="space-y-4 mt-4">

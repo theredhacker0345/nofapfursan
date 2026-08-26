@@ -93,7 +93,7 @@ export function ActivityHistory() {
             </div>
 
             <div className="p-3 bg-amber-50/30 border-t border-amber-200/50 text-center">
-                <p className="text-[9px] font-bold uppercase tracking-widest text-amber-700/40">Latest 15 Protocol Events</p>
+                <p className="text-[9px] font-bold uppercase tracking-widest text-amber-700/40">Latest 15 Updates</p>
             </div>
         </div>
     );

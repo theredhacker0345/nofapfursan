@@ -200,7 +200,7 @@ export function DailyHealthCheck({ onUpdate, days = 0, showPillar = 'all' }: Dai
             color: "text-red-600",
             bgColor: "bg-red-50",
             borderColor: "border-red-200",
-            insight: "Critical markers detected. Immediate protocol tightening required.",
+            insight: "Critical markers detected. Time to tighten your routine.",
             icon: <Activity className="w-4 h-4 sub-label" />
         };
     };

@@ -92,7 +92,7 @@ export function SecuritySettings() {
             toast.success("Identity imported successfully!");
 
             // Auto-fetch streak
-            toast.info("Restoring Sabr Count from relays...");
+            toast.info("Restoring your streak from relays...");
             const streak = await fetchStreak();
 
             if (streak) {
@@ -103,11 +103,11 @@ export function SecuritySettings() {
                     totalRelapses: streak.totalRelapses,
                 };
                 saveStreakData(localFormat);
-                toast.success("Sabr Count restored!");
+                toast.success("Streak restored!");
                 // Force refresh somehow? Window reload is nuclear but effective for this critical change
                 setTimeout(() => window.location.reload(), 1500);
             } else {
-                toast.warning("No Sabr Count data found for this key.");
+                toast.warning("No backup found for this key.");
             }
 
             loadKeys(); // Refresh displayed keys
@@ -200,7 +200,7 @@ export function SecuritySettings() {
                     <div className="p-3 border border-black bg-gray-50 flex items-start gap-2">
                         <AlertTriangle className="h-4 w-4 text-black shrink-0 mt-0.5" />
                         <p className="text-[10px] leading-tight font-medium uppercase break-words">
-                            Never share your nsec! Loss of this key means loss of your identity and Sabr Count.
+                            Never share your nsec! If you lose this key, you lose your identity and your streak.
                         </p>
                     </div>
                 </div>

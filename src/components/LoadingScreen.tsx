@@ -8,8 +8,8 @@ interface LoadingScreenProps {
 }
 
 export function LoadingScreen({
-    message = "Establishing Sabr Protocol",
-    subMessage = "Knight Identity Verification"
+    message = "Loading...",
+    subMessage = "Getting things ready"
 }: LoadingScreenProps) {
     return (
         <div className="min-h-screen bg-[#FAF6F0] flex flex-col items-center justify-center p-6 space-y-8 overflow-hidden">

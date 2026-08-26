@@ -35,7 +35,7 @@ export function StreakCounter({ startDate, isSyncing, isOnline, pendingCount }: 
       <div className="flex items-center justify-between mb-4 relative z-10 px-1">
         <div className="flex items-center gap-2">
           <DynamicFire streakDays={streak.days} className="w-5 h-5 text-primary" />
-          <span className="text-foreground font-black uppercase tracking-widest text-[10px]">Days of Sabr</span>
+          <span className="text-foreground font-black uppercase tracking-widest text-[10px]">Current Streak</span>
         </div>
 
         {startDate && (
@@ -65,7 +65,7 @@ export function StreakCounter({ startDate, isSyncing, isOnline, pendingCount }: 
           <Sparkles className="w-8 h-8 mx-auto mb-3 text-primary pulse-dormant" />
           <p className="text-2xl font-black uppercase tracking-tighter mb-2 text-gradient-gold">Begin Your Journey</p>
           <p className="text-muted-foreground text-[11px] uppercase font-bold tracking-widest">
-            Start your Sabr count and become a Fursan Knight
+            Start your streak today and see how far you can go
           </p>
         </div>
       ) : (

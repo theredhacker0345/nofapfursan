@@ -74,8 +74,8 @@ export default function Journal() {
 
                 <div className="flex items-center justify-between mb-8 page-transition" style={{ animationDelay: "0.1s" }}>
                     <div>
-                        <h1 className="text-3xl font-display text-amber-900 tracking-tight">Archives of Sabr</h1>
-                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-600/50">Personal Knightly Logs</p>
+                        <h1 className="text-3xl font-display text-amber-900 tracking-tight">My Journal</h1>
+                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-600/50">Your Private Notes</p>
                     </div>
                     <Button
                         onClick={() => setShowForm(!showForm)}

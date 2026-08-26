@@ -14,10 +14,10 @@ export interface AvatarLevel {
 }
 
 export const MILESTONES: AvatarLevel[] = [
-  { name: "The Pledge (Al-Mithaq)", emoji: "📿", minDays: 0, maxDays: 7, color: "text-emerald-400", description: "The promise to oneself. The journey begins with a single step." },
-  { name: "The Struggle (Al-Mujahid)", emoji: "⚔️", minDays: 8, maxDays: 40, color: "text-emerald-500", description: "The battle against the lower self. Resilience is forged in the fire of resistance." },
-  { name: "The Sentinel (Al-Murabit)", emoji: "🛡️", minDays: 41, maxDays: 90, color: "text-amber-500", description: "Standing guard over one's soul. Discipline has become a shield." },
-  { name: "The Sovereign (Al-Sultan)", emoji: "👑", minDays: 91, maxDays: Infinity, color: "text-gradient-legendary", description: "Complete mastery over desire. You are no longer a slave to your impulses." },
+  { name: "The Start", emoji: "📿", minDays: 0, maxDays: 7, color: "text-emerald-400", description: "Your promise to yourself. Every journey starts with one step." },
+  { name: "The Fighter", emoji: "⚔️", minDays: 8, maxDays: 40, color: "text-emerald-500", description: "You are fighting for change. Keep pushing forward." },
+  { name: "The Guardian", emoji: "🛡️", minDays: 41, maxDays: 90, color: "text-amber-500", description: "You protect your progress. Discipline has become your shield." },
+  { name: "The Champion", emoji: "👑", minDays: 91, maxDays: Infinity, color: "text-gradient-legendary", description: "You are in full control. Be proud of how far you have come." },
 ];
 
 export const MOTIVATIONAL_QUOTES = [
@@ -27,7 +27,7 @@ export const MOTIVATIONAL_QUOTES = [
   "You're not just breaking a habit, you're building a new you.",
   "Champions are made when no one is watching.",
   "The only way out is through. Keep going.",
-  "Your Sabr Count is proof of your inner strength.",
+  "Your streak is proof of your inner strength.",
   "One day at a time, one victory at a time.",
   "Discipline is choosing what you want most over what you want now.",
   "You are stronger than your urges.",

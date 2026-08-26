@@ -127,7 +127,7 @@ export default function Vitals() {
                                 </DialogTrigger>
                                 <DialogContent className="rounded-2xl border-amber-200 bg-white">
                                     <DialogHeader>
-                                        <DialogTitle className="text-amber-900 text-2xl font-black uppercase tracking-tighter">Protocol Trend</DialogTitle>
+                                        <DialogTitle className="text-amber-900 text-2xl font-black uppercase tracking-tighter">Your Progress</DialogTitle>
                                         <DialogDescription className="text-amber-800/70 font-medium text-sm pt-4">
                                             This chart shows your daily mindset (Green: Good, Amber: Okay, Red: Struggling) along with your physical results. Try to stay in the Green!
                                         </DialogDescription>

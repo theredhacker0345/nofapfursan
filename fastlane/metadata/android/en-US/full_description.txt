@@ -1,20 +1,21 @@
-Fursan is a privacy-first, decentralized discipline and streak tracker built on the Nostr protocol. There are no accounts and no central servers: your identity is a locally stored key pair, and your progress lives on a global network of independent relays.
+Fursan is a privacy-first, decentralized streak tracker and community built on the Nostr protocol. There are no accounts and no central servers: your identity is a key stored only on your device, and your progress lives on a global network of independent relays.
 
 FEATURES
 
-- Streak tracking: start your protocol, track days of Sabr (patience), milestones, ranks and longest-streak records.
-- End-to-end encrypted sync: streak and journal data are synced to Nostr relays encrypted with NIP-44 (v2). Only your key can read them.
-- Daily journal: record your battles, thoughts and triggers in a private, encrypted log.
-- Community chat: real-time decentralized chat rooms (general, SOS, motivation, fiqh) with automatic identity discovery, optimistic sending and delivery status.
-- Prayer times: local offline prayer-time calculation with configurable calculation methods, GPS or manual location, and anti-cheat check-in windows.
-- Daily health check: mindset and biological protocol check-ins with streak-aware insights and an emergency lock intervention.
-- Offline-first: an intelligent queue stores your events while offline and publishes them automatically when you are back online.
-- Motivation archive: daily wisdom quotes and activity history.
+- Streak tracking: start your streak, watch your days grow, unlock ranks and keep your longest-streak record.
+- Encrypted sync: streak and journal data are synced to Nostr relays encrypted with NIP-44 (v2). Only your key can read them.
+- Daily journal: write down your thoughts, triggers and wins in a private, encrypted log.
+- Community chat: real-time chat rooms (general, SOS, motivation, learn) with automatic name discovery, instant sending and delivery status.
+- Daily check-ins: simple mind and body check-ins with helpful insights and a calm-down screen for hard moments.
+- Works offline: an smart queue stores your events while you are offline and sends them automatically when you are back online.
+- Daily motivation: wisdom quotes and a full activity history.
 
 PRIVACY
 
-- No trackers, no analytics, no advertising SDKs, no Google Play Services.
-- All data stays on your device (encrypted preferences) or on Nostr relays under your own key.
+- No trackers, no analytics, no advertising, no Google Play Services.
+- No location permission. Nothing about you leaves your device except what you publish under your own key.
 - The full source code is available under the MIT license.
 
-Stay strong. Stay disciplined. Become legendary.
+Looking for prayer times and adhan? Try our free companion app Noor Connect, also on F-Droid.
+
+Stay strong. Stay consistent. Become legendary.

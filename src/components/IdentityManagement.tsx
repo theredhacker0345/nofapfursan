@@ -38,7 +38,7 @@ export const IdentityManagement = ({
                 content: JSON.stringify({
                     name: alias.trim(),
                     display_name: alias.trim(),
-                    about: "Fursan Knight | Sabr Protocol Warrior ⚔️",
+                    about: "Fursan member | Staying disciplined ⚔️",
                 }),
             };
 
@@ -65,7 +65,7 @@ export const IdentityManagement = ({
             {/* Alias Input Section */}
             <div className="space-y-3">
                 <label className="block text-[11px] font-black uppercase tracking-[0.2em] text-amber-800">
-                    Knightly Alias
+                    Display Name
                 </label>
                 <div className="relative group">
                     <input
