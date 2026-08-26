@@ -26,7 +26,6 @@ export async function registerServiceWorker() {
     console.warn('[FURSAN] SW registration failed (non-blocking):', error);
     return null;
   }
-  return null;
 }
 
 // Background Sync Registration
@@ -34,7 +33,7 @@ export async function registerBackgroundSync() {
   try {
     const registration = await navigator.serviceWorker.ready;
     if ('sync' in registration) {
-      await (registration as any).sync.register('sync-streak-data');
+      await (registration as ServiceWorkerRegistration & { sync: SyncManagerLike }).sync.register('sync-streak-data');
       console.log('[FURSAN-PWA] Background sync registered');
       return true;
     }
@@ -45,8 +44,24 @@ export async function registerBackgroundSync() {
 }
 
 // Periodic Background Sync Registration
+interface SyncManagerLike {
+  register: (tag: string) => Promise<void>;
+}
+
+interface PeriodicSyncRegistration extends ServiceWorkerRegistration {
+  periodicSync?: {
+    register: (tag: string, options: { minInterval: number }) => Promise<void>;
+  };
+}
+
+function supportsPeriodicSync(): boolean {
+  return typeof window !== 'undefined' &&
+    'ServiceWorkerRegistration' in window &&
+    'periodicSync' in window.ServiceWorkerRegistration.prototype;
+}
+
 export async function registerPeriodicSync() {
-  if ('serviceWorker' in navigator && 'ServiceWorkerRegistration' in window && 'periodicSync' in (window.ServiceWorkerRegistration.prototype as any)) {
+  if ('serviceWorker' in navigator && supportsPeriodicSync()) {
     try {
       const registration = await navigator.serviceWorker.ready;
       const status = await navigator.permissions.query({
@@ -56,7 +71,7 @@ export async function registerPeriodicSync() {
       if (status.state === 'granted') {
         const storedInterval = localStorage.getItem("fursan_notification_interval_hours");
         const intervalHours = storedInterval ? parseInt(storedInterval) : 3;
-        await (registration as any).periodicSync.register('check-motivation', {
+        await (registration as PeriodicSyncRegistration).periodicSync?.register('check-motivation', {
           minInterval: intervalHours * 60 * 60 * 1000,
         });
         console.log(`Periodic sync registered (Interval: ${intervalHours}h)`);
@@ -117,6 +132,6 @@ export function checkPWASupport() {
     push: 'PushManager' in window,
     notifications: 'Notification' in window,
     backgroundSync: 'SyncManager' in window,
-    periodicSync: (typeof window !== 'undefined' && 'ServiceWorkerRegistration' in window) && 'periodicSync' in (window.ServiceWorkerRegistration.prototype as any),
+    periodicSync: supportsPeriodicSync(),
   };
 }

@@ -431,6 +431,87 @@
   }
 }
 
+/* 🌿 MINIMALIST MODE STYLES */
+.minimalist-mode {
+
+  /* Hide decorative rings and secondary labels */
+  .decorative-ring,
+  .aura-badge,
+  .royal-card::before,
+  .sub-label,
+  .decorative-icon,
+  .islamic-pattern-overlay {
+    display: none !important;
+  }
+
+  /* Simplify cards */
+  .royal-card {
+    box-shadow: none !important;
+    border-width: 1px !important;
+    border-color: hsl(var(--border) / 0.5) !important;
+    border-radius: 1rem !important;
+  }
+
+  @media (max-width: 767px) {
+    .royal-card {
+      border-radius: 0 !important;
+    }
+  }
+
+  /* Remove background gradients and glow */
+  .bg-gradient-to-br,
+  .bg-gradient-to-b,
+  .bg-gradient-to-r,
+  .fursan-logo-glow {
+    background: hsl(var(--card)) !important;
+    filter: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Flatten text gradients */
+  .text-gradient-gold,
+  .text-gradient-legendary {
+    background: none !important;
+    -webkit-text-fill-color: currentColor !important;
+    color: hsl(var(--primary)) !important;
+  }
+
+  /* Disable animations that might be distracting */
+  .animate-spin-slow,
+  .animate-float,
+  .aura-effect::after {
+    animation: none !important;
+    display: none !important;
+  }
+}
+
+/* ♿ ACCESSIBILITY: Respect users who prefer reduced motion
+   (vestibular disorders, motion sensitivity — see WCAG 2.3.3) */
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ♿ ACCESSIBILITY: Visible keyboard focus for all interactive elements
+   (see WCAG 2.4.7) */
+:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
+}
+
+/* ♿ ACCESSIBILITY: Minimum comfortable touch target for primary controls */
+.tap-target {
+  min-width: 44px;
+  min-height: 44px;
+}
+
 /* 📱 MOBILE APP FEEL OVERRIDES (Phone only) */
 @media (max-width: 767px) {
   .royal-card {

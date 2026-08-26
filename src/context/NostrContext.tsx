@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
-import { SimplePool, Relay, Filter, Event, finalizeEvent } from 'nostr-tools';
+import { SimplePool, Filter, Event, finalizeEvent } from 'nostr-tools';
 import { Preferences } from '@capacitor/preferences';
 import { hexToBytes } from '@noble/hashes/utils';
 
@@ -18,6 +18,7 @@ interface RelayMetadata {
 
 interface UserMetadata {
     name?: string;
+    display_name?: string;
     picture?: string;
 }
 
@@ -29,7 +30,7 @@ interface NostrContextType {
     profiles: Record<string, string>;
     addRelay: (url: string) => Promise<void>;
     removeRelay: (url: string) => Promise<void>;
-    publish: (event: any) => Promise<boolean>;
+    publish: (event: Event) => Promise<boolean>;
     subscribe: (filter: Filter, onEvent: (event: Event) => void) => () => void;
     checkRelayStatus: (url: string) => Promise<{ success: boolean; metadata?: RelayMetadata }>;
     updateProfileName: (newName: string, privateKey: string) => Promise<boolean>;
@@ -38,12 +39,31 @@ interface NostrContextType {
 
 const NostrContext = createContext<NostrContextType | null>(null);
 
+// nostr-tools' SimplePool exposes subscribe() with these params at runtime
+interface PoolSubscriber {
+    subscribe(
+        relays: string[],
+        filter: Filter,
+        params: {
+            onevent?: (event: Event) => void;
+            oneose?: () => void;
+            onclose?: () => void;
+        }
+    ): { close: () => void };
+}
+
 export const NostrProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [relays, setRelays] = useState<string[]>(DEFAULT_RELAYS);
     const [connectedRelays, setConnectedRelays] = useState<string[]>([]);
     const [relayMetadata, setRelayMetadata] = useState<Record<string, RelayMetadata>>({});
     const [profiles, setProfiles] = useState<Record<string, string>>({});
     const poolRef = useRef<SimplePool>(new SimplePool());
+    // Mirror of profiles for use inside stable callbacks (avoids resubscribing
+    // every time a profile name resolves)
+    const profilesRef = useRef<Record<string, string>>({});
+    useEffect(() => {
+        profilesRef.current = profiles;
+    }, [profiles]);
 
     useEffect(() => {
         const loadRelays = async () => {
@@ -98,19 +118,22 @@ export const NostrProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
         checkConnections();
         const interval = setInterval(checkConnections, 60000);
+        const pool = poolRef.current;
 
         return () => {
             clearInterval(interval);
             // This is the "Kill Switch" that stops the logs from piling up
-            relays.forEach(url => poolRef.current.close([url]));
+            relays.forEach(url => pool.close([url]));
         };
     }, [relays]);
 
     // Separate effect for metadata fetching
+    const fetchedMetadataUrls = useRef<Set<string>>(new Set());
     useEffect(() => {
         const fetchMetadata = async (url: string) => {
             // Avoid refetching if we already have it
-            if (relayMetadata[url]) return;
+            if (fetchedMetadataUrls.current.has(url)) return;
+            fetchedMetadataUrls.current.add(url);
 
             try {
                 const httpUrl = url.replace('wss://', 'https://').replace('ws://', 'http://');
@@ -130,7 +153,8 @@ export const NostrProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                     setRelayMetadata(prev => ({ ...prev, [url]: data }));
                 }
             } catch (e) {
-                // Silently fail
+                // Allow retry on next pass if it never succeeded
+                fetchedMetadataUrls.current.delete(url);
             }
         };
 
@@ -183,7 +207,7 @@ export const NostrProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         await Preferences.set({ key: 'user_relays', value: JSON.stringify(newRelays) });
     }, [relays]);
 
-    const publish = useCallback(async (event: any) => {
+    const publish = useCallback(async (event: Event) => {
         try {
             const targetRelays = connectedRelays.length > 0 ? connectedRelays : relays;
 
@@ -263,30 +287,27 @@ export const NostrProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             Object.entries(cleanFilterObj).filter(([_, v]) =>
                 v != null && (!Array.isArray(v) || v.length > 0)
             )
-        );
-
-        console.log("[FURSAN-DEBUG] Forcing NIP-01 Object Filter:", finalFilter);
+        ) as Filter;
 
         // Use the standard subscribe method with a single object (Silver Bullet Fix)
-        // We cast to any to ensure we can access 'subscribe' if it's considered internal/alias
-        const sub = (poolRef.current as any).subscribe(
+        const pool = poolRef.current as unknown as PoolSubscriber;
+        const sub = pool.subscribe(
             relays,
             finalFilter,
             {
                 onevent: (event: Event) => {
-                    console.log("[FURSAN] EVENT:", event.content);
-
                     // Automatic Profile Discovery
-                    if (event.kind === 1 && !profiles[event.pubkey]) {
+                    if (event.kind === 1 && !profilesRef.current[event.pubkey]) {
                         // Fetch user profile (Kind 0)
-                        (poolRef.current as any).subscribe(RELAYS, {
+                        const metaPool = poolRef.current as unknown as PoolSubscriber;
+                        metaPool.subscribe(RELAYS, {
                             kinds: [0],
                             authors: [event.pubkey],
                             limit: 1
                         }, {
                             onevent: (metaEvent: Event) => {
                                 try {
-                                    const data = JSON.parse(metaEvent.content);
+                                    const data = JSON.parse(metaEvent.content) as UserMetadata;
                                     const name = data.display_name || data.name || "Anon";
                                     setProfiles(prev => ({
                                         ...prev,
@@ -307,7 +328,7 @@ export const NostrProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             }
         );
         return () => sub.close();
-    }, [relays, profiles]);
+    }, [relays]);
 
     const updateProfileName = useCallback(async (newName: string, privateKey: string) => {
         try {
@@ -335,7 +356,6 @@ export const NostrProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             console.log("[FURSAN] Profile updated to:", newName);
             // Update local profiles state
             setProfiles(prev => ({ ...prev, [signedEvent.pubkey]: newName }));
-            alert("Success! Your name is now " + newName);
             return true;
         } catch (error) {
             console.error("[FURSAN] Update failed:", error);

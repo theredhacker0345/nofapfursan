@@ -37,8 +37,9 @@ export function ChatRules() {
         <Button
           variant="ghost"
           size="icon"
+          aria-label="Dismiss community guidelines"
           onClick={handleDismiss}
-          className="flex-shrink-0 h-6 w-6 rounded-full hover:bg-primary/20"
+          className="flex-shrink-0 h-8 w-8 rounded-full hover:bg-primary/20"
         >
           <X className="w-4 h-4" />
         </Button>

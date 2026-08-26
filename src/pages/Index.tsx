@@ -112,7 +112,7 @@ const Index = () => {
         </div>
 
         <footer className="mt-12 text-center text-muted-foreground">
-          <p className="font-black uppercase tracking-[0.4em] text-[8px] opacity-20 sub-label">Stay strong and keep going. ⚔️</p>
+          <p className="font-black uppercase tracking-[0.4em] text-[9px] opacity-60 sub-label">Stay strong and keep going. ⚔️</p>
         </footer>
       </div>
 

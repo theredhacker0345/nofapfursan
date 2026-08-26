@@ -40,7 +40,9 @@ async function getRelays(): Promise<string[]> {
         if (value) {
             return JSON.parse(value);
         }
-    } catch (e) { }
+    } catch (e) {
+        // Corrupted relay list - fall back to defaults below
+    }
     return RELAYS;
 }
 
@@ -290,7 +292,7 @@ async function resilientPublish(signedEvent: VerifiedEvent): Promise<boolean> {
         const failedRelays = results.filter(r => !r.success);
 
         // Log detailed results
-        console.log(`[Nostr] Publish results: ${successfulRelays.length}/${RELAYS.length} relays succeeded`);
+        console.log(`[Nostr] Publish results: ${successfulRelays.length}/${currentRelays.length} relays succeeded`);
 
         if (successfulRelays.length > 0) {
             console.log("[Nostr] ✓ Successful relays:", successfulRelays.map(r => r.relay).join(", "));
@@ -382,20 +384,24 @@ export async function generateOrLoadKeys(): Promise<NostrKeys> {
         await SecureStorage.migrateFromInsecure('nostr_private_key');
 
         // Also check if they are in Preferences but under old keys, and migrate to standard 'user_nsec'
-        const oldPrefKey = await SecureStorage.get('user_private_key');
-        if (oldPrefKey) {
-            await SecureStorage.set('user_nsec', oldPrefKey);
-            await SecureStorage.remove('user_private_key');
-        }
+        // (only when no active identity exists yet, so imports are never clobbered)
+        const existingNsec = await SecureStorage.get('user_nsec');
+        if (!existingNsec) {
+            const oldPrefKey = await SecureStorage.get('user_private_key');
+            if (oldPrefKey) {
+                await SecureStorage.set('user_nsec', oldPrefKey);
+                await SecureStorage.remove('user_private_key');
+            }
 
-        const oldPrefKey2 = await SecureStorage.get('nostr_private_key');
-        if (oldPrefKey2) {
-            await SecureStorage.set('user_nsec', oldPrefKey2);
-            await SecureStorage.remove('nostr_private_key');
+            const oldPrefKey2 = await SecureStorage.get('nostr_private_key');
+            if (oldPrefKey2) {
+                await SecureStorage.set('user_nsec', oldPrefKey2);
+                await SecureStorage.remove('nostr_private_key');
+            }
         }
 
         // 2. LOAD PHASE: Try to get the standard key from Secure Storage
-        let value = await SecureStorage.get('user_nsec');
+        const value = await SecureStorage.get('user_nsec');
 
         if (value) {
             // console.log("[FURSAN] Fortress Identity Loaded."); // Commented out for max privacy logs
@@ -477,11 +483,11 @@ export async function importKey(nsec: string): Promise<boolean> {
         const privateKeyHex = bytesToHex(privateKey);
         const publicKey = getPublicKey(privateKey);
 
-        // Save new identity
-        await Preferences.set({
-            key: "nostr_private_key",
-            value: privateKeyHex,
-        });
+        // Save new identity directly to the active fortress key so it takes
+        // effect immediately on the next identity load
+        await SecureStorage.set('user_nsec', privateKeyHex);
+        await SecureStorage.remove('nostr_private_key');
+        await SecureStorage.remove('user_private_key');
 
         // Reset any state if necessary
         networkState = {

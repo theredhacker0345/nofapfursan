@@ -127,7 +127,13 @@ export const AvatarUpload = ({ currentAvatar, onUploadSuccess }: AvatarUploadPro
                     const input = document.createElement('input');
                     input.type = 'file';
                     input.accept = 'image/*';
-                    input.onchange = (e) => handleFileChange(e as any);
+                    input.onchange = (e: Event) => {
+                        const target = e.target as HTMLInputElement;
+                        const event = {
+                            target,
+                        } as React.ChangeEvent<HTMLInputElement>;
+                        handleFileChange(event);
+                    };
                     input.click();
                 }}
             >

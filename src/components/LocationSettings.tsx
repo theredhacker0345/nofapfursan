@@ -29,7 +29,7 @@ export function LocationSettings() {
 
         // Load all available timezones
         try {
-            const tzList = (Intl as any).supportedValuesOf('timeZone');
+            const tzList = (Intl as typeof Intl & { supportedValuesOf?: (key: string) => string[] }).supportedValuesOf?.('timeZone') ?? [];
             setTimezones(tzList);
         } catch (e) {
             setTimezones([]);
@@ -127,6 +127,7 @@ export function LocationSettings() {
                 <Switch
                     checked={mode === 'auto'}
                     onCheckedChange={(checked) => setMode(checked ? 'auto' : 'manual')}
+                    aria-label="Auto-detect location"
                 />
             </div>
 

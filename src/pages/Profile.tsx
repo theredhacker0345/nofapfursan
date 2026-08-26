@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { saveStreak, fetchStreak, StreakPayload } from "@/services/nostr";
+import { getStreakData, saveStreakData } from "@/lib/streakUtils";
 import { Download, ArrowLeft, Loader2, LogOut, Settings, ShieldCheck, User, Network, Sparkles, Bell, Scale, Map } from "lucide-react";
 import { useNostr } from "@/hooks/useNostr";
 import { IdentityManagement } from "@/components/IdentityManagement";
@@ -57,14 +58,13 @@ const Profile = () => {
     }
     setSaving(true);
     try {
-      const storedDays = localStorage.getItem("streak_days") || "0";
-      const storedStartDate = localStorage.getItem("streak_start_date");
+      const local = await getStreakData();
       const streakData: StreakPayload = {
-        days: parseInt(storedDays),
-        startDate: storedStartDate,
-        longestStreak: parseInt(localStorage.getItem("longest_streak") || "0"),
-        totalRelapses: parseInt(localStorage.getItem("total_relapses") || "0"),
-        timestamp: Math.floor(Date.now() / 1000),
+        days: local.startDate ? Math.floor((Date.now() - new Date(local.startDate).getTime()) / (1000 * 60 * 60 * 24)) : 0,
+        startDate: local.startDate,
+        longestStreak: local.longestStreak,
+        totalRelapses: local.totalRelapses,
+        timestamp: Date.now(),
       };
       const success = await saveStreak(streakData);
       if (success) toast.success("Cloud Backup Successful");
@@ -81,9 +81,16 @@ const Profile = () => {
     try {
       const remoteStreak = await fetchStreak();
       if (remoteStreak) {
-        localStorage.setItem("streak_days", remoteStreak.days.toString());
-        localStorage.setItem("streak_start_date", remoteStreak.startDate || "");
+        const local = await getStreakData();
+        const merged = {
+          startDate: remoteStreak.startDate ?? local.startDate,
+          longestStreak: Math.max(local.longestStreak, remoteStreak.longestStreak || 0),
+          totalRelapses: Math.max(local.totalRelapses, remoteStreak.totalRelapses || 0),
+        };
+        await saveStreakData(merged);
         toast.success("Progress Restored");
+      } else {
+        toast.info("No cloud backup found");
       }
     } catch (err) {
       toast.error("Restore Failed");

@@ -41,10 +41,11 @@ export function ActivityHistory() {
                     <Button
                         variant="ghost"
                         size="icon"
+                        aria-label="Refresh activity log"
                         onClick={loadActivities}
-                        className="h-8 w-8 text-amber-700/50 hover:text-amber-700 hover:bg-amber-100/50"
+                        className="h-10 w-10 text-amber-700/70 hover:text-amber-700 hover:bg-amber-100/50"
                     >
-                        <RefreshCw className="w-4 h-4" />
+                        <RefreshCw className="w-4 h-4" aria-hidden="true" />
                     </Button>
                 </div>
             </div>
@@ -57,11 +58,11 @@ export function ActivityHistory() {
                     </div>
                 ) : activities.length === 0 ? (
                     <div className="p-12 text-center flex flex-col items-center">
-                        <ScrollText className="w-12 h-12 text-amber-100 mb-4" />
-                        <p className="text-[10px] uppercase font-bold tracking-widest text-amber-700/20">
+                        <ScrollText className="w-12 h-12 text-amber-200 mb-4" aria-hidden="true" />
+                        <p className="text-[11px] uppercase font-bold tracking-widest text-amber-700/70">
                             The Archives are Empty
                         </p>
-                        <p className="text-[11px] text-amber-700/30 mt-1 font-medium italic">
+                        <p className="text-[12px] text-amber-700/60 mt-1 font-medium italic">
                             Your glorious deeds will be recorded here
                         </p>
                     </div>

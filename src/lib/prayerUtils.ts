@@ -112,11 +112,11 @@ let cachedPrayerTimes: { date: string, times: PrayerTimes } | null = null;
  * Get prayer times locally using Adhan.js
  */
 export async function getLocalPrayerTimes(date: Date = new Date()): Promise<PrayerTimes | null> {
-    // Return cache if it's the same day
+    // Return cache if it's the same day (cache is invalidated via clearPrayerCache()
+    // when location or fiqh settings change)
     const dateKey = date.toDateString();
     if (cachedPrayerTimes && cachedPrayerTimes.date === dateKey) {
-        // However, if coordinates or settings changed, we should recalculate.
-        // For now, let's just invalidate cache on settings update event (handled elsewhere)
+        return cachedPrayerTimes.times;
     }
 
     try {
@@ -205,7 +205,14 @@ export async function isPrayerActive(prayerId: string): Promise<{ active: boolea
     if (!times) return { active: false, countdown: 0 };
 
     const verifiedNow = await getVerifiedTime();
+    return computePrayerStatus(prayerId, times, verifiedNow);
+}
 
+function computePrayerStatus(
+    prayerId: string,
+    times: PrayerTimes,
+    verifiedNow: number
+): { active: boolean; countdown: number } {
     // Map prayerId to correct times key
     const prayerMap: Record<string, keyof PrayerTimes> = {
         fajr: 'Fajr',
@@ -224,6 +231,25 @@ export async function isPrayerActive(prayerId: string): Promise<{ active: boolea
         active: diff <= 0,
         countdown: diff > 0 ? diff : 0
     };
+}
+
+/**
+ * Compute statuses for all prayers in one pass (single time lookup).
+ * Much cheaper than calling isPrayerActive for each prayer.
+ */
+export async function getAllPrayerStatuses(): Promise<Record<string, { active: boolean; countdown: number }>> {
+    const times = await getLocalPrayerTimes();
+    const verifiedNow = await getVerifiedTime();
+
+    const statuses: Record<string, { active: boolean; countdown: number }> = {};
+    const ids = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
+
+    for (const id of ids) {
+        statuses[id] = times
+            ? computePrayerStatus(id, times, verifiedNow)
+            : { active: false, countdown: 0 };
+    }
+    return statuses;
 }
 
 

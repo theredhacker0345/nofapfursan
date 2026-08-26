@@ -80,6 +80,7 @@ export function SettingsDialog() {
                 <Button
                     variant="ghost"
                     size="icon"
+                    aria-label="Open settings"
                     className="w-12 h-12 rounded-full border-2 border-primary/40 bg-card hover:bg-secondary text-primary transition-all active:scale-90"
                     onClick={() => luxuryClickVibrate()}
                 >
@@ -161,6 +162,7 @@ export function SettingsDialog() {
                                             setMinimalist(checked);
                                             luxuryClickVibrate();
                                         }}
+                                        aria-label="Toggle minimalist mode"
                                     />
                                 </div>
                             </div>
@@ -268,7 +270,7 @@ function CryptoField({ label, address, delay }: { label: string, address: string
     );
 }
 
-function DropdownSection({ icon, title, description, children }: { icon: any, title: string, description: string, children: React.ReactNode }) {
+function DropdownSection({ icon, title, description, children }: { icon: React.ReactNode, title: string, description: string, children: React.ReactNode }) {
     const [isOpen, setIsOpen] = useState(false);
     return (
         <div className="border border-border rounded-2xl overflow-hidden bg-card transition-all">

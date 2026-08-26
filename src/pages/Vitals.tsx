@@ -58,8 +58,8 @@ export default function Vitals() {
             const dateStr = format(date, "MMM d");
             const check = healthHistory.find(h => isSameDay(new Date(h.timestamp), date));
 
-            let mindsetValue = 0;
-            let color = "#cbd5e1"; // Slate 300 (Missing)
+            let mindsetValue = 4; // small stub so empty days are still visible
+            let color = "#ecd9ae"; // Warm gold-tint (visible on cream card) for missing days
 
             if (check) {
                 switch (check.mindset) {
@@ -121,8 +121,8 @@ export default function Vitals() {
                             </div>
                             <Dialog>
                                 <DialogTrigger asChild>
-                                    <button className="p-2 hover:bg-amber-100/50 rounded-full transition-colors">
-                                        <Info className="w-4 h-4 text-amber-400" />
+                                    <button aria-label="About the progress chart" className="p-2.5 hover:bg-amber-100/50 rounded-full transition-colors">
+                                        <Info className="w-4 h-4 text-amber-500" />
                                     </button>
                                 </DialogTrigger>
                                 <DialogContent className="rounded-2xl border-amber-200 bg-white">

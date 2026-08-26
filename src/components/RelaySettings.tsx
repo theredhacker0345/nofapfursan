@@ -111,8 +111,9 @@ export const RelaySettings = () => {
                             <Button
                                 variant="ghost"
                                 size="icon"
+                                aria-label={`Remove relay ${url}`}
                                 onClick={() => removeRelay(url)}
-                                className="text-black hover:bg-black hover:text-white rounded-none h-8 w-8"
+                                className="text-black hover:bg-black hover:text-white rounded-none h-10 w-10"
                             >
                                 <Trash2 className="w-4 h-4" />
                             </Button>

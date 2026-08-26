@@ -8,6 +8,10 @@ import { toast } from "sonner";
 import { importKey, generateOrLoadKeys } from "@/services/nostr";
 import { FursanLogo } from "@/components/FursanLogo";
 
+interface NIP07Extension {
+  getPublicKey: () => Promise<string>;
+}
+
 const Auth = () => {
   const [privateKey, setPrivateKey] = useState("");
   const [loading, setLoading] = useState(false);
@@ -55,7 +59,8 @@ const Auth = () => {
   };
 
   const handleExtensionLogin = async () => {
-    if (!(window as any).nostr) {
+    const nostrExtension = (window as { nostr?: NIP07Extension }).nostr;
+    if (!nostrExtension) {
       toast.error("Extension Not Found", {
         description: "Please install Alby, Nos2X, or similar."
       });
@@ -64,11 +69,12 @@ const Auth = () => {
 
     setLoading(true);
     try {
-      const pubkey = await (window as any).nostr.getPublicKey();
-      toast.success("Extension Detected", {
-        description: `Logged in as ${pubkey.slice(0, 8)}...`
+      // Verify the extension is reachable. Fursan signs events locally with its
+      // own keys, so extension login only confirms the extension is present.
+      await nostrExtension.getPublicKey();
+      toast.info("Extension Detected", {
+        description: "Fursan signs with its own vault keys — use an nsec or generate a new ID to continue."
       });
-      navigate("/");
     } catch (e) {
       toast.error("Extension Access Denied");
     } finally {

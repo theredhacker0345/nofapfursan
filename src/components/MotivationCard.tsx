@@ -28,10 +28,11 @@ export function MotivationCard() {
         <Button
           variant="ghost"
           size="icon"
+          aria-label="Show another quote"
           onClick={refreshQuote}
-          className="text-amber-700/50 hover:text-amber-600 hover:bg-amber-100/50"
+          className="text-amber-700/70 hover:text-amber-600 hover:bg-amber-100/50"
         >
-          <RefreshCw className="w-5 h-5" />
+          <RefreshCw className="w-5 h-5" aria-hidden="true" />
         </Button>
       </div>
 

@@ -33,12 +33,19 @@ export function useStreak() {
             const remote = await fetchStreak();
             if (remote) {
                 const local = await getStreakData();
-                const newestTimestamp = remote.timestamp;
-                const localTimestamp = local.startDate ? new Date(local.startDate).getTime() : 0;
+                // Compare start dates directly: keep whichever streak started most
+                // recently so a stale cloud backup can never roll back a newer
+                // local reset/start.
+                const localStartMs = local.startDate ? new Date(local.startDate).getTime() : 0;
+                const remoteStartMs = remote.startDate ? new Date(remote.startDate).getTime() : 0;
+                const needsUpdate =
+                    remoteStartMs !== localStartMs ||
+                    (remote.longestStreak || 0) > (local.longestStreak || 0) ||
+                    (remote.totalRelapses || 0) > (local.totalRelapses || 0);
 
-                if (newestTimestamp > localTimestamp || remote.longestStreak > local.longestStreak) {
+                if (needsUpdate) {
                     const merged: StreakData = {
-                        startDate: remote.startDate,
+                        startDate: remoteStartMs >= localStartMs ? remote.startDate : local.startDate,
                         longestStreak: Math.max(local.longestStreak || 0, remote.longestStreak || 0),
                         totalRelapses: Math.max(local.totalRelapses || 0, remote.totalRelapses || 0),
                     };
@@ -66,15 +73,15 @@ export function useStreak() {
 
     // Auto-update longest streak
     useEffect(() => {
-        if (liveStreak.days > streakData.longestStreak) {
-            const updated = {
-                ...streakData,
-                longestStreak: liveStreak.days,
-            };
-            setStreakData(updated);
-            saveStreakData(updated);
-        }
-    }, [liveStreak.days, streakData.longestStreak]);
+        setStreakData(prev => {
+            if (liveStreak.days > prev.longestStreak) {
+                const updated = { ...prev, longestStreak: liveStreak.days };
+                saveStreakData(updated);
+                return updated;
+            }
+            return prev;
+        });
+    }, [liveStreak.days]);
 
     const handleStart = useCallback(() => {
         const newData: StreakData = {

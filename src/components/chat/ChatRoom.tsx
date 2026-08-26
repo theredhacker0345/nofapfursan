@@ -6,10 +6,19 @@ import { useNavigate } from "react-router-dom";
 import { useNostr } from "@/hooks/useNostr";
 import { RELAYS, fetchHealthChecks } from "@/services/nostr";
 import { generateOrLoadKeys, NostrKeys } from "@/services/nostr";
-import { finalizeEvent } from "nostr-tools";
+import { finalizeEvent, Event, Filter } from "nostr-tools";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import { hasAuraBonus, calculateStreak, getStreakData } from "@/lib/streakUtils";
+
+// nostr-tools' SimplePool exposes subscribe() with these params at runtime
+interface PoolSubscriber {
+  subscribe(
+    relays: string[],
+    filter: Filter,
+    params: { onevent?: (event: Event) => void; oneose?: () => void; onclose?: () => void }
+  ): { close: () => void };
+}
 
 interface Message {
   id: string;
@@ -113,17 +122,20 @@ export function ChatRoom({ roomId }: ChatRoomProps) {
     });
   }, [events, roomId]);
 
+  const requestedProfilesRef = useRef<Set<string>>(new Set());
   useEffect(() => {
-    // When messages arrive, find unique pubkeys and ask for their names
+    // When messages arrive, find unique pubkeys and ask for their names.
+    // Guard with a ref so we don't open a new subscription per message.
     const unknownPubkeys = messages
-      .filter(m => !profiles[m.pubkey])
+      .filter(m => !profiles[m.pubkey] && !requestedProfilesRef.current.has(m.pubkey))
       .map(m => m.pubkey);
 
     if (unknownPubkeys.length > 0) {
-      const sub = (pool as any).subscribe(RELAYS,
+      unknownPubkeys.forEach(pk => requestedProfilesRef.current.add(pk));
+      const sub = (pool as unknown as PoolSubscriber).subscribe(RELAYS,
         { kinds: [0], authors: unknownPubkeys },
         {
-          onevent: (event: any) => {
+          onevent: (event: Event) => {
             try {
               const data = JSON.parse(event.content);
               setProfiles(prev => ({
@@ -146,28 +158,23 @@ export function ChatRoom({ roomId }: ChatRoomProps) {
 
   // Cleanup timeouts on unmount
   useEffect(() => {
+    const refs = timeoutRefs.current;
     return () => {
-      timeoutRefs.current.forEach(timeout => clearTimeout(timeout));
+      refs.forEach(timeout => clearTimeout(timeout));
     };
   }, []);
 
-  const sendMessage = useCallback(async (content: string, tempId: string) => {
+  const sendMessage = useCallback(async (content: string, tempId: string, streakDays: number, aura: boolean) => {
     if (!identity?.privateKey) return;
 
     try {
-      const streakData = await getStreakData();
-      const currentStreak = calculateStreak(streakData.startDate);
-      const healthHistory = await fetchHealthChecks();
-      const hasAura = hasAuraBonus(healthHistory);
-
-      // Step 1: Fix the Clock - Ensure event's created_at is strictly in seconds
       const tags = [
         ['e', ROOM_IDS[roomId], '', 'root'],
         ['t', 'nofapfursan'],
-        ['streak', currentStreak.days.toString()]
+        ['streak', streakDays.toString()]
       ];
 
-      if (hasAura) {
+      if (aura) {
         tags.push(['bonus', 'aura']);
       }
 
@@ -192,8 +199,8 @@ export function ChatRoom({ roomId }: ChatRoomProps) {
 
       timeoutRefs.current.set(tempId, timeout);
 
-      // Step 2 & 3: The publish function in NostrContext now handles the "OK" check and race-to-success logic
-      const success = await publish(signedEvent);
+      // The publish function in NostrContext handles the "OK" check and race-to-success logic
+      const success = await publish(signedEvent as Event);
 
       if (!success) {
         clearTimeout(timeout);
@@ -201,10 +208,6 @@ export function ChatRoom({ roomId }: ChatRoomProps) {
         setMessages(prev => prev.map(m =>
           m.id === tempId ? { ...m, status: 'failed' as const } : m
         ));
-      } else {
-        // If success (at least one relay accepted), we assume it's sent.
-        // We do NOT clear the message here because the optimisitc UI already added it.
-        // The real confirmation from the subscription loop will eventually deduplicate/confirm it.
       }
     } catch (error) {
       console.error("Failed to send message:", error);
@@ -238,15 +241,14 @@ export function ChatRoom({ roomId }: ChatRoomProps) {
     setMessages(prev => [...prev, optimisticMsg]);
     setNewMessage("");
 
-    await sendMessage(content, tempId);
+    await sendMessage(content, tempId, currentStreak.days, hasAura);
   };
 
   const handleRetry = async (message: Message) => {
-    // Update status back to sending
     setMessages(prev => prev.map(m =>
       m.id === message.id ? { ...m, status: 'sending' as const } : m
     ));
-    await sendMessage(message.content, message.id);
+    await sendMessage(message.content, message.id, message.streak ?? 0, message.bonus === 'aura');
   };
 
   return (
@@ -325,9 +327,10 @@ export function ChatRoom({ roomId }: ChatRoomProps) {
           <Button
             type="submit"
             disabled={!newMessage.trim() || !identity}
+            aria-label="Send message"
             className="border border-black rounded-none h-12 w-12 bg-black text-white hover:bg-black/90 flex items-center justify-center p-0 transition-all active:scale-90"
           >
-            <Send className="w-5 h-5" />
+            <Send className="w-5 h-5" aria-hidden="true" />
           </Button>
         </form>
       </div>

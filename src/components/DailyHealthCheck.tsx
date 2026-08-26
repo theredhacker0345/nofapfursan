@@ -37,10 +37,10 @@ export function DailyHealthCheck({ onUpdate, days = 0, showPillar = 'all' }: Dai
     const [unlockTimer, setUnlockTimer] = useState(5);
 
     useEffect(() => {
-        let timer: any;
+        let timer: ReturnType<typeof setInterval> | undefined;
         if (isEmergencyLocked && unlockTimer > 0) {
             timer = setInterval(() => {
-                setUnlockTimer(prev => prev - 1);
+                setUnlockTimer(prev => Math.max(0, prev - 1));
             }, 1000);
         }
         return () => clearInterval(timer);
@@ -48,7 +48,8 @@ export function DailyHealthCheck({ onUpdate, days = 0, showPillar = 'all' }: Dai
 
     useEffect(() => {
         loadHealthData();
-    }, []);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [days]);
 
     const loadHealthData = async () => {
         try {
@@ -66,10 +67,11 @@ export function DailyHealthCheck({ onUpdate, days = 0, showPillar = 'all' }: Dai
             const submittedToday = data.some(entry => new Date(entry.timestamp).toDateString() === today);
             setHasSubmitedToday(submittedToday);
 
-            // Check for medical alert (14 days of 'No')
-            if (data.length >= 14 && days >= 4) {
-                const last14 = data.slice(0, 14);
-                const allNo = last14.every(entry => !entry.npt);
+            // Check for medical alert (14 consecutive recent days of 'No')
+            if (days >= 4) {
+                const fourteenDaysAgo = Date.now() - 14 * 24 * 60 * 60 * 1000;
+                const last14 = data.filter(e => e.timestamp >= fourteenDaysAgo).slice(0, 14);
+                const allNo = last14.length >= 14 && last14.every(entry => !entry.npt);
                 if (allNo) {
                     setShowMedicalAlert(true);
                 }
@@ -110,10 +112,14 @@ export function DailyHealthCheck({ onUpdate, days = 0, showPillar = 'all' }: Dai
 
     const finalizeProtocol = async (npt: boolean | null, mindset: HealthCheck['mindset'] | null) => {
         setSaving(true);
-        // If partial data, use defaults or previous
+
+        // Merge with today's existing entry (if any) instead of creating a
+        // duplicate half-filled record that would skew the stats.
+        const today = new Date().toDateString();
+        const existingToday = history.find(e => new Date(e.timestamp).toDateString() === today);
         const entry: HealthCheck = {
-            npt: npt ?? true, // Default to true if not asked in this component
-            mindset: mindset ?? 'sharp', // Default to sharp if not asked
+            npt: npt ?? existingToday?.npt ?? true,
+            mindset: mindset ?? existingToday?.mindset ?? 'sharp',
             timestamp: Date.now(),
         };
 
@@ -123,11 +129,12 @@ export function DailyHealthCheck({ onUpdate, days = 0, showPillar = 'all' }: Dai
             toast.success("Progress saved. 🛡️");
             logActivity('health_check', `Daily Check: Signal: ${entry.npt}, Mindset: ${entry.mindset}`);
             setHasSubmitedToday(true);
-            setHistory([entry, ...history]);
+            setHistory([entry, ...history.filter(h => h.id !== existingToday?.id)]);
             if (entry.mindset === 'stormy') {
                 localStorage.removeItem('fursan_stormy_resolved');
                 setIsEmergencyLocked(true);
                 setUnlockTimer(5);
+                setIsCompletionConfirmed(false);
             }
             if (onUpdate) onUpdate();
 

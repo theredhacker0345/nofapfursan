@@ -27,13 +27,14 @@ export function BottomNav() {
             key={item.to}
             to={item.to}
             end={item.to === "/"}
-            className="flex flex-col items-center justify-center gap-1 px-2 sm:px-4 py-2 text-muted-foreground transition-all duration-300 hover:text-primary min-w-0"
+            aria-label={item.label}
+            className="flex flex-col items-center justify-center gap-1 px-2 sm:px-4 py-2 text-muted-foreground transition-all duration-300 hover:text-primary min-w-[48px] min-h-[48px] active:scale-95"
             activeClassName="text-primary"
           >
             {({ isActive }) => (
               <>
                 <div className={`relative ${isActive ? 'scale-110' : ''} transition-transform duration-300`}>
-                  <item.icon className="h-5 w-5" />
+                  <item.icon className="h-5 w-5" aria-hidden="true" />
                   {isActive && (
                     <div className="absolute -inset-1.5 bg-primary/20 rounded-full blur-md -z-10" />
                   )}

@@ -9,8 +9,7 @@ import {
     calculatePrayerStreak,
     getTodayCompletionPercentage,
     PrayerCheckin as PrayerCheckinType,
-    isPrayerActive,
-    getVerifiedTime
+    getAllPrayerStatuses
 } from "@/lib/prayerUtils";
 import { tapVibrate, heartbeatVibrate, luxuryClickVibrate, warningVibrate } from "@/lib/vibrationUtils";
 import { cn } from "@/lib/utils";
@@ -55,25 +54,28 @@ export function PrayerCheckin() {
             clearInterval(interval);
             window.removeEventListener('fursan_prayer_settings_updated', handleSettingsUpdate);
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const formatCountdown = (ms: number) => {
         const totalSeconds = Math.floor(ms / 1000);
-        const minutes = Math.floor(totalSeconds / 60);
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
         const seconds = totalSeconds % 60;
+        if (hours > 0) {
+            return `${hours}h ${minutes.toString().padStart(2, '0')}m`;
+        }
         return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     };
 
     const updateAllStatuses = async () => {
-        const statuses: Record<string, { active: boolean; countdown: string }> = {};
-        for (const prayer of PRAYERS) {
-            const { active, countdown } = await isPrayerActive(prayer.id);
-            statuses[prayer.id] = {
-                active,
-                countdown: formatCountdown(countdown)
-            };
-        }
-        setPrayerStatus(statuses);
+        const statuses = await getAllPrayerStatuses();
+        setPrayerStatus(Object.fromEntries(
+            Object.entries(statuses).map(([id, s]) => [id, {
+                active: s.active,
+                countdown: formatCountdown(s.countdown)
+            }])
+        ));
     };
 
     const loadData = () => {
@@ -170,37 +172,38 @@ export function PrayerCheckin() {
                             <button
                                 key={prayer.id}
                                 onClick={() => handlePrayerToggle(prayer.id)}
+                                aria-label={`${isCompleted ? 'Unlog' : 'Log'} ${prayerName} prayer${!isActive && !isCompleted ? ` (starts in ${status?.countdown || 'later today'})` : ''}`}
                                 className={cn(
-                                    "relative flex flex-col items-center gap-1 py-2 sm:py-3 px-0.5 sm:px-1 rounded-lg transition-all duration-300 min-w-0 overflow-hidden",
+                                    "relative flex flex-col items-center justify-center gap-1 py-3 sm:py-3.5 px-1 rounded-lg transition-all duration-300 min-h-[56px] overflow-hidden",
                                     isCompleted
                                         ? `bg-gradient-to-br ${prayer.gradient} text-white shadow-lg`
                                         : !isActive
-                                            ? "bg-amber-100/20 text-amber-900/10 cursor-not-allowed grayscale"
-                                            : "bg-amber-50/50 text-amber-700/60 hover:bg-amber-100/70 border border-amber-200/30"
+                                            ? "bg-amber-100/20 text-amber-900/40 cursor-not-allowed grayscale"
+                                            : "bg-amber-50/50 text-amber-700 hover:bg-amber-100/70 border border-amber-200/30"
                                 )}
                             >
                                 {isCompleted ? (
                                     <Check className="w-4 h-4 sm:w-5 sm:h-5" />
                                 ) : !isActive ? (
-                                    <Lock className="w-4 h-4 sm:w-5 sm:h-5 opacity-20" />
+                                    <Lock className="w-4 h-4 sm:w-5 sm:h-5 opacity-40" />
                                 ) : (
                                     <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
                                 )}
                                 <span className={cn(
-                                    "text-[8px] sm:text-[9px] font-black uppercase tracking-tight truncate w-full",
-                                    isCompleted ? "text-white" : "text-black"
+                                    "text-[9px] sm:text-[10px] font-black uppercase tracking-tight truncate w-full",
+                                    isCompleted ? "text-white" : !isActive ? "text-amber-900/40" : "text-amber-800"
                                 )}>
                                     {prayerName}
                                 </span>
                                 <span className={cn(
-                                    "text-[7px] sm:text-[8px] font-bold opacity-80 truncate w-full sub-label",
-                                    isCompleted ? "text-white/90" : "text-black/60"
+                                    "text-[8px] sm:text-[9px] font-bold opacity-90 truncate w-full sub-label",
+                                    isCompleted ? "text-white/95" : "text-amber-700/70"
                                 )}>
                                     {prayer.arabicName}
                                 </span>
 
                                 {!isActive && !isCompleted && status?.countdown && (
-                                    <div className="absolute inset-x-0 bottom-0 py-0.5 bg-black/5 text-[6px] font-bold tabular-nums text-black/40">
+                                    <div className="absolute inset-x-0 bottom-0 py-0.5 bg-black/10 text-[7px] font-bold tabular-nums text-amber-900/60">
                                         {status.countdown}
                                     </div>
                                 )}

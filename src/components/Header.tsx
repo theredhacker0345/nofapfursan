@@ -13,9 +13,15 @@ export function Header() {
         const { days } = calculateStreak(data.startDate);
         const lvl = getAvatarLevel(days);
         setLevel(lvl);
+      } else {
+        setLevel(null);
       }
     };
     loadData();
+
+    // Re-load whenever the streak updates so the badge stays in sync
+    window.addEventListener('fursan_streak_updated', loadData);
+    return () => window.removeEventListener('fursan_streak_updated', loadData);
   }, []);
 
   return (
@@ -44,7 +50,7 @@ export function Header() {
         <div className="flex items-center justify-center gap-4">
           <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
           <p className="text-[9px] tracking-[0.4em] text-muted-foreground uppercase font-black flex items-center gap-2">
-            <Shield className="w-3 h-3" /> Version 2.5 <Zap className="w-3 h-3" />
+            <Shield className="w-3 h-3" aria-hidden="true" /> Version 2.5 <Zap className="w-3 h-3" aria-hidden="true" />
           </p>
           <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
         </div>

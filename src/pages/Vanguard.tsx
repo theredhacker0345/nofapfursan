@@ -8,9 +8,18 @@ import { Send, Loader2, RefreshCw, AlertCircle, Radio, Shield, Users, MessageSqu
 import { useNostr } from "@/hooks/useNostr";
 import { RELAYS, fetchHealthChecks } from "@/services/nostr";
 import { generateOrLoadKeys, NostrKeys } from "@/services/nostr";
-import { finalizeEvent } from "nostr-tools";
+import { finalizeEvent, Event, Filter } from "nostr-tools";
 import { formatDistanceToNow } from "date-fns";
 import { hasAuraBonus, calculateStreak, getStreakData } from "@/lib/streakUtils";
+
+// nostr-tools' SimplePool exposes subscribe() with these params at runtime
+interface PoolSubscriber {
+    subscribe(
+        relays: string[],
+        filter: Filter,
+        params: { onevent?: (event: Event) => void; oneose?: () => void; onclose?: () => void }
+    ): { close: () => void };
+}
 
 interface Message {
     id: string;
@@ -106,18 +115,22 @@ export default function Vanguard() {
 
             return [...filteredPrev, ...newFromRelay].sort((a, b) => a.created_at - b.created_at);
         });
-    }, [events]);
+    }, [events, activeChannel]);
 
+    // Track pubkeys we've already requested profiles for to avoid re-subscribing
+    // on every incoming message
+    const requestedProfilesRef = useRef<Set<string>>(new Set());
     useEffect(() => {
         const unknownPubkeys = messages
-            .filter(m => !profiles[m.pubkey])
+            .filter(m => !profiles[m.pubkey] && !requestedProfilesRef.current.has(m.pubkey))
             .map(m => m.pubkey);
 
         if (unknownPubkeys.length > 0 && pool) {
-            const sub = (pool as any).subscribe(RELAYS,
+            unknownPubkeys.forEach(pk => requestedProfilesRef.current.add(pk));
+            const sub = (pool as unknown as PoolSubscriber).subscribe(RELAYS,
                 { kinds: [0], authors: unknownPubkeys },
                 {
-                    onevent: (event: any) => {
+                    onevent: (event: Event) => {
                         try {
                             const data = JSON.parse(event.content);
                             setProfiles(prev => ({
@@ -139,28 +152,24 @@ export default function Vanguard() {
     }, [messages]);
 
     useEffect(() => {
+        const refs = timeoutRefs.current;
         return () => {
-            timeoutRefs.current.forEach(timeout => clearTimeout(timeout));
+            refs.forEach(timeout => clearTimeout(timeout));
         };
     }, []);
 
-    const sendMessage = useCallback(async (content: string, tempId: string) => {
+    const sendMessage = useCallback(async (content: string, tempId: string, streakDays: number, aura: boolean) => {
         if (!identity?.privateKey) return;
 
         try {
-            const streakData = await getStreakData();
-            const currentStreak = calculateStreak(streakData.startDate);
-            const healthHistory = await fetchHealthChecks();
-            const hasAura = hasAuraBonus(healthHistory);
-
             const tags = [
                 ['e', GLOBAL_ROOM_ID, '', 'root'],
                 ['t', activeChannel],
                 ['t', 'nofapfursan'],
-                ['streak', currentStreak.days.toString()]
+                ['streak', streakDays.toString()]
             ];
 
-            if (hasAura) {
+            if (aura) {
                 tags.push(['bonus', 'aura']);
             }
 
@@ -184,7 +193,7 @@ export default function Vanguard() {
 
             timeoutRefs.current.set(tempId, timeout);
 
-            const success = await publish(signedEvent);
+            const success = await publish(signedEvent as Event);
 
             if (!success) {
                 clearTimeout(timeout);
@@ -225,14 +234,14 @@ export default function Vanguard() {
         setMessages(prev => [...prev, optimisticMsg]);
         setNewMessage("");
 
-        await sendMessage(content, tempId);
+        await sendMessage(content, tempId, currentStreak.days, hasAura);
     };
 
     const handleRetry = async (message: Message) => {
         setMessages(prev => prev.map(m =>
             m.id === message.id ? { ...m, status: 'sending' as const } : m
         ));
-        await sendMessage(message.content, message.id);
+        await sendMessage(message.content, message.id, message.streak ?? 0, message.bonus === 'aura');
     };
 
     if (loading) {
@@ -291,8 +300,10 @@ export default function Vanguard() {
                                         <button
                                             key={channel.id}
                                             onClick={() => setActiveChannel(channel.id)}
+                                            aria-label={`Switch to ${channel.label} channel (${channel.desc})`}
+                                            aria-pressed={isActive}
                                             className={`
-                                                flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[9px] font-bold uppercase tracking-wider whitespace-nowrap transition-all
+                                                flex items-center gap-1.5 px-4 py-2.5 min-h-[40px] rounded-lg border text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-all
                                                 ${isActive
                                                     ? 'bg-primary text-primary-foreground border-primary shadow-sm'
                                                     : 'bg-card text-muted-foreground border-border hover:border-primary/50'}
@@ -381,9 +392,10 @@ export default function Vanguard() {
                                 <Button
                                     type="submit"
                                     disabled={!newMessage.trim() || !identity}
+                                    aria-label="Send message"
                                     className="bg-primary hover:bg-primary/90 text-primary-foreground font-black rounded-xl h-12 w-12 flex items-center justify-center p-0 transition-all active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed shadow-lg shadow-primary/20"
                                 >
-                                    <Send className="w-5 h-5" />
+                                    <Send className="w-5 h-5" aria-hidden="true" />
                                 </Button>
                             </form>
                         </div>

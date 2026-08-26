@@ -19,12 +19,20 @@ export default defineConfig(({ mode }) => ({
   },
   build: {
     outDir: "dist",
-    sourcemap: true,
     target: "es2020", // Modern target is fine for Nostr crypto
     rollupOptions: {
       output: {
-        manualChunks: undefined,
+        // Split stable vendor libs so app-code changes don't invalidate their cache
+        manualChunks: {
+          "vendor-react": ["react", "react-dom", "react-router-dom"],
+          "vendor-nostr": ["nostr-tools", "@noble/hashes"],
+          "vendor-motion": ["framer-motion"],
+        },
       },
     },
+  },
+  esbuild: {
+    // Strip debug logging from production bundles
+    drop: mode === "production" ? ["console", "debugger"] : [],
   },
 }));

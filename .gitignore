@@ -32,3 +32,6 @@ android/app/*.jks
 android/app/*.keystore
 *.jks
 *.keystore
+
+# Playwright audit artifacts
+scripts/shots

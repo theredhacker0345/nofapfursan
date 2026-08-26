@@ -96,8 +96,11 @@ export function LocationTimeCard() {
                             <h3 className="text-sm font-black uppercase tracking-tight text-amber-800">Local Vigil</h3>
                             <Dialog open={showSettings} onOpenChange={setShowSettings}>
                                 <DialogTrigger asChild>
-                                    <button className="p-1 hover:bg-amber-100 rounded-full transition-colors">
-                                        <Settings className="w-3 h-3 text-amber-600/50" />
+                                    <button
+                                        aria-label="Location settings"
+                                        className="p-2.5 hover:bg-amber-100 rounded-full transition-colors"
+                                    >
+                                        <Settings className="w-4 h-4 text-amber-600/70" />
                                     </button>
                                 </DialogTrigger>
                                 <DialogContent className="bg-background border-2 border-border p-6 rounded-[2rem] shadow-2xl max-h-[80vh] overflow-y-auto w-[95%]">

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { THEMES, ThemeDefinition } from '@/data/themes';
 import { Preferences } from '@capacitor/preferences';
+import { getStreakData } from '@/lib/streakUtils';
 
 interface ThemeContextType {
     currentTheme: ThemeDefinition;
@@ -27,13 +28,14 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 }
             }
 
-            // Check levels for unlocks
-            const streakStored = localStorage.getItem('fursan_streak_data');
-            if (streakStored) {
-                const data = JSON.parse(streakStored);
+            // Check levels for unlocks (streak data lives in SecureStorage)
+            try {
+                const data = await getStreakData();
                 const days = calculateDays(data.startDate);
                 const unlocked = THEMES.filter(t => days >= t.minDays).map(t => t.id);
                 setUnlockedThemes(unlocked);
+            } catch (e) {
+                // Keep defaults if streak data can't be read
             }
         };
         loadTheme();
@@ -69,6 +71,11 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
     };
 
+    const currentThemeRef = useRef<ThemeDefinition>(THEMES[0]);
+    useEffect(() => {
+        currentThemeRef.current = currentTheme;
+    }, [currentTheme]);
+
     const previewTheme = (themeId: string) => {
         if (previewTimeoutRef.current) {
             window.clearTimeout(previewTimeoutRef.current);
@@ -78,7 +85,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             applyTheme(theme);
             // Revert after 3 seconds
             previewTimeoutRef.current = window.setTimeout(() => {
-                applyTheme(currentTheme);
+                applyTheme(currentThemeRef.current);
                 previewTimeoutRef.current = null;
             }, 3000);
         }
