@@ -82,7 +82,7 @@ export const RelaySettings = () => {
                     </Button>
                 </form>
                 {error && (
-                    <div className="flex items-center gap-2 text-destructive text-[10px] font-bold uppercase tracking-tighter animate-in fade-in slide-in-from-top-1">
+                    <div className="flex items-center gap-2 text-danger text-[10px] font-bold uppercase tracking-tighter animate-in fade-in slide-in-from-top-1">
                         <AlertCircle className="w-3 h-3" />
                         {error}
                     </div>
@@ -96,14 +96,14 @@ export const RelaySettings = () => {
                     const displayName = metadata?.name || url.split('//')[1].split('/')[0];
 
                     return (
-                        <div key={url} className="flex items-center justify-between p-4 border border-black bg-white group hover:bg-secondary/5 transition-colors">
+                        <div key={url} className="flex items-center justify-between p-4 border border-black bg-white group hover:bg-surface-2/5 transition-colors">
                             <div className="flex items-center gap-4 flex-1 min-w-0">
-                                <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500 shadow-[0_0_6px_rgba(34,197,94,0.5)]' : 'bg-destructive/50 shadow-[0_0_6px_rgba(239,68,68,0.3)]'}`} />
+                                <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500 shadow-[0_0_6px_rgba(34,197,94,0.5)]' : 'bg-danger/50 shadow-[0_0_6px_rgba(239,68,68,0.3)]'}`} />
                                 <div className="flex flex-col min-w-0">
                                     <span className="text-xs font-bold uppercase truncate tracking-tighter">
                                         {displayName}
                                     </span>
-                                    <span className="text-[9px] font-mono text-muted-foreground truncate opacity-50 group-hover:opacity-80">
+                                    <span className="text-[9px] font-mono text-ink-muted truncate opacity-50 group-hover:opacity-80">
                                         {url.toLowerCase()}
                                     </span>
                                 </div>

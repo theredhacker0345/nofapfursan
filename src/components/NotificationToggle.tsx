@@ -31,25 +31,25 @@ export function NotificationToggle() {
   };
 
   return (
-    <div className="royal-card p-4 page-transition" style={{ animationDelay: "0.2s" }}>
+    <div className="card p-4 animate-fade-in" style={{ animationDelay: "0.2s" }}>
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <div className={`w-10 h-10 rounded-full flex items-center justify-center shadow-md flex-shrink-0 ${enabled
-            ? 'bg-primary shadow-sm'
+            ? 'bg-ink shadow-sm'
             : 'bg-gradient-to-br from-muted to-muted'
             }`}>
             {enabled ? (
               <Bell className="w-5 h-5 text-white" />
             ) : (
-              <BellOff className="w-5 h-5 text-muted-foreground" />
+              <BellOff className="w-5 h-5 text-ink-muted" />
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <h3 className="font-bold text-foreground flex items-center gap-1.5 truncate">
-              <Sparkles className="w-4 h-4 text-primary flex-shrink-0" />
+            <h3 className="font-bold text-ink flex items-center gap-1.5 truncate">
+              <Sparkles className="w-4 h-4 text-ink flex-shrink-0" />
               Daily Reminders
             </h3>
-            <p className="text-[11px] text-muted-foreground font-medium leading-tight truncate">
+            <p className="text-[11px] text-ink-muted font-medium leading-tight truncate">
               {enabled
                 ? `On • Motivational reminders every ${intervalHours}h`
                 : "Get motivational reminders"}
@@ -59,8 +59,8 @@ export function NotificationToggle() {
         <Button
           onClick={handleToggle}
           className={`${enabled
-            ? "bg-white border-2 border-border text-foreground/80 hover:bg-secondary"
-            : "bg-primary text-white"
+            ? "bg-white border-2 border-border text-ink/80 hover:bg-surface-2"
+            : "bg-ink text-white"
             } rounded-full px-4 sm:px-5 font-bold shadow-md hover:shadow-lg flex-shrink-0 text-xs sm:text-sm h-9 sm:h-10`}
         >
           {enabled ? "Disable" : "Enable"}

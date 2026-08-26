@@ -10,10 +10,10 @@ const NotFound = () => {
   }, [location.pathname]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted">
+    <div className="flex min-h-screen items-center justify-center bg-surface-2">
       <div className="text-center">
         <h1 className="mb-4 text-4xl font-bold">404</h1>
-        <p className="mb-6 text-xl text-muted-foreground">Oops! Page not found</p>
+        <p className="mb-6 text-xl text-ink-muted">Oops! Page not found</p>
         <Button asChild className="h-12 px-8 rounded-xl uppercase text-xs font-black tracking-widest shadow-lg">
           <Link to="/">Return to Home</Link>
         </Button>

@@ -48,16 +48,16 @@ const Community = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-bg">
       <ErrorBoundary>
         <div className="container max-w-6xl mx-auto px-4 pb-24">
           <Header />
 
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-8 page-transition" style={{ animationDelay: "0.1s" }}>
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-8 animate-fade-in" style={{ animationDelay: "0.1s" }}>
             <Button
               variant="outline"
               onClick={() => navigate("/")}
-              className="rounded-xl border-border bg-white text-foreground hover:bg-secondary uppercase text-[10px] font-black tracking-widest px-6 h-12 shadow-sm"
+              className="rounded-xl border-border bg-white text-ink hover:bg-surface-2 uppercase text-[10px] font-black tracking-widest px-6 h-12 shadow-sm"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Return to Tracker
@@ -68,7 +68,7 @@ const Community = () => {
                 <Button
                   variant="outline"
                   onClick={() => navigate("/profile")}
-                  className="rounded-xl border-border bg-white text-foreground hover:bg-secondary uppercase text-[10px] font-black tracking-widest px-6 h-12 shadow-sm"
+                  className="rounded-xl border-border bg-white text-ink hover:bg-surface-2 uppercase text-[10px] font-black tracking-widest px-6 h-12 shadow-sm"
                 >
                   <UserIcon className="w-4 h-4 mr-2" />
                   My Profile
@@ -76,7 +76,7 @@ const Community = () => {
                 <Button
                   variant="outline"
                   onClick={handleSignOut}
-                  className="rounded-xl border-destructive/20 bg-white text-destructive hover:bg-destructive/5 hover:border-destructive/30 uppercase text-[10px] font-black tracking-widest px-6 h-12 shadow-sm transition-all"
+                  className="rounded-xl border-danger/20 bg-white text-danger hover:bg-danger/5 hover:border-danger/30 uppercase text-[10px] font-black tracking-widest px-6 h-12 shadow-sm transition-all"
                 >
                   <LogOut className="w-4 h-4 mr-2" />
                   Purge Identity
@@ -85,7 +85,7 @@ const Community = () => {
             ) : (
               <Button
                 onClick={() => navigate("/auth")}
-                className="bg-primary text-white hover:shadow-xl rounded-xl uppercase text-[10px] font-black tracking-widest px-8 h-12 shadow-lg shadow-sm"
+                className="bg-ink text-white hover:shadow-xl rounded-xl uppercase text-[10px] font-black tracking-widest px-8 h-12 shadow-lg shadow-sm"
               >
                 Authenticate to Enter Circle
               </Button>
@@ -105,9 +105,9 @@ const Community = () => {
               {selectedRoom ? (
                 <ChatRoom key={selectedRoom} roomId={selectedRoom} />
               ) : (
-                <div className="royal-card h-96 flex flex-col items-center justify-center bg-white/50 border-dashed">
-                  <Network className="w-12 h-12 text-muted-foreground/50 mb-4 animate-pulse" />
-                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-foreground/20 text-center">
+                <div className="card h-96 flex flex-col items-center justify-center bg-white/50 border-dashed">
+                  <Network className="w-12 h-12 text-ink-muted/50 mb-4 animate-pulse" />
+                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-ink/20 text-center">
                     SELECT A FREQUENCY TO<br />RECEIVE BROTHERHOOD SIGNALS
                   </p>
                 </div>
@@ -121,8 +121,8 @@ const Community = () => {
       <div className="fixed bottom-24 left-0 right-0 px-4 pointer-events-none z-50">
         <div className="max-w-6xl mx-auto flex justify-end">
           <div className="bg-white/80 backdrop-blur-md rounded-full px-5 py-2 flex items-center gap-3 text-[10px] font-black tracking-[0.1em] uppercase border border-border shadow-xl shadow-sm pointer-events-auto">
-            <div className={`w-2 h-2 rounded-full ${connectedRelays.length > 0 ? 'bg-accent animate-pulse' : 'bg-destructive animate-ping'}`} />
-            <span className="text-foreground">{connectedRelays.length > 0 ? `${connectedRelays.length} Relays Connected` : 'Searching for Relays...'}</span>
+            <div className={`w-2 h-2 rounded-full ${connectedRelays.length > 0 ? 'bg-accent animate-pulse' : 'bg-danger animate-ping'}`} />
+            <span className="text-ink">{connectedRelays.length > 0 ? `${connectedRelays.length} Relays Connected` : 'Searching for Relays...'}</span>
           </div>
         </div>
       </div>

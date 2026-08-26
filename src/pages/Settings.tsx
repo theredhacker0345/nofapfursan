@@ -1,31 +1,42 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Bell, Palette, Download, Trash2, Mail, Heart, Copy, ExternalLink, Moon, Check } from "lucide-react";
+import {
+  ArrowLeft,
+  Bell,
+  Palette,
+  Download,
+  Trash2,
+  Mail,
+  Heart,
+  Copy,
+  ExternalLink,
+  Moon,
+  Shield,
+  ChevronRight,
+  Lock,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-    DialogTrigger,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { BottomNav } from "@/components/BottomNav";
-import { LoadingScreen } from "@/components/LoadingScreen";
 import { ThemeSelector } from "@/components/ThemeSelector";
 import { PrivacySettings } from "@/components/PrivacySettings";
 import { NotificationToggle } from "@/components/NotificationToggle";
@@ -38,279 +49,238 @@ import { cn } from "@/lib/utils";
 const NOOR_CONNECT_URL = "https://f-droid.org/en/packages/com.noorconnect.app/";
 
 export default function Settings() {
-    const navigate = useNavigate();
-    const { enabled, intervalHours, setIntervalHours, isSupported } = useNotifications();
-    const [loading, setLoading] = useState(true);
-    const [simpleMode, setSimpleMode] = useState(() => localStorage.getItem('fursan_minimalist_mode') === 'true');
+  const navigate = useNavigate();
+  const { enabled, intervalHours, setIntervalHours, isSupported } = useNotifications();
+  const [simpleMode, setSimpleMode] = useState(
+    () => localStorage.getItem("fursan_minimalist_mode") === "true",
+  );
 
-    useEffect(() => {
-        const t = setTimeout(() => setLoading(false), 300);
-        return () => clearTimeout(t);
-    }, []);
+  useEffect(() => {
+    document.body.classList.toggle("minimalist-mode", simpleMode);
+    localStorage.setItem("fursan_minimalist_mode", simpleMode.toString());
+  }, [simpleMode]);
 
-    useEffect(() => {
-        if (simpleMode) {
-            document.body.classList.add('minimalist-mode');
-        } else {
-            document.body.classList.remove('minimalist-mode');
-        }
-        localStorage.setItem('fursan_minimalist_mode', simpleMode.toString());
-    }, [simpleMode]);
-
-    const handleExportKey = async () => {
-        const keys = await exportKeys();
-        if (keys && keys.nsec) {
-            await navigator.clipboard.writeText(keys.nsec);
-            toast.success("Key Copied", { description: "Your private key was copied to the clipboard." });
-            luxuryClickVibrate();
-        } else {
-            toast.error("Export Failed", { description: "Could not get your key." });
-        }
-    };
-
-    const handleWipeData = () => {
-        clearKeys();
-        localStorage.clear();
-        window.location.reload();
-    };
-
-    if (loading) {
-        return <LoadingScreen message="Loading..." subMessage="Opening settings" />;
+  const handleExportKey = async () => {
+    const keys = await exportKeys();
+    if (keys?.nsec) {
+      await navigator.clipboard.writeText(keys.nsec);
+      toast.success("Key copied to clipboard");
+      luxuryClickVibrate();
+    } else {
+      toast.error("Could not get your key");
     }
+  };
 
-    return (
-        <div className="min-h-screen bg-background pb-24">
-            <div className="container max-w-lg mx-auto px-4">
-                {/* Header */}
-                <header className="flex items-center justify-between py-5 page-transition">
-                    <Button
-                        variant="ghost"
-                        onClick={() => navigate("/")}
-                        aria-label="Go back"
-                        className="rounded-xl text-foreground hover:bg-secondary h-10 px-3 text-sm font-medium"
-                    >
-                        <ArrowLeft className="w-4 h-4 mr-2" /> Back
-                    </Button>
-                    <h1 className="text-lg font-semibold text-foreground">Settings</h1>
-                    <div className="w-16" />
-                </header>
+  const handleWipeData = () => {
+    clearKeys();
+    localStorage.clear();
+    window.location.reload();
+  };
 
-                <div className="space-y-6 page-transition" style={{ animationDelay: "0.1s" }}>
+  return (
+    <div className="min-h-screen bg-bg pb-20">
+      <div className="mx-auto max-w-screen-sm">
+        {/* Page header — minimal */}
+        <header className="sticky top-0 z-10 flex items-center justify-between bg-bg/95 px-4 py-3 backdrop-blur-md border-b border-border">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate("/")}
+            aria-label="Go back"
+            className="text-ink"
+          >
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            Back
+          </Button>
+          <h1 className="text-base font-semibold text-ink">Settings</h1>
+          <div className="w-14" />
+        </header>
 
-                    {/* Appearance */}
-                    <section className="bg-card border border-border rounded-2xl overflow-hidden">
-                        <div className="px-5 pt-5 pb-3 flex items-center gap-3">
-                            <span className="flex items-center justify-center w-8 h-8 rounded-full bg-secondary-container"><Palette className="w-4 h-4 text-on-secondary-container" aria-hidden="true" /></span>
-                            <h2 className="text-sm font-semibold text-foreground">Appearance</h2>
-                        </div>
-                        <div className="px-5 pb-5 space-y-4">
-                            <ThemeSelector />
-                            <div className="flex items-center justify-between p-4 rounded-xl bg-background border border-border">
-                                <div>
-                                    <p className="text-sm font-medium text-foreground">Simple mode</p>
-                                    <p className="text-xs text-muted-foreground mt-0.5">Less decoration, easier to read</p>
-                                </div>
-                                <Switch
-                                    checked={simpleMode}
-                                    onCheckedChange={(checked) => {
-                                        setSimpleMode(checked);
-                                        luxuryClickVibrate();
-                                    }}
-                                    aria-label="Toggle simple mode"
-                                />
-                            </div>
-                        </div>
-                    </section>
-
-                    {/* Reminders */}
-                    {isSupported && (
-                        <section className="bg-card border border-border rounded-2xl overflow-hidden">
-                            <div className="px-5 pt-5 pb-3 flex items-center gap-3">
-                                <span className="flex items-center justify-center w-8 h-8 rounded-full bg-secondary-container"><Bell className="w-4 h-4 text-on-secondary-container" aria-hidden="true" /></span>
-                                <h2 className="text-sm font-semibold text-foreground">Reminders</h2>
-                            </div>
-                            <div className="px-5 pb-5 space-y-5">
-                                <NotificationToggle />
-                                <div className="space-y-3 px-1">
-                                    <div className="flex justify-between items-center">
-                                        <Label className="text-sm font-medium text-foreground">How often</Label>
-                                        <span className="text-sm font-semibold text-primary">{intervalHours}h</span>
-                                    </div>
-                                    <Slider
-                                        value={[intervalHours]}
-                                        onValueChange={(value) => setIntervalHours(value[0])}
-                                        min={1}
-                                        max={24}
-                                        step={1}
-                                        disabled={!enabled}
-                                        aria-label="Reminder frequency in hours"
-                                        className={cn(!enabled && "opacity-50 cursor-not-allowed")}
-                                    />
-                                    <div className="flex justify-between text-xs text-muted-foreground">
-                                        <span>Often (1h)</span>
-                                        <span>Sometimes (24h)</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </section>
-                    )}
-
-                    {/* Privacy */}
-                    <section className="bg-card border border-border rounded-2xl overflow-hidden">
-                        <div className="px-5 pt-5 pb-3 flex items-center gap-3">
-                            <span className="flex items-center justify-center w-8 h-8 rounded-full bg-secondary-container"><Moon className="w-4 h-4 text-on-secondary-container" aria-hidden="true" /></span>
-                            <h2 className="text-sm font-semibold text-foreground">Privacy &amp; Security</h2>
-                        </div>
-                        <div className="px-5 pb-5">
-                            <PrivacySettings />
-                        </div>
-                    </section>
-
-                    {/* Companion app */}
-                    <section className="bg-card border border-border rounded-2xl overflow-hidden">
-                        <div className="px-5 pt-5 pb-3 flex items-center gap-3">
-                            <span className="flex items-center justify-center w-8 h-8 rounded-full bg-secondary-container"><ExternalLink className="w-4 h-4 text-on-secondary-container" aria-hidden="true" /></span>
-                            <h2 className="text-sm font-semibold text-foreground">Noor Connect</h2>
-                        </div>
-                        <div className="px-5 pb-5 space-y-3">
-                            <p className="text-sm text-muted-foreground leading-relaxed">
-                                Fursan focuses on your streak and community. For prayer times and adhan alerts, try our free companion app.
-                            </p>
-                            <Button
-                                variant="outline"
-                                className="w-full h-12 justify-center gap-2 border-border bg-background hover:bg-secondary text-foreground rounded-xl font-medium"
-                                onClick={() => window.open(NOOR_CONNECT_URL, '_blank')}
-                            >
-                                Get Noor Connect on F-Droid
-                                <ExternalLink className="w-4 h-4" />
-                            </Button>
-                        </div>
-                    </section>
-
-                    {/* Your data */}
-                    <section className="bg-card border border-border rounded-2xl overflow-hidden">
-                        <div className="px-5 pt-5 pb-3 flex items-center gap-3">
-                            <span className="flex items-center justify-center w-8 h-8 rounded-full bg-secondary-container"><Download className="w-4 h-4 text-on-secondary-container" aria-hidden="true" /></span>
-                            <h2 className="text-sm font-semibold text-foreground">Your Data</h2>
-                        </div>
-                        <div className="px-5 pb-5 space-y-2">
-                            <button
-                                onClick={handleExportKey}
-                                className="w-full flex items-center justify-between p-4 rounded-xl bg-background border border-border hover:bg-secondary transition-colors text-left"
-                            >
-                                <div>
-                                    <p className="text-sm font-medium text-foreground">Save my private key</p>
-                                    <p className="text-xs text-muted-foreground mt-0.5">Back up your identity to another device</p>
-                                </div>
-                                <Download className="w-4 h-4 text-muted-foreground" />
-                            </button>
-
-                            <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <button className="w-full flex items-center justify-between p-4 rounded-xl bg-background border border-destructive/30 hover:bg-destructive/5 transition-colors text-left">
-                                        <div>
-                                            <p className="text-sm font-medium text-destructive">Erase all data</p>
-                                            <p className="text-xs text-muted-foreground mt-0.5">Deletes everything on this device</p>
-                                        </div>
-                                        <Trash2 className="w-4 h-4 text-destructive" />
-                                    </button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent className="rounded-2xl border-border">
-                                    <AlertDialogHeader>
-                                        <AlertDialogTitle>Erase all data?</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                            This permanently deletes your private key, streak history and all local data from this device.
-                                            If you have not saved your key, your account cannot be recovered.
-                                        </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                        <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
-                                        <AlertDialogAction
-                                            className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                            onClick={handleWipeData}
-                                        >
-                                            Erase Everything
-                                        </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-                        </div>
-                    </section>
-
-                    {/* Support */}
-                    <section className="bg-card border border-border rounded-2xl overflow-hidden">
-                        <div className="px-5 pt-5 pb-3 flex items-center gap-3">
-                            <span className="flex items-center justify-center w-8 h-8 rounded-full bg-secondary-container"><Heart className="w-4 h-4 text-on-secondary-container" aria-hidden="true" /></span>
-                            <h2 className="text-sm font-semibold text-foreground">Support</h2>
-                        </div>
-                        <div className="px-5 pb-5 grid grid-cols-2 gap-2">
-                            <Button
-                                variant="outline"
-                                className="h-11 border-border bg-background hover:bg-secondary text-foreground rounded-xl font-medium"
-                                onClick={() => window.location.href = 'mailto:ubaid0345@proton.me'}
-                            >
-                                <Mail className="w-4 h-4 mr-2" /> Contact
-                            </Button>
-
-                            <Dialog>
-                                <DialogTrigger asChild>
-                                    <Button
-                                        variant="outline"
-                                        className="h-11 border-border bg-background hover:bg-secondary text-foreground rounded-xl font-medium"
-                                    >
-                                        <Heart className="w-4 h-4 mr-2 text-destructive" /> Donate
-                                    </Button>
-                                </DialogTrigger>
-                                <DialogContent className="max-w-[90%] rounded-2xl bg-card border border-border">
-                                    <DialogHeader>
-                                        <DialogTitle className="text-lg font-semibold text-center text-foreground">Support the App</DialogTitle>
-                                        <DialogDescription className="text-center text-sm text-muted-foreground">
-                                            Help Fursan grow
-                                        </DialogDescription>
-                                    </DialogHeader>
-                                    <div className="space-y-4 mt-2">
-                                        <CryptoField
-                                            label="Solana (SOL)"
-                                            address="3Aw78BrsdtBeZNpTQvAP6kjtUpGqDBqhr8dATzEZgp8V"
-                                        />
-                                        <CryptoField
-                                            label="Bitcoin (BTC)"
-                                            address="bc1q43nelc0skgng752wesq5ez4qzhgl09cksmlddx"
-                                        />
-                                    </div>
-                                </DialogContent>
-                            </Dialog>
-                        </div>
-                    </section>
-
-                    <p className="text-center text-xs text-muted-foreground pt-2 pb-4">
-                        NoFap Fursan v2.5
-                    </p>
-                </div>
+        <main className="px-4">
+          <p className="section-title">Appearance</p>
+          <div className="card overflow-hidden">
+            <ThemeSelector />
+            <div className="row justify-between">
+              <div>
+                <p className="text-sm font-medium text-ink">Simple mode</p>
+                <p className="text-xs text-ink-muted">Less decoration, easier to read</p>
+              </div>
+              <Switch
+                checked={simpleMode}
+                onCheckedChange={(checked) => {
+                  setSimpleMode(checked);
+                  luxuryClickVibrate();
+                }}
+                aria-label="Toggle simple mode"
+              />
             </div>
-            <BottomNav />
-        </div>
-    );
+          </div>
+
+          {isSupported && (
+            <>
+              <p className="section-title">Reminders</p>
+              <div className="card overflow-hidden">
+                <div className="row">
+                  <NotificationToggle />
+                </div>
+                <div className="px-4 py-3 border-t border-border">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm font-medium text-ink">How often</span>
+                    <span className="text-sm font-semibold text-ink tabular">{intervalHours}h</span>
+                  </div>
+                  <Slider
+                    value={[intervalHours]}
+                    onValueChange={(value) => setIntervalHours(value[0])}
+                    min={1}
+                    max={24}
+                    step={1}
+                    disabled={!enabled}
+                    aria-label="Reminder frequency in hours"
+                    className={cn(!enabled && "opacity-50 cursor-not-allowed")}
+                  />
+                  <div className="mt-2 flex justify-between text-[11px] text-ink-faint">
+                    <span>Every hour</span>
+                    <span>Every 24h</span>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+          <p className="section-title">Privacy &amp; Security</p>
+          <div className="card overflow-hidden">
+            <PrivacySettings />
+          </div>
+
+          <p className="section-title">Companion app</p>
+          <div className="card overflow-hidden">
+            <div className="p-4">
+              <p className="text-sm text-ink leading-relaxed">
+                For prayer times and adhan alerts, try our free companion app Noor Connect.
+              </p>
+              <Button
+                variant="outline"
+                onClick={() => window.open(NOOR_CONNECT_URL, "_blank")}
+                className="mt-3 w-full"
+              >
+                Get Noor Connect on F-Droid
+                <ExternalLink className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+
+          <p className="section-title">Your data</p>
+          <div className="card overflow-hidden">
+            <button
+              onClick={handleExportKey}
+              className="row w-full text-left"
+            >
+              <Download className="h-4 w-4 text-ink-muted" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-ink">Save my private key</p>
+                <p className="text-xs text-ink-muted">Back up your identity</p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-ink-faint" />
+            </button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <button className="row w-full text-left hover:bg-danger/5">
+                  <Trash2 className="h-4 w-4 text-danger" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-danger">Erase all data</p>
+                    <p className="text-xs text-ink-muted">Deletes everything on this device</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-ink-faint" />
+                </button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="rounded-2xl border border-border bg-bg">
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="text-ink">Erase all data?</AlertDialogTitle>
+                  <AlertDialogDescription className="text-ink-muted">
+                    This permanently deletes your private key, streak history and all local data.
+                    If you have not saved your key, your account cannot be recovered.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter className="gap-2">
+                  <AlertDialogCancel className="h-11 rounded-full border border-border bg-surface text-ink">
+                    Cancel
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleWipeData}
+                    className="h-11 rounded-full bg-danger text-white hover:bg-danger/90"
+                  >
+                    Erase everything
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+
+          <p className="section-title">Support</p>
+          <div className="card overflow-hidden">
+            <button
+              className="row w-full text-left"
+              onClick={() => window.location.href = "mailto:ubaid0345@proton.me"}
+            >
+              <Mail className="h-4 w-4 text-ink-muted" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-ink">Contact</p>
+                <p className="text-xs text-ink-muted">Questions or feedback</p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-ink-faint" />
+            </button>
+            <Dialog>
+              <DialogTrigger asChild>
+                <button className="row w-full text-left">
+                  <Heart className="h-4 w-4 text-danger" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-ink">Donate</p>
+                    <p className="text-xs text-ink-muted">Support the project</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-ink-faint" />
+                </button>
+              </DialogTrigger>
+              <DialogContent className="max-w-[90%] rounded-2xl bg-surface border border-border">
+                <DialogHeader>
+                  <DialogTitle className="text-lg font-semibold text-center text-ink">Support Fursan</DialogTitle>
+                  <DialogDescription className="text-center text-sm text-ink-muted">
+                    Help the project grow
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="mt-2 space-y-4">
+                  <CryptoField label="Solana (SOL)" address="3Aw78BrsdtBeZNpTQvAP6kjtUpGqDBqhr8dATzEZgp8V" />
+                  <CryptoField label="Bitcoin (BTC)" address="bc1q43nelc0skgng752wesq5ez4qzhgl09cksmlddx" />
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          <p className="pt-8 pb-4 text-center text-xs text-ink-faint">
+            Fursan v2.5 · MIT
+          </p>
+        </main>
+      </div>
+    </div>
+  );
 }
 
-function CryptoField({ label, address }: { label: string, address: string }) {
-    const handleCopy = () => {
-        navigator.clipboard.writeText(address);
-        toast.success("Address Copied", { description: `${label} address ready.` });
-        luxuryClickVibrate();
-    };
-
-    return (
-        <div className="space-y-1.5">
-            <p className="text-xs font-medium text-muted-foreground">{label}</p>
-            <button
-                onClick={handleCopy}
-                aria-label={`Copy ${label} address`}
-                className="w-full flex items-center justify-between p-3 rounded-xl bg-background border border-border hover:border-primary/40 transition-colors text-left"
-            >
-                <span className="font-mono text-xs text-muted-foreground truncate mr-3">{address}</span>
-                <Copy className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-            </button>
-        </div>
-    );
+function CryptoField({ label, address }: { label: string; address: string }) {
+  const handleCopy = () => {
+    navigator.clipboard.writeText(address);
+    toast.success(`${label} address copied`);
+    luxuryClickVibrate();
+  };
+  return (
+    <div>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-faint">{label}</p>
+      <button
+        onClick={handleCopy}
+        aria-label={`Copy ${label} address`}
+        className="mt-1.5 w-full flex items-center justify-between rounded-lg border border-border bg-bg px-3 py-2.5 text-left hover:border-ink-faint transition-colors"
+      >
+        <span className="font-mono text-[11px] text-ink-muted truncate mr-3">{address}</span>
+        <Copy className="h-3.5 w-3.5 text-ink-faint flex-shrink-0" />
+      </button>
+    </div>
+  );
 }

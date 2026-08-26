@@ -119,9 +119,9 @@ export function ActivityHeatmap({ startDate }: ActivityHeatmapProps) {
     const grid = generateDates();
 
     return (
-        <div className="w-full p-4 bg-card rounded-xl border border-border shadow-sm">
+        <div className="w-full p-4 bg-surface rounded-xl border border-border shadow-sm">
             <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <h3 className="text-sm font-medium text-ink-muted flex items-center gap-2">
                     Activity History
                 </h3>
             </div>
@@ -137,20 +137,20 @@ export function ActivityHeatmap({ startDate }: ActivityHeatmapProps) {
                         transition={{ delay: i * 0.005 }}
                         className={cn(
                             "w-3 h-3 rounded-[2px]",
-                            item.level === 0 && "bg-secondary/40",
-                            item.level === 1 && "bg-secondary/40 border border-border",
-                            item.level === 2 && "bg-secondary shadow-[0_0_8px_rgba(16,185,129,0.4)]"
+                            item.level === 0 && "bg-surface-2/40",
+                            item.level === 1 && "bg-surface-2/40 border border-border",
+                            item.level === 2 && "bg-surface-2 shadow-[0_0_8px_rgba(16,185,129,0.4)]"
                         )}
                         title={item.date.toLocaleDateString()}
                     />
                 ))}
             </div>
 
-            <div className="flex items-center justify-end gap-2 text-[10px] text-muted-foreground mt-2">
+            <div className="flex items-center justify-end gap-2 text-[10px] text-ink-muted mt-2">
                 <span>Less</span>
-                <div className="w-2 h-2 rounded-[2px] bg-secondary/40" />
-                <div className="w-2 h-2 rounded-[2px] bg-secondary/40" />
-                <div className="w-2 h-2 rounded-[2px] bg-secondary" />
+                <div className="w-2 h-2 rounded-[2px] bg-surface-2/40" />
+                <div className="w-2 h-2 rounded-[2px] bg-surface-2/40" />
+                <div className="w-2 h-2 rounded-[2px] bg-surface-2" />
                 <span>More</span>
             </div>
         </div>

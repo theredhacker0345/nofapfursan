@@ -140,7 +140,7 @@ export function SecuritySettings() {
                 {/* Export Section */}
                 <div className="space-y-4">
                     <div className="space-y-1">
-                        <Label className="text-[10px] uppercase text-muted-foreground">Private Access Key (nsec)</Label>
+                        <Label className="text-[10px] uppercase text-ink-muted">Private Access Key (nsec)</Label>
                         <div className="relative">
                             <div className="h-12 w-full border border-black bg-white px-3 py-2 flex items-center overflow-hidden">
                                 <span className="truncate font-mono text-xs w-full">
@@ -217,7 +217,7 @@ export function SecuritySettings() {
                         <DialogContent className="border-black rounded-none shadow-none max-w-[90vw] md:max-w-md">
                             <DialogHeader>
                                 <DialogTitle className="uppercase tracking-widest text-lg font-bold">Restore Identity</DialogTitle>
-                                <DialogDescription className="text-xs uppercase leading-relaxed text-muted-foreground">
+                                <DialogDescription className="text-xs uppercase leading-relaxed text-ink-muted">
                                     Paste your nsec key below. This will replace the current identity on this device.
                                 </DialogDescription>
                             </DialogHeader>

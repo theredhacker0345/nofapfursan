@@ -277,7 +277,7 @@ export function ChatRoom({ roomId }: ChatRoomProps) {
             <div key={message.id} className={`flex ${isOwn ? "justify-end" : "justify-start"} animate-in slide-in-from-bottom-1 duration-300`}>
               <div className={`max-w-[85%] space-y-1 ${isOwn ? "text-right" : "text-left"}`}>
                 <div className={`px-4 py-2 border border-black ${isOwn ? "bg-black text-white" : "bg-white text-black"} ${isSending ? "opacity-40 grayscale" : ""} ${isFailed ? "border-red-500 opacity-60" : ""}`}>
-                  <p className={`text-[8px] font-black uppercase tracking-widest mb-1 ${message.bonus === 'aura' ? 'aura-effect' : 'opacity-50'}`}>
+                  <p className={`text-[8px] font-black uppercase tracking-widest mb-1 ${message.bonus === 'aura' ? '' : 'opacity-50'}`}>
                     {profiles[message.pubkey] || `user:${message.pubkey.slice(0, 5)}`}
                     {message.streak !== undefined && (
                       <span className="ml-1 text-[7px] text-orange-500">
@@ -296,7 +296,7 @@ export function ChatRoom({ roomId }: ChatRoomProps) {
                   ) : isFailed ? (
                     <button
                       onClick={() => handleRetry(message)}
-                      className="flex items-center gap-1 text-destructive hover:text-destructive transition-colors cursor-pointer"
+                      className="flex items-center gap-1 text-danger hover:text-danger transition-colors cursor-pointer"
                     >
                       <AlertCircle className="w-2 h-2" />
                       <span className="text-[8px] uppercase font-black tracking-tighter">Failed</span>
@@ -316,7 +316,7 @@ export function ChatRoom({ roomId }: ChatRoomProps) {
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="p-4 border-t border-black bg-secondary/30">
+      <div className="p-4 border-t border-black bg-surface-2/30">
         <form onSubmit={handleSend} className="flex gap-2">
           <Input
             value={newMessage}

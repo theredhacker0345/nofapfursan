@@ -36,13 +36,13 @@ export function PrivacySettings() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center gap-3 p-4 bg-secondary/50 rounded-xl border border-border">
+            <div className="flex items-center gap-3 p-4 bg-surface-2/50 rounded-xl border border-border">
                 <ShieldAlert className="w-8 h-8 text-accent flex-shrink-0" />
                 <div className="min-w-0 flex-1">
-                    <h3 className="text-sm font-black uppercase tracking-widest text-foreground truncate">
+                    <h3 className="text-sm font-black uppercase tracking-widest text-ink truncate">
                         Your Data Is Safe
                     </h3>
-                    <p className="text-[10px] text-muted-foreground font-medium break-words leading-tight">
+                    <p className="text-[10px] text-ink-muted font-medium break-words leading-tight">
                         Your identity and streak are stored encrypted on this device only.
                     </p>
                 </div>
@@ -50,7 +50,7 @@ export function PrivacySettings() {
             </div>
 
             <div className="p-1">
-                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-destructive mb-3 flex items-center gap-2">
+                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-danger mb-3 flex items-center gap-2">
                     <Trash2 className="w-3 h-3" />
                     Danger Zone
                 </h4>
@@ -58,8 +58,8 @@ export function PrivacySettings() {
                 <AlertDialog>
                     <AlertDialogTrigger asChild>
                         <Button
-                            variant="destructive"
-                            className="w-full h-14 bg-destructive hover:bg-destructive/90 text-white font-black uppercase tracking-widest shadow-lg shadow-red-500/20"
+                            variant="danger"
+                            className="w-full h-14 bg-danger hover:bg-danger/90 text-white font-black uppercase tracking-widest shadow-lg shadow-red-500/20"
                             disabled={incinerating}
                         >
                             {incinerating ? "ERASING..." : "ERASE EVERYTHING"}
@@ -67,7 +67,7 @@ export function PrivacySettings() {
                     </AlertDialogTrigger>
                     <AlertDialogContent className="border-2 border-red-500 bg-white">
                         <AlertDialogHeader>
-                            <AlertDialogTitle className="text-destructive font-black uppercase tracking-widest">
+                            <AlertDialogTitle className="text-danger font-black uppercase tracking-widest">
                                 Erase All Data?
                             </AlertDialogTitle>
                             <AlertDialogDescription className="text-stone-600 font-medium">
@@ -80,7 +80,7 @@ export function PrivacySettings() {
                             <AlertDialogCancel className="font-bold uppercase tracking-widest">ABORT</AlertDialogCancel>
                             <AlertDialogAction
                                 onClick={handleIncinerate}
-                                className="bg-destructive text-white font-black uppercase tracking-widest hover:bg-destructive/90"
+                                className="bg-danger text-white font-black uppercase tracking-widest hover:bg-danger/90"
                             >
                                 CONFIRM DESTRUCTION
                             </AlertDialogAction>

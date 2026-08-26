@@ -17,7 +17,7 @@ export const MILESTONES: AvatarLevel[] = [
   { name: "The Start", emoji: "📿", minDays: 0, maxDays: 7, color: "text-emerald-400", description: "Your promise to yourself. Every journey starts with one step." },
   { name: "The Fighter", emoji: "⚔️", minDays: 8, maxDays: 40, color: "text-emerald-500", description: "You are fighting for change. Keep pushing forward." },
   { name: "The Guardian", emoji: "🛡️", minDays: 41, maxDays: 90, color: "text-amber-500", description: "You protect your progress. Discipline has become your shield." },
-  { name: "The Champion", emoji: "👑", minDays: 91, maxDays: Infinity, color: "text-gradient-legendary", description: "You are in full control. Be proud of how far you have come." },
+  { name: "The Champion", emoji: "👑", minDays: 91, maxDays: Infinity, color: "text-ink", description: "You are in full control. Be proud of how far you have come." },
 ];
 
 export const MOTIVATIONAL_QUOTES = [

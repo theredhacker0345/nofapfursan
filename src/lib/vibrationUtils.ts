@@ -57,8 +57,8 @@ export async function luxuryClickVibrate(): Promise<void> {
 }
 
 /**
- * Double "heartbeat" pulse - for milestone achievements
- * Pattern: short-pause-short (like a heartbeat)
+ * Double "" pulse - for milestone achievements
+ * Pattern: short-pause-short (like a )
  */
 export async function heartbeatVibrate(): Promise<void> {
     try {

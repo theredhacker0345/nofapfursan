@@ -38,8 +38,8 @@ export function ThemeSelector() {
                             className={cn(
                                 "relative w-full text-left p-4 rounded-xl border transition-colors flex items-center gap-4",
                                 isSelected
-                                    ? 'border-primary bg-secondary/50'
-                                    : 'border-border bg-background hover:bg-secondary/40',
+                                    ? 'border-ink bg-surface-2/50'
+                                    : 'border-border bg-bg hover:bg-surface-2/40',
                                 !isUnlocked && 'opacity-60 cursor-not-allowed'
                             )}
                         >
@@ -50,21 +50,21 @@ export function ThemeSelector() {
                             />
 
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-foreground flex items-center gap-2">
+                                <p className="text-sm font-medium text-ink flex items-center gap-2">
                                     {theme.name}
                                     {isSelected && (
-                                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-primary">
+                                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-ink">
                                             <Check className="w-3 h-3" /> Active
                                         </span>
                                     )}
                                 </p>
-                                <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                                <p className="text-xs text-ink-muted mt-0.5 truncate">
                                     {isUnlocked ? theme.description : `Unlocks at day ${theme.minDays}`}
                                 </p>
                             </div>
 
                             {!isUnlocked ? (
-                                <Lock className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                                <Lock className="w-4 h-4 text-ink-muted flex-shrink-0" />
                             ) : !isSelected && (
                                 <Button
                                     size="sm"

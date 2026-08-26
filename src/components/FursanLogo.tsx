@@ -19,7 +19,7 @@ export function FursanLogo({
     style,
     ...props
 }: FursanLogoProps) {
-    const glowClass = withGlow ? 'fursan-logo-glow' : '';
+    const glowClass = withGlow ? '' : '';
 
     return (
         <img

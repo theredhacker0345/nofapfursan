@@ -50,10 +50,10 @@ export function ChatRoomList({ selectedRoom, onSelectRoom }: ChatRoomListProps) 
   if (loading) {
     return (
       <div className="streak-card animate-pulse">
-        <div className="h-6 bg-secondary rounded mb-4 w-1/2" />
+        <div className="h-6 bg-surface-2 rounded mb-4 w-1/2" />
         <div className="space-y-3">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-16 bg-secondary rounded" />
+            <div key={i} className="h-16 bg-surface-2 rounded" />
           ))}
         </div>
       </div>
@@ -63,8 +63,8 @@ export function ChatRoomList({ selectedRoom, onSelectRoom }: ChatRoomListProps) 
   return (
     <div className="streak-card">
       <div className="flex items-center gap-2 mb-4">
-        <MessageSquare className="w-5 h-5 text-primary" />
-        <h3 className="text-lg font-display text-foreground">Chat Rooms</h3>
+        <MessageSquare className="w-5 h-5 text-ink" />
+        <h3 className="text-lg font-display text-ink">Chat Rooms</h3>
       </div>
 
       <div className="space-y-2">
@@ -74,17 +74,17 @@ export function ChatRoomList({ selectedRoom, onSelectRoom }: ChatRoomListProps) 
             onClick={() => onSelectRoom(room.id)}
             className={`w-full p-3 rounded-xl text-left transition-all ${
               selectedRoom === room.id
-                ? "bg-primary/20 border border-primary/50"
-                : "bg-secondary/50 hover:bg-secondary"
+                ? "bg-ink/20 border border-ink/50"
+                : "bg-surface-2/50 hover:bg-surface-2"
             }`}
           >
             <div className="flex items-center gap-3">
               <span className="text-2xl">{room.emoji}</span>
               <div>
-                <p className={`font-medium ${selectedRoom === room.id ? "text-primary" : "text-foreground"}`}>
+                <p className={`font-medium ${selectedRoom === room.id ? "text-ink" : "text-ink"}`}>
                   {room.name}
                 </p>
-                <p className="text-xs text-muted-foreground line-clamp-1">
+                <p className="text-xs text-ink-muted line-clamp-1">
                   {room.description}
                 </p>
               </div>

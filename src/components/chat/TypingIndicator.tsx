@@ -54,12 +54,12 @@ export function TypingIndicator({ roomId, currentUserId }: TypingIndicatorProps)
   };
 
   return (
-    <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground animate-pulse">
+    <div className="flex items-center gap-2 px-3 py-2 text-sm text-ink-muted animate-pulse">
       <div className="flex -space-x-1">
         {typingUsers.slice(0, 3).map((user, i) => (
           <span
             key={i}
-            className="w-5 h-5 rounded-full bg-secondary flex items-center justify-center text-xs border border-background"
+            className="w-5 h-5 rounded-full bg-surface-2 flex items-center justify-center text-xs border border-background"
           >
             {user.avatar_emoji}
           </span>
@@ -67,9 +67,9 @@ export function TypingIndicator({ roomId, currentUserId }: TypingIndicatorProps)
       </div>
       <span>{getTypingText()}</span>
       <span className="flex gap-0.5">
-        <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-        <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-        <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+        <span className="w-1.5 h-1.5 bg-surface-2 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+        <span className="w-1.5 h-1.5 bg-surface-2 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+        <span className="w-1.5 h-1.5 bg-surface-2 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
       </span>
     </div>
   );

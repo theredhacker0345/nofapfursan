@@ -83,42 +83,42 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-bg flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-md animate-in fade-in zoom-in duration-700">
         <Button
           variant="ghost"
-          className="mb-8 rounded-xl border-border text-foreground hover:bg-secondary/50 uppercase text-[10px] font-black tracking-widest shadow-sm"
+          className="mb-8 rounded-xl border-border text-ink hover:bg-surface-2/50 uppercase text-[10px] font-black tracking-widest shadow-sm"
           onClick={() => navigate("/")}
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
           Cancel
         </Button>
 
-        <div className="royal-card p-10 md:p-12 space-y-10">
+        <div className="card p-10 md:p-12 space-y-10">
           <div className="flex flex-col items-center gap-6">
             <div className="relative">
-              <div className="absolute inset-0 bg-primary/10 blur-2xl rounded-full scale-150 animate-pulse" />
-              <FursanLogo className="w-20 h-20 fursan-logo-glow relative z-10" />
+              <div className="absolute inset-0 bg-ink/10 blur-2xl rounded-full scale-150 animate-pulse" />
+              <FursanLogo className="w-20 h-20  relative z-10" />
             </div>
             <div className="text-center">
-              <h1 className="text-4xl font-display tracking-tight text-foreground">Welcome Back</h1>
-              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground mt-1">Your Identity, Encrypted</p>
-              <p className="text-xs font-medium text-muted-foreground italic mt-2">"Discipline over desire."</p>
+              <h1 className="text-4xl font-display tracking-tight text-ink">Welcome Back</h1>
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-ink-muted mt-1">Your Identity, Encrypted</p>
+              <p className="text-xs font-medium text-ink-muted italic mt-2">"Discipline over desire."</p>
             </div>
           </div>
 
           <div className="space-y-6">
             <div className="space-y-3">
-              <Label htmlFor="privateKey" className="text-[11px] font-black uppercase tracking-widest text-foreground">Credential Input (nsec)</Label>
+              <Label htmlFor="privateKey" className="text-[11px] font-black uppercase tracking-widest text-ink">Credential Input (nsec)</Label>
               <div className="relative group">
-                <Key className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-primary group-focus-within:text-muted-foreground transition-colors" />
+                <Key className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-ink group-focus-within:text-ink-muted transition-colors" />
                 <Input
                   id="privateKey"
                   type="password"
                   placeholder="NSEC_PROTOCOL_KEY..."
                   value={privateKey}
                   onChange={(e) => setPrivateKey(e.target.value)}
-                  className="pl-12 h-14 rounded-xl border-border border-2 bg-secondary/40 focus-visible:ring-primary font-mono text-xs text-foreground placeholder:text-muted-foreground/50"
+                  className="pl-12 h-14 rounded-xl border-border border-2 bg-surface-2/40 focus-visible:ring-primary font-mono text-xs text-ink placeholder:text-ink-muted/50"
                 />
               </div>
             </div>
@@ -126,7 +126,7 @@ const Auth = () => {
             <Button
               onClick={handleLogin}
               disabled={loading || !privateKey}
-              className="w-full h-16 bg-primary text-white rounded-xl uppercase text-xs font-black tracking-widest shadow-xl shadow-sm hover:scale-[1.01] active:scale-95 transition-all"
+              className="w-full h-16 bg-ink text-white rounded-xl uppercase text-xs font-black tracking-widest shadow-xl shadow-sm hover:scale-[1.01] active:scale-95 transition-all"
             >
               {loading ? <Loader2 className="w-5 h-5 mr-3 animate-spin" /> : <ShieldCheck className="w-5 h-5 mr-3" />}
               Initialize Link
@@ -135,7 +135,7 @@ const Auth = () => {
 
           <div className="relative">
             <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border"></span></div>
-            <div className="relative flex justify-center text-[10px] uppercase font-black tracking-widest"><span className="bg-[#FAF6F0] px-4 text-muted-foreground/70">Alternative Portals</span></div>
+            <div className="relative flex justify-center text-[10px] uppercase font-black tracking-widest"><span className="bg-[#FAF6F0] px-4 text-ink-muted/70">Alternative Portals</span></div>
           </div>
 
           <div className="grid gap-4">
@@ -143,9 +143,9 @@ const Auth = () => {
               onClick={handleExtensionLogin}
               disabled={loading}
               variant="outline"
-              className="w-full h-14 rounded-xl border-border bg-white text-foreground font-bold uppercase text-[11px] tracking-widest hover:bg-secondary transition-all shadow-sm"
+              className="w-full h-14 rounded-xl border-border bg-white text-ink font-bold uppercase text-[11px] tracking-widest hover:bg-surface-2 transition-all shadow-sm"
             >
-              <User className="w-4 h-4 mr-2 text-primary" />
+              <User className="w-4 h-4 mr-2 text-ink" />
               Nostr Extension (NIP-07)
             </Button>
 
@@ -153,16 +153,16 @@ const Auth = () => {
               onClick={handleGenerate}
               disabled={loading}
               variant="outline"
-              className="w-full h-14 rounded-xl border-border bg-white text-foreground font-bold uppercase text-[11px] tracking-widest hover:bg-secondary transition-all shadow-sm"
+              className="w-full h-14 rounded-xl border-border bg-white text-ink font-bold uppercase text-[11px] tracking-widest hover:bg-surface-2 transition-all shadow-sm"
             >
-              <Sparkles className="w-4 h-4 mr-2 text-primary" />
+              <Sparkles className="w-4 h-4 mr-2 text-ink" />
               Generate Random ID
             </Button>
           </div>
         </div>
 
         <div className="mt-12 text-center">
-          <p className="text-[10px] font-bold text-foreground/20 uppercase tracking-[0.4em]">Fursan Persistence Engine v2.5.0</p>
+          <p className="text-[10px] font-bold text-ink/20 uppercase tracking-[0.4em]">Fursan Persistence Engine v2.5.0</p>
         </div>
       </div>
     </div>

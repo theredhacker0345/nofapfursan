@@ -1,98 +1,58 @@
-import { useRef } from "react";
-import { Clock, Calendar } from "lucide-react";
 import { calculateStreak } from "@/lib/streakUtils";
-import { motion } from "framer-motion";
-import { DynamicFire } from "@/components/DynamicComponents";
-import { Haptics, ImpactStyle } from "@capacitor/haptics";
 
 interface StreakCounterProps {
   startDate: string | null;
-  isSyncing?: boolean;
-  isOnline?: boolean;
-  pendingCount?: number;
 }
 
-export function StreakCounter({ startDate, isSyncing, isOnline, pendingCount }: StreakCounterProps) {
-  const streak = calculateStreak(startDate);
-  const prevDaysRef = useRef(streak.days);
-
-  // Trigger haptics if day count increases
-  if (streak.days > prevDaysRef.current && startDate) {
-    Haptics.impact({ style: ImpactStyle.Medium }).catch(() => { });
-    prevDaysRef.current = streak.days;
+export function StreakCounter({ startDate }: StreakCounterProps) {
+  if (!startDate) {
+    return (
+      <div className="py-12 text-center">
+        <p className="text-[64px] font-display font-extrabold leading-none tracking-tighter text-ink-faint tabular">
+          0
+        </p>
+        <p className="mt-2 text-[13px] font-medium uppercase tracking-[0.18em] text-ink-faint">
+          days
+        </p>
+        <p className="mx-auto mt-6 max-w-[260px] text-sm text-ink-muted">
+          Begin your streak today. One day at a time.
+        </p>
+      </div>
+    );
   }
 
-  const isNewUser = !startDate;
+  const { days, hours, minutes } = calculateStreak(startDate);
+  const total = Math.max(days * 24 * 60 + hours * 60 + minutes, 1);
+  // Simple progress vs. a 90-day checkpoint so the bar feels purposeful
+  const progress = Math.min(days / 90, 1);
 
   return (
-    <div className="royal-card relative p-6 page-transition">
-      <div className="flex items-center justify-between mb-4 px-1">
-        <div className="flex items-center gap-2">
-          <DynamicFire streakDays={streak.days} className="w-5 h-5 text-primary" />
-          <span className="text-sm font-medium text-foreground">Current streak</span>
-        </div>
+    <div className="text-center">
+      <p className="text-[120px] font-display font-extrabold leading-[0.95] tracking-tighter text-ink tabular">
+        {days}
+      </p>
+      <p className="mt-1 text-[13px] font-semibold uppercase tracking-[0.18em] text-ink-muted">
+        days strong
+      </p>
 
-        {startDate && (
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary-container text-on-secondary-container text-[11px] font-medium">
-            {isSyncing ? (
-              <>
-                <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
-                Syncing
-              </>
-            ) : isOnline ? (
-              <>
-                <div className="w-1.5 h-1.5 bg-tertiary rounded-full" />
-                Synced
-              </>
-            ) : (
-              <>
-                <div className="w-1.5 h-1.5 bg-destructive rounded-full" />
-                Offline
-              </>
-            )}
-          </div>
-        )}
+      {/* Hairline progress bar toward 90 days */}
+      <div className="mx-auto mt-8 h-px w-full max-w-[260px] bg-border">
+        <div
+          className="h-px bg-accent transition-all duration-700"
+          style={{ width: `${progress * 100}%` }}
+          aria-hidden="true"
+        />
       </div>
 
-      {isNewUser ? (
-        <div className="text-center py-10 rounded-xl bg-secondary-container/60">
-          <p className="text-2xl font-bold tracking-tight mb-2 text-on-secondary-container">Begin your journey</p>
-          <p className="text-on-secondary-container/70 text-sm">
-            Start your streak today and see how far you can go
-          </p>
-        </div>
-      ) : (
-        <div className="relative">
-          <div className="flex flex-col sm:flex-row items-center sm:items-baseline justify-center gap-1 sm:gap-3 mb-8">
-            <motion.span
-              key={streak.days}
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              className="text-7xl sm:text-8xl font-bold tracking-tighter leading-none text-primary"
-            >
-              {streak.days}
-            </motion.span>
-            <span className="text-xl font-medium text-muted-foreground">days</span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-secondary-container">
-              <Clock className="w-4 h-4 text-on-secondary-container/70 flex-shrink-0" />
-              <div className="min-w-0">
-                <p className="text-lg font-semibold leading-none text-on-secondary-container truncate">{streak.hours}</p>
-                <p className="text-[11px] text-on-secondary-container/60 truncate">hours</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-secondary-container">
-              <Calendar className="w-4 h-4 text-on-secondary-container/70 flex-shrink-0" />
-              <div className="min-w-0">
-                <p className="text-lg font-semibold leading-none text-on-secondary-container truncate">{streak.minutes}</p>
-                <p className="text-[11px] text-on-secondary-container/60 truncate">minutes</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <div className="mt-3 flex items-center justify-center gap-4 text-[12px] text-ink-faint tabular">
+        <span>{hours}h</span>
+        <span className="text-ink-faint/40">·</span>
+        <span>{minutes}m</span>
+        <span className="text-ink-faint/40">·</span>
+        <span className="font-medium text-ink-muted">
+          {total.toLocaleString()} min
+        </span>
+      </div>
     </div>
   );
 }

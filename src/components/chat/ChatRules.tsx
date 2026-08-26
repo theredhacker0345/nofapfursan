@@ -20,13 +20,13 @@ export function ChatRules() {
   if (dismissed) return null;
 
   return (
-    <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 mb-4 animate-fade-in">
+    <div className="bg-ink/10 border border-ink/20 rounded-xl p-4 mb-4 animate-fade-in">
       <div className="flex items-start justify-between gap-3">
         <div className="flex gap-3">
-          <Info className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+          <Info className="w-5 h-5 text-ink flex-shrink-0 mt-0.5" />
           <div>
-            <h4 className="font-medium text-foreground text-sm mb-2">Community Guidelines</h4>
-            <ul className="text-xs text-muted-foreground space-y-1">
+            <h4 className="font-medium text-ink text-sm mb-2">Community Guidelines</h4>
+            <ul className="text-xs text-ink-muted space-y-1">
               <li>• Be supportive and respectful to others on their journey</li>
               <li>• No hate speech, slurs, or harassment</li>
               <li>• No explicit or sexual content</li>
@@ -39,7 +39,7 @@ export function ChatRules() {
           size="icon"
           aria-label="Dismiss community guidelines"
           onClick={handleDismiss}
-          className="flex-shrink-0 h-8 w-8 rounded-full hover:bg-primary/20"
+          className="flex-shrink-0 h-8 w-8 rounded-full hover:bg-ink/20"
         >
           <X className="w-4 h-4" />
         </Button>

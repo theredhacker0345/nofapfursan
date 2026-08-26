@@ -1,23 +1,4 @@
-/* Fonts loaded via index.html for better CLS performance */
-
-/* Fallback font adjustments to reduce CLS */
-@font-face {
-  font-family: 'Bebas Neue Fallback';
-  src: local('Arial');
-  size-adjust: 95%;
-  ascent-override: 100%;
-  descent-override: 20%;
-  line-gap-override: 0%;
-}
-
-@font-face {
-  font-family: 'Inter Fallback';
-  src: local('Arial');
-  size-adjust: 107%;
-  ascent-override: 90%;
-  descent-override: 22%;
-  line-gap-override: 0%;
-}
+/* Fursan — design tokens (single source of truth) */
 
 @tailwind base;
 @tailwind components;
@@ -25,566 +6,121 @@
 
 @layer base {
   :root {
-    /* Fursan — Warm Cream & Bronze (refined, low-saturation) */
-    --background: 40 33% 97%;
-    /* Warm off-white */
+    /* ── Tier 1: Surfaces (warm off-white canvas, no rainbow) ────── */
+    --bg: 40 30% 97%;              /* page background */
+    --surface: 40 25% 99%;         /* cards / list rows */
+    --surface-2: 36 18% 94%;       /* recessed / input fields */
+    --border: 33 14% 88%;          /* 1px dividers */
+    --border-strong: 30 12% 78%;   /* emphasized dividers */
 
-    --foreground: 25 15% 14%;
-    /* Soft near-black brown */
+    /* ── Tier 2: Ink (the type system) ───────────────────────────── */
+    --ink: 25 22% 12%;             /* primary text — near-black brown */
+    --ink-muted: 25 12% 38%;       /* secondary text */
+    --ink-faint: 28 8% 58%;        /* tertiary / hints */
 
-    --card: 40 30% 99%;
-    --card-foreground: 25 15% 14%;
+    /* ── Tier 3: Accent (one confident bronze, used sparingly) ──── */
+    --accent: 28 62% 38%;          /* warm bronze */
+    --accent-hover: 28 62% 32%;
+    --accent-ink: 40 30% 97%;      /* on-accent text */
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 25 15% 14%;
+    /* ── Status (used only for actual status, not buttons) ──────── */
+    --success: 152 40% 30%;
+    --warning: 30 80% 45%;
+    --danger: 0 60% 42%;
 
-    --primary: 33 45% 40%;
-    /* Antique bronze */
-    --primary-foreground: 40 30% 97%;
-
-    --secondary: 38 25% 92%;
-    /* Soft warm grey */
-    --secondary-foreground: 25 15% 20%;
-
-    --muted: 38 20% 90%;
-    --muted-foreground: 28 10% 42%;
-
-    --accent: 152 30% 34%;
-    /* Muted deep green */
-    --accent-foreground: 0 0% 100%;
-
-    --destructive: 0 60% 46%;
-    --destructive-foreground: 0 0% 98%;
-
-    --success: 152 30% 34%;
-    --success-foreground: 0 0% 100%;
-
-    --border: 33 15% 86%;
-    /* Neutral warm border */
-    --input: 36 15% 90%;
-    --ring: 33 45% 40%;
-
-    /* ── Material 3 tonal tokens ─────────────────────────── */
-    --primary-container: 32 48% 88%;
-    /* soft bronze wash */
-    --on-primary-container: 28 45% 24%;
-
-    --secondary-container: 38 32% 89%;
-    /* warm sand */
-    --on-secondary-container: 28 22% 26%;
-
-    --tertiary: 152 30% 34%;
-    --on-tertiary: 0 0% 100%;
-    --tertiary-container: 148 22% 87%;
-    /* soft sage */
-    --on-tertiary-container: 152 28% 22%;
-
-    --surface-variant: 38 22% 92%;
-    --on-surface-variant: 28 10% 38%;
-    --outline: 30 10% 62%;
-    --outline-variant: 33 15% 86%;
-
-    --error-container: 4 64% 90%;
-    --on-error-container: 0 55% 28%;
-
-    --radius: 0.75rem;
-
-    --font-display: 'Bebas Neue', 'Bebas Neue Fallback', Arial, sans-serif;
-    --font-body: 'Inter', 'Inter Fallback', Arial, sans-serif;
+    /* Shape & type */
+    --radius: 0.625rem;
+    --font-display: 'Manrope', 'Inter', system-ui, sans-serif;
+    --font-body: 'Inter', 'Inter Fallback', system-ui, sans-serif;
   }
 }
 
 @layer base {
   * {
-    @apply border-border;
     -webkit-tap-highlight-color: transparent;
-    /* Remove the blue overlay on tap */
   }
 
-  html,
-  body {
-    min-height: 100%;
-    width: 100%;
+  html, body {
     margin: 0;
     padding: 0;
+    width: 100%;
     overflow-x: hidden;
-    /* Use standard scrolling but ensure it's smooth on mobile */
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior-y: auto;
-    -webkit-user-select: none;
-    /* Disable selection felt in long-pressing buttons */
-    user-select: none;
-    touch-action: pan-y pinch-zoom;
-    /* Allow vertical pan and pinch zoom, but prevent horizontal pan issues */
-    scroll-behavior: smooth;
-  }
-
-  input,
-  textarea {
-    user-select: text;
-    /* Allow text selection in inputs */
+    -webkit-text-size-adjust: 100%;
   }
 
   body {
-    @apply bg-background text-foreground font-body antialiased;
+    @apply bg-bg text-ink font-body antialiased;
     font-family: var(--font-body);
-    /* Removed hardcoded background-color to allow theme variables to work */
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
-  h1,
-  h2,
-  h3,
-  .font-display {
-    font-family: var(--font-display);
-    letter-spacing: 0.05em;
+  input, textarea {
+    -webkit-user-select: text;
+    user-select: text;
   }
 
-  /* Standard Android-like shadows */
-  .shadow-md-android {
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  ::selection {
+    background: hsl(var(--accent) / 0.18);
+  }
+
+  :focus-visible {
+    outline: 2px solid hsl(var(--accent));
+    outline-offset: 2px;
+    border-radius: 4px;
   }
 }
 
 @layer utilities {
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
   .safe-top {
     padding-top: env(safe-area-inset-top, 0px);
   }
-
-  .safe-bottom {
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+  .font-display {
+    font-family: var(--font-display);
+    font-feature-settings: "ss01", "cv11";
+    letter-spacing: -0.01em;
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
   }
 }
 
 @layer components {
-
-  /* Card — calm, flat, mature */
-  .royal-card {
-    background: hsl(var(--card));
-    border: 1px solid hsl(var(--border));
-    border-radius: 1.25rem;
-    box-shadow: 0 1px 2px hsl(var(--foreground) / 0.04);
-    width: 95% !important;
-    margin: 0 auto !important;
-    position: relative;
-    overflow: hidden;
+  /* List row used in Settings, Profile, etc. — full-width click target,
+     soft surface, 1px hairline border, no shadows. */
+  .row {
+    @apply flex items-center gap-3 w-full px-4 py-3 bg-surface border-b border-border;
+    min-height: 56px;
+  }
+  .row:last-child {
+    @apply border-b-0;
   }
 
-  .stagger-item {
-    opacity: 0;
-    will-change: transform, opacity;
-    animation: stagger-fade-in 0.6s cubic-bezier(0.23, 1, 0.32, 1) forwards;
-    width: 95% !important;
-    margin: 0 auto !important;
+  /* Section heading above a list. */
+  .section-title {
+    @apply px-4 pt-8 pb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-faint;
   }
 
-  /* Staggered entrance animations */
-  @keyframes stagger-fade-in {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+  /* Hairline divider */
+  .hr {
+    @apply h-px bg-border w-full;
   }
 
-  /* Secondary definition removed to avoid conflict */
-
-  /* Floating animation */
-  @keyframes float {
-
-    0%,
-    100% {
-      transform: translateY(0);
-    }
-
-    50% {
-      transform: translateY(-5px);
-    }
-  }
-
-  .animate-float {
-    animation: float 3s ease-in-out infinite;
-  }
-
-  /* Legacy dark-glass support - now maps to royal-card */
-  .dark-glass-card {
-    @apply royal-card p-5;
-  }
-
-  /* Gold text styling */
-  .gold-text {
-    color: hsl(var(--primary));
-  }
-
-  .cream-text {
-    color: hsl(var(--muted-foreground));
-    /* Warm brown */
-  }
-
-  .ivory-text {
-    color: hsl(var(--foreground) / 0.8);
-  }
-
-  /* Emerald accent text */
-  .emerald-text {
-    color: hsl(var(--accent));
-  }
-
-  /* Fursan Logo Glow Effect */
-  .fursan-logo-glow {
-    filter: drop-shadow(0 1px 2px hsl(var(--foreground) / 0.1));
-  }
-
-  /* Gradient text */
-  .text-gradient-gold {
-    background: linear-gradient(135deg, hsl(var(--foreground)) 0%, hsl(var(--primary)) 60%, hsl(var(--foreground)) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-
-  .text-gradient-legendary {
-    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 50%, hsl(var(--primary)) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-
-  /* Minimalist Scrollbar */
-  ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-
-  ::-webkit-scrollbar-track {
-    background: hsl(var(--primary) / 0.1);
-  }
-
-  ::-webkit-scrollbar-thumb {
-    background: hsl(var(--primary) / 0.4);
-    border-radius: 3px;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--primary) / 0.6);
-  }
-
-  /* Safe area for iOS notched devices */
-  .safe-area-bottom {
-    padding-bottom: env(safe-area-inset-bottom, 0);
-  }
-
-  /* Bonus badge effect - subtle */
-  .aura-effect {
-    position: relative;
-    display: inline-block;
-    z-index: 10;
-  }
-
-  .aura-effect::after {
-    content: '';
-    position: absolute;
-    inset: -2px -6px;
-    background: hsl(var(--primary) / 0.15);
-    z-index: -1;
-    filter: blur(6px);
-    opacity: 0.8;
-    pointer-events: none;
-    border-radius: 8px;
-  }
-
-  /* Pulse animation for dormant state */
-  .pulse-dormant {
-    animation: pulse-dormant 2s ease-in-out infinite;
-  }
-
-  @keyframes pulse-dormant {
-
-    0%,
-    100% {
-      opacity: 0.7;
-      transform: scale(1);
-    }
-
-    50% {
-      opacity: 1;
-      transform: scale(1.05);
-    }
-  }
-
-  /* Heartbeat animation for milestones */
-  .heartbeat {
-    animation: heartbeat 1.5s ease-in-out infinite;
-  }
-
-  @keyframes heartbeat {
-    0% {
-      transform: scale(1);
-    }
-
-    14% {
-      transform: scale(1.1);
-    }
-
-    28% {
-      transform: scale(1);
-    }
-
-    42% {
-      transform: scale(1.1);
-    }
-
-    70% {
-      transform: scale(1);
-    }
-  }
-
-  /* Islamic Page Transition */
-  .page-transition {
-    animation: page-enter 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  @keyframes page-enter {
-    0% {
-      opacity: 0;
-      transform: translateY(12px);
-    }
-
-    100% {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  /* Islamic geometric pattern overlay for transitions */
-  .islamic-pattern-overlay {
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    z-index: 9999;
-    background:
-      radial-gradient(circle at center, transparent 0%, rgba(245, 200, 66, 0.1) 100%);
-  }
-
-  .animate-spin-slow {
-    animation: spin-slow 12s linear infinite;
-  }
-
-  @keyframes spin-slow {
-    from {
-      transform: rotate(0deg);
-    }
-
-    to {
-      transform: rotate(360deg);
-    }
-  }
-
-  /* Button improvements */
-  .btn-gold {
-    @apply bg-primary text-primary-foreground font-semibold;
-    @apply hover:bg-primary/90;
-    @apply transition-all duration-300;
-  }
-
-  .btn-royal {
-    @apply bg-card border border-border;
-    @apply text-foreground font-semibold;
-    @apply hover:bg-secondary;
-    @apply transition-all duration-300;
+  /* Card (used sparingly — most things are list rows) */
+  .card {
+    @apply bg-surface border border-border rounded-2xl;
   }
 }
 
-/* 🌿 MINIMALIST MODE STYLES */
-.minimalist-mode {
-
-  /* Hide decorative rings and secondary labels */
-  .decorative-ring,
-  .aura-badge,
-  .royal-card::before,
-  .sub-label,
-  .decorative-icon,
-  .islamic-pattern-overlay {
-    display: none !important;
-  }
-
-  /* Simplify cards */
-  .royal-card {
-    box-shadow: none !important;
-    border-width: 1px !important;
-    border-color: hsl(var(--border) / 0.5) !important;
-    border-radius: 1rem !important;
-  }
-
-  @media (max-width: 767px) {
-    .royal-card {
-      border-radius: 0 !important;
-    }
-  }
-
-  /* Remove background gradients and glow */
-  .bg-gradient-to-br,
-  .bg-gradient-to-b,
-  .bg-gradient-to-r,
-  .fursan-logo-glow {
-    background: hsl(var(--card)) !important;
-    filter: none !important;
-    box-shadow: none !important;
-  }
-
-  /* Flatten text gradients */
-  .text-gradient-gold,
-  .text-gradient-legendary {
-    background: none !important;
-    -webkit-text-fill-color: currentColor !important;
-    color: hsl(var(--primary)) !important;
-  }
-
-  /* Disable animations that might be distracting */
-  .animate-spin-slow,
-  .animate-float,
-  .aura-effect::after {
-    animation: none !important;
-    display: none !important;
-  }
-}
-
-/* ♿ ACCESSIBILITY: Respect users who prefer reduced motion
-   (vestibular disorders, motion sensitivity — see WCAG 2.3.3) */
+/* Reduced motion (WCAG 2.3.3) */
 @media (prefers-reduced-motion: reduce) {
-
-  *,
-  *::before,
-  *::after {
+  *, *::before, *::after {
     animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
-}
-
-/* ♿ ACCESSIBILITY: Visible keyboard focus for all interactive elements
-   (see WCAG 2.4.7) */
-:focus-visible {
-  outline: 2px solid hsl(var(--primary));
-  outline-offset: 2px;
-}
-
-/* ♿ ACCESSIBILITY: Minimum comfortable touch target for primary controls */
-.tap-target {
-  min-width: 44px;
-  min-height: 44px;
-}
-
-/* 📱 MOBILE APP FEEL OVERRIDES (Phone only) */
-@media (max-width: 767px) {
-  .royal-card {
-    width: 100% !important;
-    margin: 0 !important;
-    border-radius: 0;
-    border-left: none;
-    border-right: none;
-    box-shadow: none;
-    border-top: 1px solid hsl(var(--border) / 0.3);
-    border-bottom: 1px solid hsl(var(--border) / 0.3);
-  }
-
-  .stagger-item {
-    width: 100% !important;
-    margin: 0 !important;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-  }
-
-  .container {
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-    max-width: 100% !important;
-  }
-
-  /* Compact spacing for mobile */
-  .space-y-6> :not([hidden])~ :not([hidden]) {
-    --tw-space-y-reverse: 0;
-    margin-top: 1rem;
-    margin-bottom: 1rem;
-  }
-
-  /* Make bottom nav feel more like a native bar */
-  .bottom-nav {
-    height: 70px;
-    padding-bottom: env(safe-area-inset-bottom, 1rem);
-    border-top: 1px solid hsl(var(--border) / 0.5);
-    background: hsl(var(--background) / 0.95);
-    backdrop-filter: blur(10px);
-  }
-}
-
-/* 💻 TABLET & LAPTOP PRESERVATION */
-@media (min-width: 768px) {
-  .royal-card {
-    /* Keep existing royal card styles */
-    max-width: 500px;
-  }
-
-  .container {
-    max-width: 32rem;
-    /* Initial max-w-lg feel */
-  }
-}
-
-/* 🌿 MINIMALIST MODE STYLES */
-.minimalist-mode {
-
-  /* Hide decorative rings and secondary labels */
-  .decorative-ring,
-  .aura-badge,
-  .royal-card::before,
-  .sub-label,
-  .decorative-icon,
-  .islamic-pattern-overlay {
-    display: none !important;
-  }
-
-  /* Simplify cards */
-  .royal-card {
-    box-shadow: none !important;
-    border-width: 1px !important;
-    border-color: hsl(var(--border) / 0.5) !important;
-    border-radius: 1rem !important;
-  }
-
-  @media (max-width: 767px) {
-    .royal-card {
-      border-radius: 0 !important;
-    }
-  }
-
-  /* Remove background gradients and glow */
-  .bg-gradient-to-br,
-  .bg-gradient-to-b,
-  .bg-gradient-to-r,
-  .fursan-logo-glow {
-    background: hsl(var(--card)) !important;
-    filter: none !important;
-    box-shadow: none !important;
-  }
-
-  /* Flatten text gradients */
-  .text-gradient-gold,
-  .text-gradient-legendary {
-    background: none !important;
-    -webkit-text-fill-color: currentColor !important;
-    color: hsl(var(--primary)) !important;
-  }
-
-  /* Disable animations that might be distracting */
-  .animate-spin-slow,
-  .animate-float,
-  .aura-effect::after {
-    animation: none !important;
-    display: none !important;
   }
 }

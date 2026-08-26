@@ -4,9 +4,9 @@ import { MessageCircle, Users, Sparkles } from "lucide-react";
 
 export function CommunityButton() {
   return (
-    <div className="royal-card p-6 text-center relative page-transition" style={{ animationDelay: "0.35s" }}>
+    <div className="card p-6 text-center relative animate-fade-in" style={{ animationDelay: "0.35s" }}>
       <div className="absolute top-0 right-0 p-4 opacity-5">
-        <Users className="w-20 h-20 text-primary" />
+        <Users className="w-20 h-20 text-ink" />
       </div>
 
       <div className="flex flex-col items-center gap-3 mb-6 relative z-10">
@@ -14,12 +14,12 @@ export function CommunityButton() {
           <MessageCircle className="w-6 h-6 text-white" />
         </div>
         <div>
-          <h3 className="text-xl font-display text-foreground tracking-wide">Fursan Brotherhood</h3>
-          <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mt-1">Community & Support</p>
+          <h3 className="text-xl font-display text-ink tracking-wide">Fursan Brotherhood</h3>
+          <p className="text-[10px] font-black uppercase tracking-widest text-ink-muted mt-1">Community & Support</p>
         </div>
       </div>
 
-      <p className="text-foreground/70 text-sm mb-8 leading-relaxed px-2">
+      <p className="text-ink/70 text-sm mb-8 leading-relaxed px-2">
         Share your struggles, support others, and stay accountable with warriors on the same path.
       </p>
 

@@ -249,25 +249,25 @@ export default function Vanguard() {
     }
 
     return (
-        <div className="min-h-screen bg-background pb-24">
+        <div className="min-h-screen bg-bg pb-24">
             <div className="container max-w-lg mx-auto px-4">
                 <Header />
 
                 {/* Vanguard Header */}
-                <header className="mb-4 mt-4 page-transition" style={{ animationDelay: "0.1s" }}>
+                <header className="mb-4 mt-4 animate-fade-in" style={{ animationDelay: "0.1s" }}>
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center shadow-lg shadow-sm">
+                            <div className="w-12 h-12 rounded-full bg-ink flex items-center justify-center shadow-lg shadow-sm">
                                 <Radio className="w-6 h-6 text-white" />
                             </div>
                             <div>
-                                <h1 className="text-3xl font-display text-foreground tracking-tight">Community</h1>
-                                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Chat with everyone</p>
+                                <h1 className="text-3xl font-display text-ink tracking-tight">Community</h1>
+                                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-ink-muted">Chat with everyone</p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-2 bg-secondary px-3 py-1.5 rounded-full border border-border">
-                            <div className={`w-2 h-2 rounded-full ${connectedRelays.length > 0 ? 'bg-secondary animate-pulse' : 'bg-destructive/50 animate-ping'}`} />
-                            <span className="text-[9px] font-black uppercase tracking-widest text-secondary-foreground">
+                        <div className="flex items-center gap-2 bg-surface-2 px-3 py-1.5 rounded-full border border-border">
+                            <div className={`w-2 h-2 rounded-full ${connectedRelays.length > 0 ? 'bg-surface-2 animate-pulse' : 'bg-danger/50 animate-ping'}`} />
+                            <span className="text-[9px] font-black uppercase tracking-widest text-ink">
                                 {connectedRelays.length > 0 ? `${connectedRelays.length} ONLINE` : 'CONNECTING...'}
                             </span>
                         </div>
@@ -275,18 +275,18 @@ export default function Vanguard() {
                 </header>
 
                 {/* Chat Container */}
-                <div className="page-transition" style={{ animationDelay: "0.15s" }}>
-                    <div className="royal-card overflow-hidden">
+                <div className="animate-fade-in" style={{ animationDelay: "0.15s" }}>
+                    <div className="card overflow-hidden">
                         {/* Channel Header */}
-                        <div className="bg-secondary/60 px-4 py-3 border-b border-border">
+                        <div className="bg-surface-2/60 px-4 py-3 border-b border-border">
                             <div className="flex items-center justify-between mb-3">
                                 <div className="flex items-center gap-2">
-                                    <Shield className="w-4 h-4 text-primary" />
-                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground">
+                                    <Shield className="w-4 h-4 text-ink" />
+                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-ink">
                                         Chat Command
                                     </span>
                                 </div>
-                                <div className="flex items-center gap-1.5 text-muted-foreground">
+                                <div className="flex items-center gap-1.5 text-ink-muted">
                                     <Users className="w-3 h-3" />
                                     <span className="text-[9px] font-bold uppercase">{messages.length > 0 ? `${new Set(messages.map(m => m.pubkey)).size} Online` : 'Scanning...'}</span>
                                 </div>
@@ -305,8 +305,8 @@ export default function Vanguard() {
                                             className={`
                                                 flex items-center gap-1.5 px-4 py-2.5 min-h-[40px] rounded-lg border text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-all
                                                 ${isActive
-                                                    ? 'bg-primary text-primary-foreground border-primary shadow-sm'
-                                                    : 'bg-card text-muted-foreground border-border hover:border-primary/50'}
+                                                    ? 'bg-ink text-bg border-ink shadow-sm'
+                                                    : 'bg-surface text-ink-muted border-border hover:border-ink/50'}
                                             `}
                                         >
                                             <channel.icon className="w-3 h-3" />
@@ -319,11 +319,11 @@ export default function Vanguard() {
 
                         {/* Messages Area */}
                         {/* Messages Area */}
-                        <div className="h-[420px] overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-primary/20 scrollbar-track-transparent bg-background/50">
+                        <div className="h-[420px] overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-primary/20 scrollbar-track-transparent bg-bg/50">
                             {messages.length === 0 && (
                                 <div className="h-full flex flex-col items-center justify-center opacity-40 space-y-3">
-                                    <Radio className="w-10 h-10 text-primary animate-pulse" />
-                                    <p className="text-[10px] uppercase font-black tracking-[0.3em] text-muted-foreground text-center">
+                                    <Radio className="w-10 h-10 text-ink animate-pulse" />
+                                    <p className="text-[10px] uppercase font-black tracking-[0.3em] text-ink-muted text-center">
                                         Chat is quiet<br />No new messages
                                     </p>
                                 </div>
@@ -337,11 +337,11 @@ export default function Vanguard() {
                                     <div key={message.id} className={`flex ${isOwn ? "justify-end" : "justify-start"} animate-in slide-in-from-bottom-1 duration-300`}>
                                         <div className={`max-w-[85%] space-y-1 ${isOwn ? "text-right" : "text-left"}`}>
                                             <div className={`px-4 py-3 rounded-xl ${isOwn
-                                                ? "bg-primary text-primary-foreground border border-primary/50"
-                                                : "bg-card text-card-foreground border border-border"
+                                                ? "bg-ink text-bg border border-ink/50"
+                                                : "bg-surface text-ink border border-border"
                                                 } ${isSending ? "opacity-50" : ""} ${isFailed ? "border-red-400 opacity-60" : ""}`}>
-                                                <p className={`text-[8px] font-black uppercase tracking-widest mb-1.5 ${isOwn ? 'text-primary-foreground/70' : 'text-muted-foreground'
-                                                    } ${message.bonus === 'aura' ? 'aura-effect' : ''}`}>
+                                                <p className={`text-[8px] font-black uppercase tracking-widest mb-1.5 ${isOwn ? 'text-bg/70' : 'text-ink-muted'
+                                                    } ${message.bonus === 'aura' ? '' : ''}`}>
                                                     {profiles[message.pubkey] || getShortId(message.pubkey)}
                                                     {message.streak !== undefined && (
                                                         <span className="ml-1.5 text-[7px] text-orange-400">
@@ -353,7 +353,7 @@ export default function Vanguard() {
                                             </div>
                                             <div className={`flex items-center gap-2 ${isOwn ? "justify-end" : "justify-start"} px-1`}>
                                                 {isSending ? (
-                                                    <div className="flex items-center gap-1 text-muted-foreground">
+                                                    <div className="flex items-center gap-1 text-ink-muted">
                                                         <Loader2 className="w-2.5 h-2.5 animate-spin" />
                                                         <span className="text-[8px] uppercase font-black tracking-tight">Sending...</span>
                                                     </div>
@@ -368,7 +368,7 @@ export default function Vanguard() {
                                                         <span className="text-[8px] uppercase font-black tracking-tight">Retry</span>
                                                     </button>
                                                 ) : (
-                                                    <p className="text-[8px] uppercase font-bold tracking-tight text-muted-foreground/60">
+                                                    <p className="text-[8px] uppercase font-bold tracking-tight text-ink-muted/60">
                                                         {formatDistanceToNow(new Date(message.created_at * 1000), { addSuffix: true })}
                                                     </p>
                                                 )}
@@ -387,13 +387,13 @@ export default function Vanguard() {
                                     value={newMessage}
                                     onChange={(e) => setNewMessage(e.target.value)}
                                     placeholder="TYPE A MESSAGE..."
-                                    className="flex-1 bg-card border-border rounded-xl h-12 text-foreground text-xs font-bold uppercase tracking-wider px-4 focus-visible:ring-primary/50 focus-visible:ring-1 focus-visible:border-primary placeholder:text-muted-foreground/50"
+                                    className="flex-1 bg-surface border-border rounded-xl h-12 text-ink text-xs font-bold uppercase tracking-wider px-4 focus-visible:ring-primary/50 focus-visible:ring-1 focus-visible:border-ink placeholder:text-ink-muted/50"
                                 />
                                 <Button
                                     type="submit"
                                     disabled={!newMessage.trim() || !identity}
                                     aria-label="Send message"
-                                    className="bg-primary hover:bg-primary/90 text-primary-foreground font-black rounded-xl h-12 w-12 flex items-center justify-center p-0 transition-all active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed shadow-lg shadow-primary/20"
+                                    className="bg-ink hover:bg-ink/90 text-bg font-black rounded-xl h-12 w-12 flex items-center justify-center p-0 transition-all active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed shadow-lg shadow-primary/20"
                                 >
                                     <Send className="w-5 h-5" aria-hidden="true" />
                                 </Button>
@@ -403,7 +403,7 @@ export default function Vanguard() {
                 </div>
 
                 <footer className="mt-8 text-center">
-                    <p className="font-black uppercase tracking-[0.4em] text-[8px] text-muted-foreground/30">Community Chat // Stay strong. ⚔️</p>
+                    <p className="font-black uppercase tracking-[0.4em] text-[8px] text-ink-muted/30">Community Chat // Stay strong. ⚔️</p>
                 </footer>
             </div>
 
