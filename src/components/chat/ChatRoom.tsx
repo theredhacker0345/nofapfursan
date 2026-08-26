@@ -296,7 +296,7 @@ export function ChatRoom({ roomId }: ChatRoomProps) {
                   ) : isFailed ? (
                     <button
                       onClick={() => handleRetry(message)}
-                      className="flex items-center gap-1 text-red-600 hover:text-red-800 transition-colors cursor-pointer"
+                      className="flex items-center gap-1 text-destructive hover:text-destructive transition-colors cursor-pointer"
                     >
                       <AlertCircle className="w-2 h-2" />
                       <span className="text-[8px] uppercase font-black tracking-tighter">Failed</span>

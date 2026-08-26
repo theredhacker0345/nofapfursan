@@ -138,8 +138,8 @@ export function ActivityHeatmap({ startDate }: ActivityHeatmapProps) {
                         className={cn(
                             "w-3 h-3 rounded-[2px]",
                             item.level === 0 && "bg-secondary/40",
-                            item.level === 1 && "bg-emerald-500/40 border border-emerald-500/20",
-                            item.level === 2 && "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]"
+                            item.level === 1 && "bg-secondary/40 border border-border",
+                            item.level === 2 && "bg-secondary shadow-[0_0_8px_rgba(16,185,129,0.4)]"
                         )}
                         title={item.date.toLocaleDateString()}
                     />
@@ -149,8 +149,8 @@ export function ActivityHeatmap({ startDate }: ActivityHeatmapProps) {
             <div className="flex items-center justify-end gap-2 text-[10px] text-muted-foreground mt-2">
                 <span>Less</span>
                 <div className="w-2 h-2 rounded-[2px] bg-secondary/40" />
-                <div className="w-2 h-2 rounded-[2px] bg-emerald-500/40" />
-                <div className="w-2 h-2 rounded-[2px] bg-emerald-500" />
+                <div className="w-2 h-2 rounded-[2px] bg-secondary/40" />
+                <div className="w-2 h-2 rounded-[2px] bg-secondary" />
                 <span>More</span>
             </div>
         </div>

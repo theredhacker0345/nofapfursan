@@ -82,7 +82,7 @@ export const RelaySettings = () => {
                     </Button>
                 </form>
                 {error && (
-                    <div className="flex items-center gap-2 text-red-600 text-[10px] font-bold uppercase tracking-tighter animate-in fade-in slide-in-from-top-1">
+                    <div className="flex items-center gap-2 text-destructive text-[10px] font-bold uppercase tracking-tighter animate-in fade-in slide-in-from-top-1">
                         <AlertCircle className="w-3 h-3" />
                         {error}
                     </div>
@@ -98,7 +98,7 @@ export const RelaySettings = () => {
                     return (
                         <div key={url} className="flex items-center justify-between p-4 border border-black bg-white group hover:bg-secondary/5 transition-colors">
                             <div className="flex items-center gap-4 flex-1 min-w-0">
-                                <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500 shadow-[0_0_6px_rgba(34,197,94,0.5)]' : 'bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.3)]'}`} />
+                                <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500 shadow-[0_0_6px_rgba(34,197,94,0.5)]' : 'bg-destructive/50 shadow-[0_0_6px_rgba(239,68,68,0.3)]'}`} />
                                 <div className="flex flex-col min-w-0">
                                     <span className="text-xs font-bold uppercase truncate tracking-tighter">
                                         {displayName}

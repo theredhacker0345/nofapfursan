@@ -92,12 +92,12 @@ export default function Vitals() {
 
                 <header className="mb-8 mt-4 page-transition" style={{ animationDelay: "0.1s" }}>
                     <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-900 to-black flex items-center justify-center shadow-lg">
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-foreground to-foreground/80 flex items-center justify-center shadow-lg">
                             <Lock className="w-6 h-6 text-white" />
                         </div>
                         <div>
-                            <h1 className="text-3xl font-black text-amber-900 tracking-tighter uppercase">Health Tracker</h1>
-                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-600/50">Your daily progress</p>
+                            <h1 className="text-3xl font-black text-foreground tracking-tighter uppercase">Health Tracker</h1>
+                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Your daily progress</p>
                         </div>
                     </div>
                 </header>
@@ -109,26 +109,26 @@ export default function Vitals() {
                 <div className="grid gap-8">
                     {/* Recovery Trend Chart */}
                     <div className="royal-card overflow-hidden page-transition" style={{ animationDelay: "0.2s" }}>
-                        <div className="p-5 border-b border-amber-200/50 flex items-center justify-between">
+                        <div className="p-5 border-b border-border flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-800 to-amber-950 flex items-center justify-center shadow-md">
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-foreground flex items-center justify-center shadow-md">
                                     <Activity className="w-4 h-4 text-white" />
                                 </div>
                                 <div>
-                                    <h3 className="text-sm font-black uppercase tracking-tight text-amber-800">Progress Report</h3>
-                                    <p className="text-[10px] font-bold text-amber-600/50 uppercase tracking-widest">Mind & Body results</p>
+                                    <h3 className="text-sm font-black uppercase tracking-tight text-foreground">Progress Report</h3>
+                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Mind & Body results</p>
                                 </div>
                             </div>
                             <Dialog>
                                 <DialogTrigger asChild>
-                                    <button aria-label="About the progress chart" className="p-2.5 hover:bg-amber-100/50 rounded-full transition-colors">
-                                        <Info className="w-4 h-4 text-amber-500" />
+                                    <button aria-label="About the progress chart" className="p-2.5 hover:bg-secondary/50 rounded-full transition-colors">
+                                        <Info className="w-4 h-4 text-primary" />
                                     </button>
                                 </DialogTrigger>
-                                <DialogContent className="rounded-2xl border-amber-200 bg-white">
+                                <DialogContent className="rounded-2xl border-border bg-white">
                                     <DialogHeader>
-                                        <DialogTitle className="text-amber-900 text-2xl font-black uppercase tracking-tighter">Your Progress</DialogTitle>
-                                        <DialogDescription className="text-amber-800/70 font-medium text-sm pt-4">
+                                        <DialogTitle className="text-foreground text-2xl font-black uppercase tracking-tighter">Your Progress</DialogTitle>
+                                        <DialogDescription className="text-foreground/70 font-medium text-sm pt-4">
                                             This chart shows your daily mindset (Green: Good, Amber: Okay, Red: Struggling) along with your physical results. Try to stay in the Green!
                                         </DialogDescription>
                                     </DialogHeader>
@@ -152,15 +152,15 @@ export default function Vitals() {
                                                 if (active && payload && payload.length) {
                                                     const data = payload[0].payload;
                                                     return (
-                                                        <div className="bg-white border-2 border-amber-100 p-3 rounded-2xl shadow-2xl">
-                                                            <p className="text-[9px] font-black uppercase text-amber-300 mb-2">{data.date}</p>
+                                                        <div className="bg-white border-2 border-border p-3 rounded-2xl shadow-2xl">
+                                                            <p className="text-[9px] font-black uppercase text-muted-foreground mb-2">{data.date}</p>
                                                             <div className="space-y-1">
-                                                                <p className="text-[10px] font-black text-amber-900 uppercase flex items-center gap-1.5">
-                                                                    <Zap className="w-3 h-3 text-amber-500" />
+                                                                <p className="text-[10px] font-black text-foreground uppercase flex items-center gap-1.5">
+                                                                    <Zap className="w-3 h-3 text-primary" />
                                                                     Mindset: {data.mindset}
                                                                 </p>
-                                                                <p className="text-[10px] font-black text-amber-900 uppercase flex items-center gap-1.5">
-                                                                    <Activity className="w-3 h-3 text-rose-500" />
+                                                                <p className="text-[10px] font-black text-foreground uppercase flex items-center gap-1.5">
+                                                                    <Activity className="w-3 h-3 text-destructive" />
                                                                     Biological: {data.npt}
                                                                 </p>
                                                             </div>
@@ -179,20 +179,20 @@ export default function Vitals() {
                                 </ResponsiveContainer>
                             </div>
 
-                            <div className="mt-6 flex items-center justify-between p-4 rounded-xl bg-amber-50 border border-amber-100">
+                            <div className="mt-6 flex items-center justify-between p-4 rounded-xl bg-secondary border border-border">
                                 <div className="flex items-center gap-3">
-                                    <ShieldCheck className="w-5 h-5 text-amber-600" />
+                                    <ShieldCheck className="w-5 h-5 text-muted-foreground" />
                                     <div>
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-amber-900">Your Status</p>
-                                        <p className="text-[9px] font-bold text-amber-600/60 uppercase">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-foreground">Your Status</p>
+                                        <p className="text-[9px] font-bold text-muted-foreground uppercase">
                                             {healthHistory.some(h => h.mindset === 'stormy') ? "Keep working at it" : "Looking Good"}
                                         </p>
                                     </div>
                                 </div>
                                 <div className="flex gap-2">
-                                    <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm" title="Sharp" />
-                                    <div className="w-2 h-2 rounded-full bg-amber-500 shadow-sm" title="Foggy" />
-                                    <div className="w-2 h-2 rounded-full bg-red-500 shadow-sm" title="Stormy" />
+                                    <div className="w-2 h-2 rounded-full bg-secondary shadow-sm" title="Sharp" />
+                                    <div className="w-2 h-2 rounded-full bg-secondary shadow-sm" title="Foggy" />
+                                    <div className="w-2 h-2 rounded-full bg-destructive/50 shadow-sm" title="Stormy" />
                                 </div>
                             </div>
                         </div>
@@ -201,19 +201,19 @@ export default function Vitals() {
                     {/* Fortress Stats Summary */}
                     <div className="grid grid-cols-2 gap-4">
                         <div className="royal-card p-5 text-center space-y-2">
-                            <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center mx-auto mb-2">
-                                <Zap className="w-5 h-5 text-emerald-600" />
+                            <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center mx-auto mb-2">
+                                <Zap className="w-5 h-5 text-accent" />
                             </div>
-                            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-amber-800/40">Good mindset %</p>
+                            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-foreground/40">Good mindset %</p>
                             <p className="text-2xl font-black text-black">
                                 {healthHistory.length > 0 ? Math.round((healthHistory.filter(h => h.mindset === 'sharp').length / healthHistory.length) * 100) : 0}%
                             </p>
                         </div>
                         <div className="royal-card p-5 text-center space-y-2">
-                            <div className="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center mx-auto mb-2">
-                                <Flame className="w-5 h-5 text-rose-600" />
+                            <div className="w-10 h-10 rounded-full bg-destructive/5 flex items-center justify-center mx-auto mb-2">
+                                <Flame className="w-5 h-5 text-destructive" />
                             </div>
-                            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-amber-800/40">Physical health %</p>
+                            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-foreground/40">Physical health %</p>
                             <p className="text-2xl font-black text-black">
                                 {healthHistory.length > 0 ? Math.round((healthHistory.filter(h => h.npt).length / healthHistory.length) * 100) : 0}%
                             </p>
@@ -221,7 +221,7 @@ export default function Vitals() {
                     </div>
                 </div>
 
-                <footer className="mt-16 mb-8 text-center text-amber-800/10">
+                <footer className="mt-16 mb-8 text-center text-foreground/10">
                     <p className="font-bold uppercase tracking-[0.5em] text-[8px]">Stay strong and keep going. ⚔️</p>
                 </footer>
             </div>

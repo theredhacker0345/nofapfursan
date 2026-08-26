@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { saveStreak, fetchStreak, StreakPayload } from "@/services/nostr";
 import { getStreakData, saveStreakData } from "@/lib/streakUtils";
-import { Download, ArrowLeft, Loader2, LogOut, Settings, ShieldCheck, User, Network, Sparkles, Bell, Moon, ExternalLink } from "lucide-react";
+import { ArrowLeft, Settings2, ShieldCheck, Network, User } from "lucide-react";
 import { useNostr } from "@/hooks/useNostr";
 import { IdentityManagement } from "@/components/IdentityManagement";
 import { Button } from "@/components/ui/button";
@@ -13,9 +13,6 @@ import { BottomNav } from "@/components/BottomNav";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { RelaySettings } from "@/components/RelaySettings";
 import { SecuritySettings } from "@/components/SecuritySettings";
-import { ThemeSelector } from "@/components/ThemeSelector";
-import { PrivacySettings } from "@/components/PrivacySettings";
-import { NotificationSettings } from "@/components/NotificationSettings";
 import { Haptics, ImpactStyle } from "@capacitor/haptics";
 import { Capacitor } from "@capacitor/core";
 import { Header } from "@/components/Header";
@@ -131,21 +128,21 @@ const Profile = () => {
           <Button variant="outline" onClick={() => navigate("/")} className="rounded-xl border-border bg-card text-foreground hover:bg-secondary h-10 px-4 text-xs font-bold shadow-sm">
             <ArrowLeft className="w-4 h-4 mr-2" /> Back
           </Button>
-          <div className="flex items-center gap-2 bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full border border-emerald-100 shadow-sm">
+          <div className="flex items-center gap-2 bg-secondary text-accent px-3 py-1.5 rounded-full border border-border shadow-sm">
             <ShieldCheck className="w-3 h-3 animate-pulse" />
             <span className="text-[10px] font-black uppercase tracking-widest">Secure Session</span>
           </div>
         </div>
 
         <div className="royal-card p-0 overflow-visible page-transition" style={{ animationDelay: "0.15s" }}>
-          <div className="p-6 border-b border-border bg-gradient-to-r from-secondary/30 to-transparent">
+          <div className="p-6 border-b border-border bg-secondary/40">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
-                <Settings className="w-5 h-5 text-primary-foreground" />
+              <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
+                <User className="w-5 h-5 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="text-xl font-display text-foreground tracking-tight">App Settings</h1>
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Account & Preferences</p>
+                <h1 className="text-xl font-semibold text-foreground tracking-tight">My Profile</h1>
+                <p className="text-xs text-muted-foreground">Identity &amp; account</p>
               </div>
             </div>
           </div>
@@ -170,67 +167,36 @@ const Profile = () => {
 
             <div className="pt-8 space-y-10 border-t border-border">
               <div className="space-y-4">
-                <div className="flex items-center gap-2 text-foreground font-bold text-sm uppercase tracking-widest px-1">
+                <div className="flex items-center gap-2 text-foreground font-semibold text-sm px-1">
                   <Network className="w-4 h-4 text-primary" />
-                  Network Settings
+                  Relays
                 </div>
                 <RelaySettings />
               </div>
 
               <div className="space-y-4">
-                <div className="flex items-center gap-2 text-foreground font-bold text-sm uppercase tracking-widest px-1">
+                <div className="flex items-center gap-2 text-foreground font-semibold text-sm px-1">
                   <ShieldCheck className="w-4 h-4 text-primary" />
-                  Security
+                  Backup &amp; Security
                 </div>
                 <SecuritySettings />
               </div>
 
-              <div className="space-y-4">
-                <PrivacySettings />
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 text-foreground font-bold text-sm uppercase tracking-widest px-1">
-                  <Bell className="w-4 h-4 text-primary" />
-                  Reminders
+              <button
+                onClick={() => navigate("/settings")}
+                className="w-full flex items-center justify-between p-4 rounded-xl bg-card border border-border hover:bg-secondary transition-colors text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <Settings2 className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-medium text-foreground">App Settings</span>
                 </div>
-                <NotificationSettings />
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 text-foreground font-bold text-sm uppercase tracking-widest px-1">
-                  <Moon className="w-4 h-4 text-primary" />
-                  Noor Connect — Our Islamic App
-                </div>
-                <div className="royal-card !w-full p-5">
-                  <p className="text-xs text-muted-foreground leading-relaxed mb-4">
-                    Fursan focuses on your streak and community. For prayer times, adhan alerts and more, try our free companion app.
-                  </p>
-                  <Button
-                    variant="outline"
-                    className="w-full h-12 justify-center gap-3 border-primary/40 bg-card hover:bg-secondary text-primary rounded-2xl transition-all"
-                    onClick={() => window.open(NOOR_CONNECT_URL, '_blank')}
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">Get Noor Connect on F-Droid</span>
-                  </Button>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 text-foreground font-bold text-sm uppercase tracking-widest px-1">
-                  <Sparkles className="w-4 h-4 text-primary" />
-                  Themes
-                </div>
-                <ThemeSelector />
-              </div>
+                <span className="text-xs text-muted-foreground">Themes, reminders, privacy</span>
+              </button>
             </div>
 
             <div className="pt-8 border-t border-border">
-
               <div className="flex flex-col items-center gap-2 mt-8 text-center">
-                <p className="text-[10px] text-muted-foreground/60 font-bold uppercase tracking-[0.3em]">NoFap Fursan v2.5</p>
-                <p className="text-[9px] text-muted-foreground/40 font-mono tracking-widest">PRIVATE // DECENTRALIZED // YOURS</p>
+                <p className="text-xs text-muted-foreground">NoFap Fursan v2.5</p>
               </div>
             </div>
           </div>

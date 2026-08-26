@@ -35,21 +35,21 @@ export function NotificationToggle() {
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <div className={`w-10 h-10 rounded-full flex items-center justify-center shadow-md flex-shrink-0 ${enabled
-            ? 'bg-gradient-to-br from-amber-400 to-yellow-500 shadow-amber-500/20'
-            : 'bg-gradient-to-br from-gray-200 to-gray-300'
+            ? 'bg-primary shadow-sm'
+            : 'bg-gradient-to-br from-muted to-muted'
             }`}>
             {enabled ? (
               <Bell className="w-5 h-5 text-white" />
             ) : (
-              <BellOff className="w-5 h-5 text-gray-500" />
+              <BellOff className="w-5 h-5 text-muted-foreground" />
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <h3 className="font-bold text-amber-800 flex items-center gap-1.5 truncate">
-              <Sparkles className="w-4 h-4 text-amber-500 flex-shrink-0" />
+            <h3 className="font-bold text-foreground flex items-center gap-1.5 truncate">
+              <Sparkles className="w-4 h-4 text-primary flex-shrink-0" />
               Daily Reminders
             </h3>
-            <p className="text-[11px] text-amber-600/70 font-medium leading-tight truncate">
+            <p className="text-[11px] text-muted-foreground font-medium leading-tight truncate">
               {enabled
                 ? `On • Motivational reminders every ${intervalHours}h`
                 : "Get motivational reminders"}
@@ -59,8 +59,8 @@ export function NotificationToggle() {
         <Button
           onClick={handleToggle}
           className={`${enabled
-            ? "bg-white border-2 border-amber-300 text-amber-700 hover:bg-amber-50"
-            : "bg-gradient-to-r from-amber-500 to-yellow-500 text-white"
+            ? "bg-white border-2 border-border text-foreground/80 hover:bg-secondary"
+            : "bg-primary text-white"
             } rounded-full px-4 sm:px-5 font-bold shadow-md hover:shadow-lg flex-shrink-0 text-xs sm:text-sm h-9 sm:h-10`}
         >
           {enabled ? "Disable" : "Enable"}

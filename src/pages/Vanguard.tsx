@@ -257,16 +257,16 @@ export default function Vanguard() {
                 <header className="mb-4 mt-4 page-transition" style={{ animationDelay: "0.1s" }}>
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 flex items-center justify-center shadow-lg shadow-amber-500/20">
+                            <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center shadow-lg shadow-sm">
                                 <Radio className="w-6 h-6 text-white" />
                             </div>
                             <div>
-                                <h1 className="text-3xl font-display text-amber-900 tracking-tight">Community</h1>
-                                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-600/50">Chat with everyone</p>
+                                <h1 className="text-3xl font-display text-foreground tracking-tight">Community</h1>
+                                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Chat with everyone</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-2 bg-secondary px-3 py-1.5 rounded-full border border-border">
-                            <div className={`w-2 h-2 rounded-full ${connectedRelays.length > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-red-500 animate-ping'}`} />
+                            <div className={`w-2 h-2 rounded-full ${connectedRelays.length > 0 ? 'bg-secondary animate-pulse' : 'bg-destructive/50 animate-ping'}`} />
                             <span className="text-[9px] font-black uppercase tracking-widest text-secondary-foreground">
                                 {connectedRelays.length > 0 ? `${connectedRelays.length} ONLINE` : 'CONNECTING...'}
                             </span>
@@ -278,7 +278,7 @@ export default function Vanguard() {
                 <div className="page-transition" style={{ animationDelay: "0.15s" }}>
                     <div className="royal-card overflow-hidden">
                         {/* Channel Header */}
-                        <div className="bg-gradient-to-r from-secondary to-background px-4 py-3 border-b border-border">
+                        <div className="bg-secondary/60 px-4 py-3 border-b border-border">
                             <div className="flex items-center justify-between mb-3">
                                 <div className="flex items-center gap-2">
                                     <Shield className="w-4 h-4 text-primary" />

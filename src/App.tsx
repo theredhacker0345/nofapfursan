@@ -16,6 +16,7 @@ import { LoadingScreen } from "@/components/LoadingScreen";
 const Auth = lazy(() => import("./pages/Auth"));
 const Community = lazy(() => import("./pages/Community"));
 const Profile = lazy(() => import("./pages/Profile"));
+const Settings = lazy(() => import("./pages/Settings"));
 const Journal = lazy(() => import("./pages/Journal"));
 const Join = lazy(() => import("./pages/Join"));
 const Vitals = lazy(() => import("./pages/Vitals"));
@@ -39,6 +40,7 @@ const AnimatedRoutes = () => {
           <Route path='/vanguard' element={<Vanguard />} />
           <Route path='/community' element={<Community />} />
           <Route path='/profile' element={<Profile />} />
+          <Route path='/settings' element={<Settings />} />
           <Route path='/join' element={<Join />} />
           <Route path='*' element={<NotFound />} />
         </Routes>

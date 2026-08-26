@@ -1,4 +1,4 @@
-import { Play, RotateCcw, AlertTriangle, Sparkles, Swords } from "lucide-react";
+import { Play, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -48,12 +48,11 @@ export function StreakActions({ isActive, onStart, onReset }: StreakActionsProps
         {!isActive ? (
           <Button
             size="xl"
-            className="flex-1 rounded-2xl h-20 bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-500 bg-size-200 animate-gradient-x text-white font-black uppercase text-lg sm:text-xl tracking-widest shadow-xl shadow-amber-500/30 hover:shadow-2xl hover:scale-[1.02] active:scale-95 transition-all group"
+            className="flex-1 rounded-xl h-16 bg-primary text-primary-foreground font-semibold text-base hover:bg-primary/90 active:scale-[0.99] transition-all"
             onClick={handleStart}
           >
-            <Swords className="w-6 h-6 sm:w-8 sm:h-8 mr-2 sm:mr-4 group-hover:rotate-12 transition-transform" />
-            <span className="truncate">START MY STREAK</span>
-            <Sparkles className="ml-2 sm:ml-4 w-4 h-4 sm:w-6 sm:h-6 animate-pulse" />
+            <Play className="w-5 h-5 mr-2" />
+            <span className="truncate">Start my streak</span>
           </Button>
         ) : (
           <AlertDialog>
@@ -61,33 +60,28 @@ export function StreakActions({ isActive, onStart, onReset }: StreakActionsProps
               <Button
                 variant="outline"
                 size="lg"
-                className="flex-1 rounded-xl h-14 border-2 border-rose-200 text-rose-500 hover:bg-rose-50 font-bold uppercase tracking-wider shadow-md hover:border-rose-300 transition-all"
+                className="flex-1 rounded-xl h-14 border-border text-destructive hover:bg-destructive/5 font-medium transition-all"
               >
                 <RotateCcw className="w-4 h-4 mr-2" />
                 Reset My Streak
               </Button>
             </AlertDialogTrigger>
-            <AlertDialogContent className="rounded-2xl border-amber-200 p-8 shadow-2xl">
+            <AlertDialogContent className="rounded-2xl border-border">
               <AlertDialogHeader>
-                <AlertDialogTitle className="flex items-center gap-2 text-amber-900 text-2xl font-display">
-                  <AlertTriangle className="w-8 h-8 text-rose-500" />
-                  Request Full Reset?
-                </AlertDialogTitle>
-                <AlertDialogDescription className="text-amber-800/70 font-medium text-base pt-4">
+                <AlertDialogTitle className="text-xl font-semibold text-foreground">Reset your streak?</AlertDialogTitle>
+                <AlertDialogDescription className="text-muted-foreground text-sm leading-relaxed pt-2">
                   This will set your streak back to zero. Your past progress will stay in your history.
-                  <br /><br />
-                  <span className="italic">"The path to mastery is paved with persistence, not perfection."</span>
                 </AlertDialogDescription>
               </AlertDialogHeader>
-              <AlertDialogFooter className="pt-6 gap-3">
-                <AlertDialogCancel className="flex-1 rounded-xl h-12 bg-amber-50 text-amber-800 border-amber-200 font-bold">
-                  Continue Battle
+              <AlertDialogFooter className="pt-4 gap-3">
+                <AlertDialogCancel className="flex-1 rounded-xl h-12 bg-secondary text-foreground border-border font-medium">
+                  Keep Going
                 </AlertDialogCancel>
                 <AlertDialogAction
                   onClick={handleReset}
-                  className="flex-1 rounded-xl h-12 bg-rose-500 text-white font-bold hover:bg-rose-600 shadow-lg shadow-rose-500/20"
+                  className="flex-1 rounded-xl h-12 bg-destructive text-destructive-foreground font-medium hover:bg-destructive/90"
                 >
-                  Reset Count
+                  Reset
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

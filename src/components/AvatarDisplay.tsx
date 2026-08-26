@@ -18,15 +18,15 @@ export function AvatarDisplay({ days }: AvatarDisplayProps) {
   return (
     <div className="royal-card p-6 animate-fade-in" style={{ animationDelay: "0.2s" }}>
       <div className="flex items-center gap-2 mb-4">
-        <Crown className="w-5 h-5 text-amber-500" />
-        <span className="text-amber-800/60 font-medium uppercase tracking-widest text-xs">Current Standing</span>
+        <Crown className="w-5 h-5 text-primary" />
+        <span className="text-foreground/60 font-medium uppercase tracking-widest text-xs">Current Standing</span>
       </div>
 
       <div className="flex flex-col items-center mb-6 text-center">
         <div className="relative">
           <span className="text-7xl sm:text-8xl animate-float block">{currentLevel.emoji}</span>
           {days >= 90 && (
-            <div className="absolute -top-2 -right-2 w-6 h-6 bg-gradient-to-r from-amber-500 to-red-500 rounded-full flex items-center justify-center animate-pulse-glow shadow-lg border-2 border-white">
+            <div className="absolute -top-2 -right-2 w-6 h-6 bg-primary rounded-full flex items-center justify-center animate-pulse-glow shadow-lg border-2 border-white">
               <span className="text-[10px]">🔥</span>
             </div>
           )}
@@ -34,7 +34,7 @@ export function AvatarDisplay({ days }: AvatarDisplayProps) {
         <h3 className={`text-2xl sm:text-3xl font-display mt-4 ${currentLevel.color} break-words px-2`}>
           {currentLevel.name}
         </h3>
-        <p className="text-amber-700/60 text-sm mt-1 px-4 leading-relaxed">{currentLevel.description}</p>
+        <p className="text-muted-foreground text-sm mt-1 px-4 leading-relaxed">{currentLevel.description}</p>
       </div>
 
       {nextLevel && (

@@ -29,9 +29,9 @@ export function SyncIndicator({
             return {
                 icon: <Loader2 className="h-4 w-4 animate-spin" />,
                 text: "Syncing...",
-                color: "text-blue-400",
-                bgColor: "bg-blue-500/10",
-                borderColor: "border-blue-500/30",
+                color: "text-primary",
+                bgColor: "bg-primary/10",
+                borderColor: "border-primary/30",
             };
         }
 
@@ -39,9 +39,9 @@ export function SyncIndicator({
             return {
                 icon: <CloudOff className="h-4 w-4" />,
                 text: pendingCount > 0 ? `Offline (${pendingCount} pending)` : "Offline",
-                color: "text-amber-400",
-                bgColor: "bg-amber-500/10",
-                borderColor: "border-amber-500/30",
+                color: "text-primary",
+                bgColor: "bg-secondary/10",
+                borderColor: "border-primary/30",
             };
         }
 
@@ -49,9 +49,9 @@ export function SyncIndicator({
             return {
                 icon: <Cloud className="h-4 w-4" />,
                 text: `${pendingCount} pending`,
-                color: "text-amber-400",
-                bgColor: "bg-amber-500/10",
-                borderColor: "border-amber-500/30",
+                color: "text-primary",
+                bgColor: "bg-secondary/10",
+                borderColor: "border-primary/30",
             };
         }
 
@@ -59,9 +59,9 @@ export function SyncIndicator({
         return {
             icon: <CheckCircle2 className="h-4 w-4" />,
             text: "Synced",
-            color: "text-emerald-400",
-            bgColor: "bg-emerald-500/10",
-            borderColor: "border-emerald-500/30",
+            color: "text-accent",
+            bgColor: "bg-secondary/10",
+            borderColor: "border-accent/30",
         };
     };
 
@@ -96,8 +96,8 @@ export function SyncIndicatorCompact({
     if (isSyncing) {
         return (
             <div className={cn("relative", className)}>
-                <Cloud className="h-5 w-5 text-blue-400" />
-                <Loader2 className="absolute -top-1 -right-1 h-3 w-3 text-blue-400 animate-spin" />
+                <Cloud className="h-5 w-5 text-primary" />
+                <Loader2 className="absolute -top-1 -right-1 h-3 w-3 text-primary animate-spin" />
             </div>
         );
     }
@@ -105,9 +105,9 @@ export function SyncIndicatorCompact({
     if (!isOnline) {
         return (
             <div className={cn("relative flex-shrink-0", className)}>
-                <CloudOff className="h-4 w-4 sm:h-5 sm:w-5 text-amber-400" />
+                <CloudOff className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                 {pendingCount > 0 && (
-                    <span className="absolute -top-1 -right-2 bg-amber-500 text-black text-[9px] sm:text-[10px] font-bold px-1 rounded-full min-w-[14px] sm:min-w-[16px] text-center">
+                    <span className="absolute -top-1 -right-2 bg-secondary text-black text-[9px] sm:text-[10px] font-bold px-1 rounded-full min-w-[14px] sm:min-w-[16px] text-center">
                         {pendingCount}
                     </span>
                 )}
@@ -118,13 +118,13 @@ export function SyncIndicatorCompact({
     if (pendingCount > 0) {
         return (
             <div className={cn("relative", className)}>
-                <Cloud className="h-5 w-5 text-amber-400" />
-                <span className="absolute -top-1 -right-2 bg-amber-500 text-black text-[10px] font-bold px-1 rounded-full min-w-[16px] text-center">
+                <Cloud className="h-5 w-5 text-primary" />
+                <span className="absolute -top-1 -right-2 bg-secondary text-black text-[10px] font-bold px-1 rounded-full min-w-[16px] text-center">
                     {pendingCount}
                 </span>
             </div>
         );
     }
 
-    return <Cloud className={cn("h-5 w-5 text-emerald-400", className)} />;
+    return <Cloud className={cn("h-5 w-5 text-accent", className)} />;
 }

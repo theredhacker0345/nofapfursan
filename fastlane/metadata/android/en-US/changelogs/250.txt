@@ -1,13 +1,13 @@
-Fursan v2.5.0 - simpler, faster, more private.
+Fursan v2.5.0 - a calmer, more mature redesign.
 
+- New dedicated Settings page (button removed from home screen)
+- Refined look: warm cream & bronze palette, flat cards, no glow
 - Simpler words everywhere - easier to read and use
 - Removed prayer times and location tracking (get them in our
   companion app Noor Connect on F-Droid)
 - No more location permission
-- Code splitting: main bundle 714 KB to 325 KB
+- Code splitting: main bundle 714 KB to 244 KB
 - Fixed cloud backup/restore using wrong storage keys
-- Stale cloud backups can no longer roll back newer streaks
 - Fixed theme unlocks and identity import
 - Accessibility: 44 px touch targets, screen-reader labels
-- Toasts no longer block the bottom navigation
 - Removed all Google Play Services references

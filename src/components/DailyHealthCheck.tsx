@@ -179,26 +179,26 @@ export function DailyHealthCheck({ onUpdate, days = 0, showPillar = 'all' }: Dai
 
         if (yesCount >= 4) return {
             status: "OPTIMAL",
-            color: "text-emerald-600",
-            bgColor: "bg-emerald-50",
-            borderColor: "border-emerald-200",
+            color: "text-accent",
+            bgColor: "bg-secondary",
+            borderColor: "border-border",
             insight: "Hormones and Blood Flow are in great shape.",
             icon: <Shield className="w-4 h-4" />
         };
 
         if (yesCount >= 1) return {
             status: "WARNING",
-            color: "text-amber-600",
-            bgColor: "bg-amber-50",
-            borderColor: "border-amber-200",
+            color: "text-muted-foreground",
+            bgColor: "bg-secondary",
+            borderColor: "border-border",
             insight: "Markers below baseline. Refine sleep and discipline.",
             icon: <AlertCircle className="w-4 h-4" />
         };
 
         return {
             status: "CRITICAL",
-            color: "text-red-600",
-            bgColor: "bg-red-50",
+            color: "text-destructive",
+            bgColor: "bg-destructive/5",
             borderColor: "border-red-200",
             insight: "Critical markers detected. Time to tighten your routine.",
             icon: <Activity className="w-4 h-4 sub-label" />
@@ -212,18 +212,18 @@ export function DailyHealthCheck({ onUpdate, days = 0, showPillar = 'all' }: Dai
     if (isEmergencyLocked) {
         const overlay = (
             <div className="fixed inset-0 z-[99999] bg-black/95 backdrop-blur-2xl flex items-center justify-center p-6 transition-all duration-500">
-                <div className="royal-card bg-black w-full max-w-md p-8 text-center space-y-6 border-2 border-red-900/50 shadow-[0_0_50px_rgba(220,38,38,0.2)]">
-                    <CloudLightning className="w-20 h-20 mx-auto text-red-600 animate-pulse" />
+                <div className="royal-card bg-black w-full max-w-md p-8 text-center space-y-6 border-2 border-destructive/40 shadow-[0_0_50px_rgba(220,38,38,0.2)]">
+                    <CloudLightning className="w-20 h-20 mx-auto text-destructive animate-pulse" />
                     <div className="space-y-2">
                         <h2 className="text-4xl font-black text-white uppercase tracking-tighter">Stay Strong!</h2>
-                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-red-500/60">Take a break and refocus</p>
+                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-destructive/60">Take a break and refocus</p>
                     </div>
-                    <div className="p-5 rounded-2xl bg-red-950/30 border border-red-900/40 space-y-3">
-                        <p className="text-sm font-bold text-red-100 leading-relaxed uppercase tracking-widest">
+                    <div className="p-5 rounded-2xl bg-destructive/10 border border-destructive/30 space-y-3">
+                        <p className="text-sm font-bold text-destructive-foreground/80 leading-relaxed uppercase tracking-widest">
                             Urgent moment detected.<br />Do 50 pushups or take a cold shower now.
                         </p>
                     </div>
-                    <div className="flex items-center gap-3 justify-center p-3 bg-red-900/10 rounded-xl border border-red-900/20">
+                    <div className="flex items-center gap-3 justify-center p-3 bg-destructive/10 rounded-xl border border-destructive/20">
                         <input
                             type="checkbox"
                             id="confirm-emergency"
@@ -232,14 +232,14 @@ export function DailyHealthCheck({ onUpdate, days = 0, showPillar = 'all' }: Dai
                                 luxuryClickVibrate();
                                 setIsCompletionConfirmed(e.target.checked);
                             }}
-                            className="w-5 h-5 rounded border-red-900 text-red-600 focus:ring-red-600 bg-black"
+                            className="w-5 h-5 rounded border-red-900 text-destructive focus:ring-destructive bg-black"
                         />
-                        <label htmlFor="confirm-emergency" className="text-[10px] font-black uppercase text-red-100/60 cursor-pointer select-none">I have finished this task</label>
+                        <label htmlFor="confirm-emergency" className="text-[10px] font-black uppercase text-destructive-foreground/70 cursor-pointer select-none">I have finished this task</label>
                     </div>
                     <Button
                         disabled={!isCompletionConfirmed || unlockTimer > 0}
                         onClick={resolveEmergency}
-                        className="w-full h-16 bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-[0.2em] rounded-2xl shadow-2xl disabled:opacity-20 transition-all active:scale-95"
+                        className="w-full h-16 bg-destructive hover:bg-destructive/90 text-white font-black uppercase tracking-[0.2em] rounded-2xl shadow-2xl disabled:opacity-20 transition-all active:scale-95"
                     >
                         {unlockTimer > 0 ? `Wait (${unlockTimer}s)` : "Back to app"}
                     </Button>
@@ -263,15 +263,15 @@ export function DailyHealthCheck({ onUpdate, days = 0, showPillar = 'all' }: Dai
     return (
         <div className="space-y-4 page-transition" style={{ animationDelay: "0.05s" }}>
             <div className="royal-card overflow-hidden">
-                <div className="p-5 border-b border-amber-200/50">
+                <div className="p-5 border-b border-border">
                     <div className="flex justify-between items-start">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-800/20 to-amber-900/10 flex items-center justify-center border border-amber-100">
-                                <Shield className="w-5 h-5 text-amber-900" />
+                            <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center border border-border">
+                                <Shield className="w-5 h-5 text-foreground" />
                             </div>
                             <div>
-                                <h3 className="text-sm font-black uppercase tracking-tight text-amber-800">Daily Check</h3>
-                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-600/50 sub-label">Mind & Body Check</p>
+                                <h3 className="text-base font-semibold text-foreground">Daily check</h3>
+                                <p className="text-xs text-muted-foreground">Mind &amp; body</p>
                             </div>
                         </div>
                         {statusInfo && (
@@ -307,7 +307,7 @@ export function DailyHealthCheck({ onUpdate, days = 0, showPillar = 'all' }: Dai
                                     <MindsetCheckin onCheckin={handleMindsetSelection} saving={saving} />
                                     <button
                                         onClick={() => setTempNpt(null)}
-                                        className="w-full text-[9px] font-black uppercase tracking-[0.2em] text-amber-600/30 hover:text-amber-600/60"
+                                        className="w-full text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground/70 hover:text-muted-foreground"
                                     >
                                         Go Back
                                     </button>
@@ -316,12 +316,12 @@ export function DailyHealthCheck({ onUpdate, days = 0, showPillar = 'all' }: Dai
                         </AnimatePresence>
                     ) : (
                         <div className="py-8 text-center space-y-4">
-                            <div className="w-16 h-16 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center mx-auto shadow-inner">
-                                <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+                            <div className="w-16 h-16 rounded-full bg-secondary border border-border flex items-center justify-center mx-auto shadow-inner">
+                                <CheckCircle2 className="w-8 h-8 text-accent" />
                             </div>
                             <div className="space-y-1">
-                                <p className="text-xs font-black uppercase tracking-[0.3em] text-emerald-700">All Done!</p>
-                                <p className="text-[10px] font-bold text-emerald-600/60 uppercase">You've finished your checks for today. See you tomorrow!</p>
+                                <p className="text-xs font-black uppercase tracking-[0.3em] text-accent">All Done!</p>
+                                <p className="text-[10px] font-bold text-accent/60 uppercase">You've finished your checks for today. See you tomorrow!</p>
                             </div>
                             {statusInfo && statusInfo.insight && (
                                 <div className={cn("text-[10px] font-black uppercase tracking-widest p-3 rounded-xl border opacity-80 sub-label", statusInfo.bgColor, statusInfo.borderColor, statusInfo.color)}>
@@ -334,29 +334,28 @@ export function DailyHealthCheck({ onUpdate, days = 0, showPillar = 'all' }: Dai
             </div>
 
             <Dialog open={showMedicalAlert} onOpenChange={setShowMedicalAlert}>
-                <DialogContent className="rounded-2xl border-amber-200 bg-white max-w-md shadow-2xl">
+                <DialogContent className="rounded-2xl border-border bg-white max-w-md shadow-2xl">
                     <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2 text-red-600 font-black uppercase text-xl">
+                        <DialogTitle className="flex items-center gap-2 text-destructive font-black uppercase text-xl">
                             <Activity className="w-6 h-6" /> Health Insight
                         </DialogTitle>
                         <DialogDescription className="text-gray-700 font-medium text-sm pt-4">
                             🛡️ We've noticed a lack of NPT for 2 weeks. This is a primary indicator of vascular health.
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="bg-red-50 p-4 rounded-lg border border-red-100 my-4">
+                    <div className="bg-destructive/5 p-4 rounded-lg border border-destructive/20 my-4">
                         <p className="text-sm text-red-900 font-bold italic">
                             "We recommend a routine check-up with a urologist to ensure your cardiovascular system is 100%."
                         </p>
                     </div>
                     <DialogFooter>
                         <Button
-                            className="w-full rounded-xl bg-amber-900 text-white font-black uppercase tracking-widest h-12 shadow-lg hover:bg-black"
+                            className="w-full rounded-xl bg-primary text-primary-foreground font-medium h-12 hover:bg-primary/90"
                             onClick={() => setShowMedicalAlert(false)}
                         >
-                            ACKNOWLEDGED
+                            Acknowledged
                         </Button>
-                    </DialogFooter>
-                </DialogContent>
+                    </DialogFooter>                </DialogContent>
             </Dialog>
         </div>
     );

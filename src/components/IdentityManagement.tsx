@@ -64,7 +64,7 @@ export const IdentityManagement = ({
         <div className="w-full space-y-6">
             {/* Alias Input Section */}
             <div className="space-y-3">
-                <label className="block text-[11px] font-black uppercase tracking-[0.2em] text-amber-800">
+                <label className="block text-[11px] font-black uppercase tracking-[0.2em] text-foreground">
                     Display Name
                 </label>
                 <div className="relative group">
@@ -72,12 +72,12 @@ export const IdentityManagement = ({
                         type="text"
                         value={alias}
                         onChange={(e) => setAlias(e.target.value)}
-                        className="w-full bg-amber-50/30 border-2 border-amber-100 p-4 rounded-xl font-display text-xl uppercase tracking-widest text-amber-900 outline-none focus:border-amber-400 focus:bg-white transition-all shadow-sm"
+                        className="w-full bg-secondary/40 border-2 border-border p-4 rounded-xl font-display text-xl uppercase tracking-widest text-foreground outline-none focus:border-primary focus:bg-white transition-all shadow-sm"
                         placeholder="ENTER_ALIAS..."
                     />
-                    <Sparkles className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-amber-300 group-focus-within:text-amber-500 transition-colors" />
+                    <Sparkles className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
                 </div>
-                <p className="text-[10px] font-bold text-amber-600/40 uppercase tracking-widest px-1">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">
                     Your public identifier on the Nostr network.
                 </p>
             </div>
@@ -88,8 +88,8 @@ export const IdentityManagement = ({
                 disabled={isUpdating}
                 className={`w-full flex items-center justify-center gap-3 h-16 rounded-xl font-black uppercase text-sm tracking-widest transition-all shadow-lg active:scale-95
                    ${isUpdating
-                        ? 'bg-amber-100 text-amber-400 cursor-not-allowed'
-                        : 'bg-gradient-to-r from-amber-500 to-yellow-500 text-white shadow-amber-500/20 hover:shadow-xl hover:scale-[1.01]'}`}
+                        ? 'bg-secondary text-primary cursor-not-allowed'
+                        : 'bg-primary text-white shadow-sm hover:shadow-xl hover:scale-[1.01]'}`}
             >
                 {isUpdating ? <RefreshCw size={20} className="animate-spin" /> : <Save size={20} />}
                 {isUpdating ? "BROADCASTING..." : "UPDATE IDENTITY"}
@@ -99,21 +99,21 @@ export const IdentityManagement = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <button
                     onClick={onSync}
-                    className="flex items-center justify-center gap-2 h-12 rounded-xl border-2 border-amber-200 bg-white text-amber-800 font-bold text-[10px] uppercase tracking-widest hover:bg-amber-50 transition-all active:scale-95 shadow-sm"
+                    className="flex items-center justify-center gap-2 h-12 rounded-xl border-2 border-border bg-white text-foreground font-bold text-[10px] uppercase tracking-widest hover:bg-secondary transition-all active:scale-95 shadow-sm"
                 >
-                    <RefreshCw size={14} className="text-amber-500" /> SYNC PROGRESS
+                    <RefreshCw size={14} className="text-primary" /> SYNC PROGRESS
                 </button>
                 <button
                     onClick={onFetch}
-                    className="flex items-center justify-center gap-2 h-12 rounded-xl border-2 border-amber-200 bg-white text-amber-800 font-bold text-[10px] uppercase tracking-widest hover:bg-amber-50 transition-all active:scale-95 shadow-sm"
+                    className="flex items-center justify-center gap-2 h-12 rounded-xl border-2 border-border bg-white text-foreground font-bold text-[10px] uppercase tracking-widest hover:bg-secondary transition-all active:scale-95 shadow-sm"
                 >
-                    <Download size={14} className="text-amber-500" /> FETCH CLOUD
+                    <Download size={14} className="text-primary" /> FETCH CLOUD
                 </button>
             </div>
 
             {/* Secure Footer */}
-            <div className="pt-4 border-t border-amber-100">
-                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-amber-800/30">
+            <div className="pt-4 border-t border-border">
+                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-foreground/30">
                     <div className="flex items-center gap-2">
                         <ShieldCheck className="w-3 h-3" />
                         <span>NIP-01 VERIFIED</span>

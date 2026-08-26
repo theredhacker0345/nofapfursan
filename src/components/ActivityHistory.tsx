@@ -30,10 +30,10 @@ export function ActivityHistory() {
 
     return (
         <div className="royal-card overflow-hidden page-transition" style={{ animationDelay: "0.4s" }}>
-            <div className="p-5 border-b border-amber-200/50 bg-gradient-to-r from-amber-50 to-transparent">
+            <div className="p-5 border-b border-border bg-secondary/50">
                 <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-black uppercase tracking-tight text-amber-800 flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 flex items-center justify-center shadow-lg shadow-amber-500/20">
+                    <h3 className="text-sm font-black uppercase tracking-tight text-foreground flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center shadow-lg shadow-sm">
                             <History className="w-4 h-4 text-white" />
                         </div>
                         Activity Log
@@ -43,7 +43,7 @@ export function ActivityHistory() {
                         size="icon"
                         aria-label="Refresh activity log"
                         onClick={loadActivities}
-                        className="h-10 w-10 text-amber-700/70 hover:text-amber-700 hover:bg-amber-100/50"
+                        className="h-10 w-10 text-muted-foreground hover:text-foreground/80 hover:bg-secondary/50"
                     >
                         <RefreshCw className="w-4 h-4" aria-hidden="true" />
                     </Button>
@@ -53,36 +53,36 @@ export function ActivityHistory() {
             <div className="max-h-[320px] overflow-y-auto scrollbar-thin">
                 {loading ? (
                     <div className="p-12 text-center">
-                        <RefreshCw className="w-8 h-8 mx-auto animate-spin text-amber-300" />
-                        <p className="text-[10px] uppercase font-bold tracking-widest text-amber-700/30 mt-4">Syncing History...</p>
+                        <RefreshCw className="w-8 h-8 mx-auto animate-spin text-muted-foreground" />
+                        <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground/70 mt-4">Syncing History...</p>
                     </div>
                 ) : activities.length === 0 ? (
                     <div className="p-12 text-center flex flex-col items-center">
-                        <ScrollText className="w-12 h-12 text-amber-200 mb-4" aria-hidden="true" />
-                        <p className="text-[11px] uppercase font-bold tracking-widest text-amber-700/70">
+                        <ScrollText className="w-12 h-12 text-muted-foreground/50 mb-4" aria-hidden="true" />
+                        <p className="text-[11px] uppercase font-bold tracking-widest text-muted-foreground">
                             The Archives are Empty
                         </p>
-                        <p className="text-[12px] text-amber-700/60 mt-1 font-medium italic">
+                        <p className="text-[12px] text-muted-foreground mt-1 font-medium italic">
                             Your glorious deeds will be recorded here
                         </p>
                     </div>
                 ) : (
-                    <div className="divide-y divide-amber-100">
+                    <div className="divide-y divide-border">
                         {activities.slice(0, 15).map((activity, i) => (
                             <div
                                 key={activity.id}
-                                className="px-5 py-4 flex items-start gap-4 hover:bg-amber-50/50 transition-colors group"
+                                className="px-5 py-4 flex items-start gap-4 hover:bg-secondary/50 transition-colors group"
                                 style={{ animationDelay: `${i * 0.05}s` }}
                             >
-                                <div className="text-xl h-10 w-10 shrink-0 bg-white border border-amber-100 rounded-lg flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                                <div className="text-xl h-10 w-10 shrink-0 bg-white border border-border rounded-lg flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
                                     {getActivityIcon(activity.type)}
                                 </div>
                                 <div className="flex-1 min-w-0 py-0.5">
-                                    <p className="text-sm font-bold leading-tight text-amber-900 group-hover:text-amber-700 transition-colors break-words">
+                                    <p className="text-sm font-bold leading-tight text-foreground group-hover:text-foreground/80 transition-colors break-words">
                                         {activity.message}
                                     </p>
-                                    <p className="text-[10px] text-amber-600/40 font-mono uppercase mt-1.5 flex items-center gap-1.5">
-                                        <div className="w-1 h-1 bg-amber-200 rounded-full" />
+                                    <p className="text-[10px] text-muted-foreground font-mono uppercase mt-1.5 flex items-center gap-1.5">
+                                        <div className="w-1 h-1 bg-border rounded-full" />
                                         {formatDistanceToNow(activity.timestamp, { addSuffix: true })}
                                     </p>
                                 </div>
@@ -92,8 +92,8 @@ export function ActivityHistory() {
                 )}
             </div>
 
-            <div className="p-3 bg-amber-50/30 border-t border-amber-200/50 text-center">
-                <p className="text-[9px] font-bold uppercase tracking-widest text-amber-700/40">Latest 15 Updates</p>
+            <div className="p-3 bg-secondary/40 border-t border-border text-center">
+                <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Latest 15 Updates</p>
             </div>
         </div>
     );

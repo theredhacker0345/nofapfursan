@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Shield, CheckCircle2, AlertCircle } from "lucide-react";
+import { CheckCircle2, AlertCircle } from "lucide-react";
 import { luxuryClickVibrate } from "@/lib/vibrationUtils";
 
 interface BiologicalCheckinProps {
@@ -9,30 +9,28 @@ interface BiologicalCheckinProps {
 
 export function BiologicalCheckin({ onCheckin, saving }: BiologicalCheckinProps) {
     return (
-        <div className="royal-card p-6 space-y-6 page-transition">
-            <div className="text-center space-y-2">
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-600/40">Your Body</p>
-                <h4 className="text-lg font-black text-amber-900 uppercase tracking-tighter">Healthy signs this morning?</h4>
+        <div className="royal-card p-6 space-y-5 page-transition">
+            <div className="space-y-1">
+                <h4 className="text-base font-semibold text-foreground">Healthy signs this morning?</h4>
+                <p className="text-sm text-muted-foreground">A quick daily body check-in</p>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
                 <Button
                     onClick={() => { luxuryClickVibrate(); onCheckin(true); }}
                     disabled={saving}
-                    className="h-16 rounded-2xl border-2 border-emerald-100 bg-white hover:bg-emerald-50 text-emerald-700 font-black text-xl transition-all shadow-sm hover:shadow-md active:scale-95"
+                    aria-label="Yes, healthy signs"
+                    className="h-14 rounded-xl border border-border bg-background hover:bg-secondary text-foreground font-medium text-base transition-colors active:scale-[0.98]"
                 >
-                    YES <CheckCircle2 className="ml-2 w-5 h-5 text-emerald-500" />
+                    Yes <CheckCircle2 className="ml-2 w-4 h-4 text-accent" />
                 </Button>
                 <Button
                     onClick={() => { luxuryClickVibrate(); onCheckin(false); }}
                     disabled={saving}
-                    className="h-16 rounded-2xl border-2 border-rose-100 bg-white hover:bg-rose-50 text-rose-700 font-black text-xl transition-all shadow-sm hover:shadow-md active:scale-95"
+                    aria-label="No healthy signs"
+                    className="h-14 rounded-xl border border-border bg-background hover:bg-secondary text-foreground font-medium text-base transition-colors active:scale-[0.98]"
                 >
-                    NO <AlertCircle className="ml-2 w-5 h-5 text-rose-500" />
+                    No <AlertCircle className="ml-2 w-4 h-4 text-destructive" />
                 </Button>
-            </div>
-            <div className="flex items-center gap-2 justify-center pt-2">
-                <Shield className="w-3 h-3 text-amber-600/30" />
-                <p className="text-[9px] font-bold text-amber-600/30 uppercase tracking-widest">Physical health check</p>
             </div>
         </div>
     );

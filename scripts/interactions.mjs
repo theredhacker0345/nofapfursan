@@ -55,20 +55,19 @@ if (await page.getByRole('button', { name: /start my streak/i }).count()) {
   await page.waitForTimeout(800);
 }
 
-// 2. Settings dialog
-await page.getByRole('button', { name: /open settings/i }).click();
-await page.waitForTimeout(800);
-await page.screenshot({ path: 'scripts/shots/flow-3-settings.png' });
-
-// Expand Sector Settings section
-const sector = page.getByRole('button', { name: /sector settings/i }).first();
-if (await sector.count()) {
-  await sector.click();
-  await page.waitForTimeout(500);
-  console.log('SETTINGS: sector expanded');
+// 2. Settings page via footer link
+const settingsLink = page.getByRole('link', { name: 'Open settings' });
+if (await settingsLink.count()) {
+  await settingsLink.click();
+  await page.waitForTimeout(2000);
+  const themesVisible = await page.getByText('Appearance').count();
+  console.log('SETTINGS PAGE:', themesVisible > 0 ? 'OK' : 'MISSING CONTENT');
+  await page.screenshot({ path: 'scripts/shots/flow-3-settings.png' });
+  await page.getByRole('button', { name: 'Go back' }).click();
+  await page.waitForTimeout(800);
+} else {
+  console.log('SETTINGS LINK: not found');
 }
-await page.keyboard.press('Escape');
-await page.waitForTimeout(400);
 
 // 3. Bottom nav to Journal
 await page.getByRole('link', { name: 'Journal' }).click();

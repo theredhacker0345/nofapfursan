@@ -25,44 +25,44 @@
 
 @layer base {
   :root {
-    /* Fursan Royal - Warm Cream and Gold Theme */
-    --background: 45 50% 96%;
-    /* Warm Cream #FAF6F0 */
-    --foreground: 30 20% 15%;
-    /* Dark brown for text */
+    /* Fursan — Warm Cream & Bronze (refined, low-saturation) */
+    --background: 40 33% 97%;
+    /* Warm off-white */
 
-    --card: 45 40% 98%;
-    /* Off-white cards */
-    --card-foreground: 30 20% 15%;
+    --foreground: 25 15% 14%;
+    /* Soft near-black brown */
+
+    --card: 40 30% 99%;
+    --card-foreground: 25 15% 14%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 30 20% 15%;
+    --popover-foreground: 25 15% 14%;
 
-    --primary: 43 96% 56%;
-    /* Rich Gold #F5C842 */
-    --primary-foreground: 30 20% 10%;
+    --primary: 33 45% 40%;
+    /* Antique bronze */
+    --primary-foreground: 40 30% 97%;
 
-    --secondary: 39 35% 92%;
-    /* Soft cream #F0EBE3 */
-    --secondary-foreground: 30 20% 20%;
+    --secondary: 38 25% 92%;
+    /* Soft warm grey */
+    --secondary-foreground: 25 15% 20%;
 
-    --muted: 45 30% 85%;
-    --muted-foreground: 30 10% 40%;
+    --muted: 38 20% 90%;
+    --muted-foreground: 28 10% 42%;
 
-    --accent: 145 50% 40%;
-    /* Deep Emerald for accents */
+    --accent: 152 30% 34%;
+    /* Muted deep green */
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 0 60% 46%;
     --destructive-foreground: 0 0% 98%;
 
-    --success: 145 50% 40%;
+    --success: 152 30% 34%;
     --success-foreground: 0 0% 100%;
 
-    --border: 43 40% 75%;
-    /* Gold-tinted border */
-    --input: 45 30% 90%;
-    --ring: 43 96% 56%;
+    --border: 33 15% 86%;
+    /* Neutral warm border */
+    --input: 36 15% 90%;
+    --ring: 33 45% 40%;
 
     --radius: 0.75rem;
 
@@ -134,26 +134,16 @@
 
 @layer components {
 
-  /* Improved Royal Gold Card - Fursan Elite Edition */
+  /* Card — calm, flat, mature */
   .royal-card {
     background: hsl(var(--card));
-    border: 2px solid hsl(var(--border));
-    /* Metallic Bronze/Gold border */
-    border-radius: 2rem;
-    box-shadow: 0 15px 40px -10px hsl(var(--foreground) / 0.1), 0 5px 20px -5px hsl(var(--primary) / 0.2);
-    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), border-color 0.4s ease, box-shadow 0.4s ease;
+    border: 1px solid hsl(var(--border));
+    border-radius: 1.25rem;
+    box-shadow: 0 1px 2px hsl(var(--foreground) / 0.04);
     width: 95% !important;
     margin: 0 auto !important;
     position: relative;
     overflow: hidden;
-  }
-
-  .royal-card::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(circle at 50% 0%, rgba(251, 191, 36, 0.05) 0%, transparent 70%);
-    pointer-events: none;
   }
 
   .stagger-item {
@@ -163,16 +153,6 @@
     width: 95% !important;
     margin: 0 auto !important;
   }
-
-  .royal-card:hover {
-    border-color: hsl(var(--primary) / 0.5);
-    box-shadow:
-      0 8px 30px hsl(var(--primary) / 0.25),
-      0 2px 4px rgba(0, 0, 0, 0.05),
-      inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  }
-
-  /* Removed .royal-card:active scale to prevent unintended movement on non-interactive containers */
 
   /* Staggered entrance animations */
   @keyframes stagger-fade-in {
@@ -206,16 +186,7 @@
     animation: float 3s ease-in-out infinite;
   }
 
-  /* Gold Glass Card Effect - for dark overlays */
-  .gold-glass {
-    background: hsl(var(--background) / 0.8);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid hsl(var(--primary) / 0.2);
-    box-shadow: 0 8px 32px hsl(var(--primary) / 0.08);
-  }
-
-  /* Legacy dark-glass support - now maps to gold-glass */
+  /* Legacy dark-glass support - now maps to royal-card */
   .dark-glass-card {
     @apply royal-card p-5;
   }
@@ -223,7 +194,6 @@
   /* Gold text styling */
   .gold-text {
     color: hsl(var(--primary));
-    text-shadow: 0 0.5px 0 hsl(var(--background) / 0.8), 0 1px 2px hsl(var(--primary) / 0.2);
   }
 
   .cream-text {
@@ -242,16 +212,15 @@
 
   /* Fursan Logo Glow Effect */
   .fursan-logo-glow {
-    filter: drop-shadow(0 0 12px hsl(var(--primary) / 0.4)) drop-shadow(0 4px 12px rgba(0, 0, 0, 0.15));
+    filter: drop-shadow(0 1px 2px hsl(var(--foreground) / 0.1));
   }
 
-  /* Gold gradient text */
+  /* Gradient text */
   .text-gradient-gold {
-    background: linear-gradient(135deg, hsl(var(--primary-foreground)) 0%, hsl(var(--primary)) 50%, hsl(var(--primary-foreground)) 100%);
+    background: linear-gradient(135deg, hsl(var(--foreground)) 0%, hsl(var(--primary)) 60%, hsl(var(--foreground)) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.1));
   }
 
   .text-gradient-legendary {
@@ -285,7 +254,7 @@
     padding-bottom: env(safe-area-inset-bottom, 0);
   }
 
-  /* Fursan Aura Effect - Gold themed */
+  /* Bonus badge effect - subtle */
   .aura-effect {
     position: relative;
     display: inline-block;
@@ -295,35 +264,13 @@
   .aura-effect::after {
     content: '';
     position: absolute;
-    inset: -3px -8px;
-    background: linear-gradient(45deg, hsl(var(--primary)), hsl(var(--accent)), hsl(var(--primary)), hsl(var(--accent)));
-    background-size: 400% 400%;
+    inset: -2px -6px;
+    background: hsl(var(--primary) / 0.15);
     z-index: -1;
-    filter: blur(10px);
-    opacity: 0.5;
-    animation: aura-pulse 3s ease infinite;
+    filter: blur(6px);
+    opacity: 0.8;
     pointer-events: none;
     border-radius: 8px;
-  }
-
-  @keyframes aura-pulse {
-    0% {
-      background-position: 0% 50%;
-      opacity: 0.3;
-      transform: scale(1);
-    }
-
-    50% {
-      background-position: 100% 50%;
-      opacity: 0.6;
-      transform: scale(1.05);
-    }
-
-    100% {
-      background-position: 0% 50%;
-      opacity: 0.3;
-      transform: scale(1);
-    }
   }
 
   /* Pulse animation for dormant state */
@@ -415,19 +362,16 @@
 
   /* Button improvements */
   .btn-gold {
-    @apply bg-gradient-to-r from-amber-500 to-yellow-500 text-white font-bold;
-    @apply shadow-lg shadow-amber-500/25;
-    @apply hover:shadow-xl hover:shadow-amber-500/30;
-    @apply transition-all duration-400 cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 4px 15px -1px rgba(218, 165, 32, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    @apply bg-primary text-primary-foreground font-semibold;
+    @apply hover:bg-primary/90;
+    @apply transition-all duration-300;
   }
 
   .btn-royal {
-    @apply bg-card border-2 border-primary/50;
-    @apply text-foreground font-bold;
-    @apply hover:bg-secondary hover:border-primary;
-    @apply shadow-md hover:shadow-lg;
-    @apply transition-all duration-400 cubic-bezier(0.4, 0, 0.2, 1);
+    @apply bg-card border border-border;
+    @apply text-foreground font-semibold;
+    @apply hover:bg-secondary;
+    @apply transition-all duration-300;
   }
 }
 
