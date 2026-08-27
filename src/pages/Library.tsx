@@ -148,28 +148,7 @@ const Library = () => {
   const [selectedItem, setSelectedItem] = useState<KnowledgeItem | null>(null);
   const [showMobileFilter, setShowMobileFilter] = useState(false);
 
-  const filteredItems = KNOWLEDGE_BASE.filter(item => {
-    const matchesCategory = selectedCategory === "all" || item.category === selectedCategory;
-    const matchesSearch = (
-      searchQuery === "" ||
-      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.tags?.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()))
-    );
-    return matchesCategory && matchesSearch;
-  });
-
-  const groupedItems = filteredItems.reduce((acc, item) => {
-    if (!acc[item.category]) acc[item.category] = [];
-    acc[item.category].push(item);
-    return acc;
-  }, {} as Record<string, KnowledgeItem[]>);
-
-  const sortedCategories = Object.keys(groupedItems).sort((a, b) => 
-    categoryOrder.indexOf(a) - categoryOrder.indexOf(b)
-  );
-
-  // Detail view
+  // Detail view - returns early if an item is selected
   if (selectedItem) {
     return (
       <div className="min-h-screen bg-bg pb-20">
@@ -231,23 +210,21 @@ const Library = () => {
                 {selectedItem.content}
               </div>
             )}
-          </article>
-          </div>
+</article>
         </div>
-        <BottomNav />
-      </div>
-    );
+      <BottomNav />
+    </div>
+  );
   }
 
   // Main library view
-  const filteredItems = KNOWLEDGE_BASE.filter(item => {
+  const filteredItems = KNOWLEDGE_BASE.filter((item) => {
     const matchesCategory = selectedCategory === "all" || item.category === selectedCategory;
-    const matchesSearch = (
+    const matchesSearch = 
       searchQuery === "" ||
       item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.tags?.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()))
-    );
+      (item.tags?.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase())) ?? false);
     return matchesCategory && matchesSearch;
   };
 
