@@ -142,110 +142,6 @@ interface KnowledgeItem {
   publishedAt?: string;
 }
 
-interface KnowledgeItem {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-  type: "pdf" | "article" | "guide";
-  author?: string;
-  thumbnail?: string;
-  url?: string;
-  content?: string;
-  readTime?: number;
-  tags?: string[];
-  publishedAt?: string;
-}
-  {
-    id: "guide-1",
-    title: "Starting Your Streak: The First 7 Days",
-    description: "A practical guide for the critical first week. Covers morning routines, trigger identification, and building momentum.",
-    category: "guides",
-    type: "guide",
-    author: "Fursan Team",
-    readTime: 8,
-    tags: ["beginner", "streak", "routine"],
-    publishedAt: "2024-01-15",
-  },
-  {
-    id: "guide-2",
-    title: "Understanding Triggers: The HALT Method",
-    description: "Learn to recognize Hunger, Anger, Loneliness, and Tiredness as relapse precursors. Includes a printable worksheet.",
-    category: "guides",
-    type: "guide",
-    author: "Dr. Ahmad",
-    readTime: 12,
-    tags: ["triggers", "psychology", "worksheet"],
-    publishedAt: "2024-02-01",
-  },
-  {
-    id: "article-1",
-    title: "The Neuroscience of Addiction: What Happens in Your Brain",
-    description: "Understanding dopamine, the reward pathway, and why willpower alone isn't enough. Science-backed explanation.",
-    category: "articles",
-    type: "article",
-    author: "Dr. Sarah Khan",
-    readTime: 15,
-    tags: ["neuroscience", "dopamine", "science"],
-    publishedAt: "2024-01-20",
-  },
-  {
-    id: "article-2",
-    title: "Building a Support System That Works",
-    description: "How to find accountability partners, join groups, and create an environment that makes recovery easier.",
-    category: "articles",
-    type: "article",
-    author: "Yusuf Ali",
-    readTime: 10,
-    tags: ["community", "support", "accountability"],
-    publishedAt: "2024-02-10",
-  },
-  {
-    id: "pdf-1",
-    title: "The Fursan Recovery Workbook (PDF)",
-    description: "Complete 30-day workbook with daily reflections, trigger logs, gratitude practice, and progress tracking.",
-    category: "pdfs",
-    type: "pdf",
-    author: "Fursan Team",
-    readTime: 0,
-    tags: ["workbook", "30-day", "printable"],
-    publishedAt: "2024-01-01",
-  },
-  {
-    id: "pdf-2",
-    title: "Islamic Perspective on Recovery (PDF)",
-    description: "Quranic verses, hadith, and scholarly guidance on overcoming addiction from an Islamic perspective.",
-    category: "pdfs",
-    type: "pdf",
-    author: "Sheikh Abdullah",
-    readTime: 0,
-    tags: ["islamic", "quran", "hadith", "spiritual"],
-    publishedAt: "2024-01-10",
-  },
-  {
-    id: "guide-3",
-    title: "Managing Urges: The 15-Minute Rule",
-    description: "When an urge hits, wait 15 minutes. Most urges pass. This guide teaches distraction techniques and grounding exercises.",
-    category: "recovery",
-    type: "guide",
-    author: "Fursan Team",
-    readTime: 5,
-    tags: ["urges", "coping", "immediate"],
-    publishedAt: "2024-02-20",
-  },
-  {
-    id: "article-3",
-    title: "Sleep, Stress, and Relapse: The Hidden Connection",
-    description: "How poor sleep and chronic stress sabotage recovery. Includes sleep hygiene checklist and stress management tools.",
-    category: "health",
-    type: "article",
-    author: "Dr. Fatima",
-    readTime: 12,
-    tags: ["sleep", "stress", "health", "lifestyle"],
-    publishedAt: "2024-03-01",
-  },
-];
-
 const Library = () => {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -254,12 +150,14 @@ const Library = () => {
 
   const filteredItems = KNOWLEDGE_BASE.filter(item => {
     const matchesCategory = selectedCategory === "all" || item.category === selectedCategory;
-    const matchesSearch = (searchQuery === "" ||
+    const matchesSearch = (
+      searchQuery === "" ||
       item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.tags?.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()));
+      item.tags?.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
     return matchesCategory && matchesSearch;
-  };
+  });
 
   const groupedItems = filteredItems.reduce((acc, item) => {
     if (!acc[item.category]) acc[item.category] = [];
@@ -268,8 +166,7 @@ const Library = () => {
   }, {} as Record<string, KnowledgeItem[]>);
 
   const sortedCategories = Object.keys(groupedItems).sort((a, b) => 
-    ["guides", "articles", "pdfs", "recovery", "islamic", "health"].indexOf(a) - 
-    ["guides", "articles", "pdfs", "recovery", "islamic", "health"].indexOf(b)
+    categoryOrder.indexOf(a) - categoryOrder.indexOf(b)
   );
 
   // Detail view
@@ -307,7 +204,7 @@ const Library = () => {
               ))}
             </div>
             
-            <div className="flex items-center gap-3 pt-4 border-t border-border">
+<div className="flex items-center gap-3 pt-4 border-t border-border">
               {selectedItem.author && (
                 <div className="flex items-center gap-2">
                   <Avatar name={selectedItem.author} size="sm" />
@@ -316,7 +213,7 @@ const Library = () => {
               )}
             </div>
 
-            {selectedItem.type === "pdf" && selectedItem.url && (
+            {selectedItem.type === "pdf" && selectedItem.url ? (
               <div className="mt-6">
                 <Button 
                   variant="default" 
@@ -326,13 +223,15 @@ const Library = () => {
                   <Download className="h-4 w-4 mr-2" />
                   Open PDF
                 </Button>
-              )}
-              {selectedItem.type !== "pdf" && selectedItem.content && (
-                <div className="mt-6 prose prose-ink max-w-none">
-                  {selectedItem.content}
-                </div>
-              )}
-            </article>
+              </div>
+            ) : null}
+
+            {selectedItem.type !== "pdf" && selectedItem.content && (
+              <div className="mt-6 prose prose-ink max-w-none">
+                {selectedItem.content}
+              </div>
+            )}
+          </article>
           </div>
         </div>
         <BottomNav />
@@ -343,10 +242,12 @@ const Library = () => {
   // Main library view
   const filteredItems = KNOWLEDGE_BASE.filter(item => {
     const matchesCategory = selectedCategory === "all" || item.category === selectedCategory;
-    const matchesSearch = (searchQuery === "" ||
+    const matchesSearch = (
+      searchQuery === "" ||
       item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.tags?.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()));
+      item.tags?.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
     return matchesCategory && matchesSearch;
   };
 
@@ -357,8 +258,7 @@ const Library = () => {
   }, {} as Record<string, KnowledgeItem[]>);
 
   const sortedCategories = Object.keys(groupedItems).sort((a, b) => 
-    ["guides", "articles", "pdfs", "recovery", "islamic", "health"].indexOf(a) - 
-    ["guides", "articles", "pdfs", "recovery", "islamic", "health"].indexOf(b)
+    categoryOrder.indexOf(a) - categoryOrder.indexOf(b)
   );
 
   return (
