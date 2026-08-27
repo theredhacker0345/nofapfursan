@@ -226,7 +226,7 @@ const Library = () => {
       item.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (item.tags?.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase())) ?? false);
     return matchesCategory && matchesSearch;
-  };
+  });
 
   const groupedItems = filteredItems.reduce((acc, item) => {
     if (!acc[item.category]) acc[item.category] = [];
