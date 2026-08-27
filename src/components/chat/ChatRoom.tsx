@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { useNostr } from "@/hooks/useNostr";
 import { RELAYS, fetchHealthChecks } from "@/services/nostr";
 import { generateOrLoadKeys, NostrKeys } from "@/services/nostr";
+import { Avatar } from "@/components/Avatar";
 import { finalizeEvent, Event, Filter } from "nostr-tools";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
@@ -47,6 +48,7 @@ export function ChatRoom({ roomId }: ChatRoomProps) {
   const [newMessage, setNewMessage] = useState("");
   const { events, subscribe, publish, profiles, setProfiles, pool } = useNostr();
   const [identity, setIdentity] = useState<NostrKeys | null>(null);
+  const [avatars, setAvatars] = useState<Record<string, string>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const timeoutRefs = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
@@ -142,6 +144,13 @@ export function ChatRoom({ roomId }: ChatRoomProps) {
                 ...prev,
                 [event.pubkey]: data.display_name || data.name || "Warrior"
               }));
+              // Also store avatar
+              if (data.picture) {
+                setAvatars(prev => ({
+                  ...prev,
+                  [event.pubkey]: data.picture
+                }));
+              }
             } catch (e) {
               console.error("Failed to parse profile metadata", e);
             }
@@ -272,20 +281,30 @@ export function ChatRoom({ roomId }: ChatRoomProps) {
           const isOwn = identity && message.pubkey === identity.publicKey;
           const isSending = message.status === 'sending';
           const isFailed = message.status === 'failed';
+          const avatar = avatars[message.pubkey];
+          const senderName = profiles[message.pubkey] || `user:${message.pubkey.slice(0, 5)}`;
 
           return (
             <div key={message.id} className={`flex ${isOwn ? "justify-end" : "justify-start"} animate-in slide-in-from-bottom-1 duration-300`}>
               <div className={`max-w-[85%] space-y-1 ${isOwn ? "text-right" : "text-left"}`}>
-                <div className={`px-4 py-2 border border-black ${isOwn ? "bg-black text-white" : "bg-white text-black"} ${isSending ? "opacity-40 grayscale" : ""} ${isFailed ? "border-red-500 opacity-60" : ""}`}>
-                  <p className={`text-[8px] font-black uppercase tracking-widest mb-1 ${message.bonus === 'aura' ? '' : 'opacity-50'}`}>
-                    {profiles[message.pubkey] || `user:${message.pubkey.slice(0, 5)}`}
-                    {message.streak !== undefined && (
-                      <span className="ml-1 text-[7px] text-orange-500">
-                        ({message.streak} DAY STREAK 🔥)
-                      </span>
-                    )}
-                  </p>
-                  <p className="text-sm font-medium leading-relaxed break-words">{message.content}</p>
+                <div className={`flex items-start gap-2 ${isOwn ? "flex-row-reverse" : ""} ${isOwn ? "text-right" : "text-left"}`}>
+                  {!isOwn && avatar && (
+                    <Avatar src={avatar} name={profiles[message.pubkey]} size="sm" className="flex-shrink-0" />
+                  )}
+                  <div className={`flex flex-col ${isOwn ? "items-end" : "items-start"}`}>
+                    <p className={`text-[8px] font-black uppercase tracking-widest mb-1 ${message.bonus === 'aura' ? '' : 'opacity-50'}`}>
+                      {senderName}
+                      {message.streak !== undefined && (
+                        <span className="ml-1 text-[7px] text-orange-500">
+                          ({message.streak} DAY STREAK 🔥)
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-sm font-medium leading-relaxed break-words">{message.content}</p>
+                  </div>
+                  {isOwn && avatar && (
+                    <Avatar src={avatar} name={profiles[message.pubkey]} size="sm" className="flex-shrink-0" />
+                  )}
                 </div>
                 <div className={`flex items-center gap-2 ${isOwn ? "justify-end" : "justify-start"} px-1`}>
                   {isSending ? (

@@ -22,6 +22,8 @@ const Join = lazy(() => import("./pages/Join"));
 const Vitals = lazy(() => import("./pages/Vitals"));
 const Archives = lazy(() => import("./pages/Archives"));
 const Vanguard = lazy(() => import("./pages/Vanguard"));
+const Library = lazy(() => import("./pages/Library"));
+const Nutrition = lazy(() => import("./pages/Nutrition"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -41,6 +43,8 @@ const AnimatedRoutes = () => {
           <Route path='/community' element={<Community />} />
           <Route path='/profile' element={<Profile />} />
           <Route path='/settings' element={<Settings />} />
+          <Route path='/library' element={<Library />} />
+          <Route path='/nutrition' element={<Nutrition />} />
           <Route path='/join' element={<Join />} />
           <Route path='*' element={<NotFound />} />
         </Routes>

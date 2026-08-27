@@ -1,12 +1,14 @@
-import { Shield, Book, Activity, Radio, Library } from "lucide-react";
+import { Shield, BookOpen, Book, MessageCircle, Activity, Library, Apple } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 
 const navItems = [
   { to: "/", icon: Shield, label: "Home" },
-  { to: "/journal", icon: Book, label: "Journal" },
+  { to: "/journal", icon: BookOpen, label: "Journal" },
   { to: "/vitals", icon: Activity, label: "Health" },
-  { to: "/vanguard", icon: Radio, label: "Chat" },
-  { to: "/archives", icon: Library, label: "History" },
+  { to: "/nutrition", icon: Apple, label: "Nutrition" },
+  { to: "/vanguard", icon: MessageCircle, label: "Chat" },
+  { to: "/library", icon: Library, label: "Library" },
+  { to: "/archives", icon: Book, label: "History" },
 ];
 
 export function BottomNav() {

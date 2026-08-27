@@ -15,6 +15,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { luxuryClickVibrate } from "@/lib/vibrationUtils";
 import { cn } from "@/lib/utils";
+import { Avatar } from "@/components/Avatar";
+import { generateOrLoadKeys } from "@/services/nostr";
 
 interface DailyCheckinCardProps {
   onUpdate?: () => void;
@@ -47,6 +49,22 @@ export function DailyCheckinCard({ onUpdate, days = 0 }: DailyCheckinCardProps) 
   // Local working state (not yet persisted)
   const [workingMindset, setWorkingMindset] = useState<Mindset | null>(null);
   const [workingNpt, setWorkingNpt] = useState<boolean | null>(null);
+
+  const [userName, setUserName] = useState<string>("");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    const load = async () => {
+      const identity = await generateOrLoadKeys();
+      if (identity?.publicKey) {
+        const storedName = localStorage.getItem(`nostr_username_${identity.publicKey}`);
+        const storedAvatar = localStorage.getItem(`nostr_avatar_${identity.publicKey}`);
+        setUserName(storedName || "");
+        setAvatarUrl(storedAvatar || null);
+      }
+    };
+    load();
+  }, []);
 
   useEffect(() => {
     loadHealthData();
@@ -190,7 +208,13 @@ export function DailyCheckinCard({ onUpdate, days = 0 }: DailyCheckinCardProps) 
     <>
       <div className="card overflow-hidden">
         <div className="px-5 py-3 border-b border-border flex items-center justify-between">
-          <p className="text-[13px] font-semibold tracking-tight text-ink">Daily check-in</p>
+          <div className="flex items-center gap-3">
+            <Avatar src={avatarUrl} name={userName} size="sm" />
+            <div>
+              <p className="text-[13px] font-semibold tracking-tight text-ink">Daily check-in</p>
+              <p className="text-[10px] font-medium text-ink-muted">Mind & body</p>
+            </div>
+          </div>
           {todayEntry && (
             <p className="text-[11px] font-medium text-ink-muted flex items-center gap-1">
               <CheckCircle2 className="h-3.5 w-3.5 text-success" />
