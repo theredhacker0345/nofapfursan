@@ -73,6 +73,7 @@ const KNOWLEDGE_BASE: KnowledgeItem[] = [
     author: "Fursan",
     readTime: 7,
     tags: ["relapse", "shame", "restart"],
+    url: "https://www.netpsychology.org/porn-addiction-recovery-30-day",
   },
   {
     id: "guide-5",
@@ -84,6 +85,7 @@ const KNOWLEDGE_BASE: KnowledgeItem[] = [
     author: "Fursan",
     readTime: 9,
     tags: ["routine", "habits", "discipline"],
+    url: "https://www.netpsychology.org/porn-addiction-recovery-30-day",
   },
   {
     id: "guide-6",
@@ -95,6 +97,7 @@ const KNOWLEDGE_BASE: KnowledgeItem[] = [
     author: "Fursan",
     readTime: 6,
     tags: ["gaze", "digital", "boundaries"],
+    url: "https://www.islamonline.net/en/first-step-to-overcoming-addiction-islamic-guide",
   },
   {
     id: "guide-7",
@@ -106,6 +109,7 @@ const KNOWLEDGE_BASE: KnowledgeItem[] = [
     author: "Fursan",
     readTime: 10,
     tags: ["tawakkul", "sabr", "framework"],
+    url: "https://yaqeeninstitute.org/read/paper/how-to-overcome-addiction-through-faith-ibn-al-qayyims-rehabilitation-program",
   },
   {
     id: "article-1",
@@ -196,7 +200,9 @@ const KNOWLEDGE_BASE: KnowledgeItem[] = [
     category: "pdfs",
     type: "pdf",
     author: "Fursan",
+    readTime: 30,
     tags: ["workbook", "printable"],
+    url: "https://www.netpsychology.org/porn-addiction-recovery-30-day",
   },
   {
     id: "pdf-2",
@@ -206,7 +212,9 @@ const KNOWLEDGE_BASE: KnowledgeItem[] = [
     category: "pdfs",
     type: "pdf",
     author: "Fursan",
+    readTime: 20,
     tags: ["islamic", "quran", "hadith"],
+    url: "https://yaqeeninstitute.org/read/paper/how-to-overcome-addiction-through-faith-ibn-al-qayyims-rehabilitation-program",
   },
   {
     id: "resource-1",
@@ -269,6 +277,18 @@ const KNOWLEDGE_BASE: KnowledgeItem[] = [
     url: "https://yaqeeninstitute.org/watch/series/iman-cave/overcoming-addictions-iman-cave",
   },
   {
+    id: "resource-5b",
+    title: "Advice to Muslims on the Means of Attaining Chastity",
+    description:
+      "Classic and contemporary guidance on protecting one's chastity through prayer, fasting, dhikr, and keeping good company.",
+    category: "islamic",
+    type: "article",
+    author: "IslamWeb",
+    readTime: 9,
+    tags: ["chastity", "taqwa", "practical"],
+    url: "https://www.islamweb.net/en/article/194782/advice-to-muslims-on-the-means-of-attaining-chastity",
+  },
+  {
     id: "resource-6",
     title: "NetPsychology: 30-Day Evidence-Based Action Plan",
     description:
@@ -302,6 +322,19 @@ const KNOWLEDGE_BASE: KnowledgeItem[] = [
     author: "Matthew Walker, Why We Sleep",
     readTime: 10,
     tags: ["sleep", "prefrontal", "willpower"],
+    url: "https://www.netpsychology.org/porn-addiction-recovery-30-day",
+  },
+  {
+    id: "health-3",
+    title: "The First Step to Overcoming Addiction: An Islamic Guide",
+    description:
+      "IslamOnline’s guide to nafs-stage psychology, repentance, habit replacement, and practical taqwa-based boundaries for digital age triggers.",
+    category: "islamic",
+    type: "article",
+    author: "IslamOnline",
+    readTime: 11,
+    tags: ["islamic", "nafs", "tawbah", "practical"],
+    url: "https://islamonline.net/en/first-step-to-overcoming-addiction-islamic-guide",
   },
 ];
 
@@ -347,7 +380,7 @@ export default function Library() {
   if (selected) {
     return (
       <Screen title="Library" back>
-        <article className="card p-5">
+        <article className="card overflow-y-auto [-webkit-overflow-scrolling:touch] [touch-action:pan-y]">
           <span
             className={cn(
               "inline-block rounded-full border px-2.5 py-1 text-label uppercase",
@@ -396,11 +429,11 @@ export default function Library() {
               rel="noreferrer noopener"
               className="mt-6 inline-flex h-11 w-full items-center justify-center rounded-md bg-ink text-label uppercase text-bg transition-opacity hover:opacity-90"
             >
-              Open document
+              Open resource
             </a>
           ) : (
             <p className="mt-6 rounded-md border border-dashed border-border bg-surface-2 px-4 py-6 text-center text-body-s text-ink-muted">
-              This piece is being written. Check back soon.
+              This reference is being prepared. Check back soon for the full resource.
             </p>
           )}
 
