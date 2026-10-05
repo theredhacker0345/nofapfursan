@@ -11,7 +11,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "audit": "node scripts/audit.mjs",
-    "verify": "npm run lint && tsc -b --force && npm run build && node scripts/verify.mjs"
+    "verify": "npm run lint -- --max-warnings=0 && tsc -b --force && npm run build && node scripts/verify.mjs && node scripts/flows.mjs",
+    "flows": "node scripts/flows.mjs"
   },
   "dependencies": {
     "@capacitor-community/media": "^9.0.0",

@@ -4,10 +4,9 @@ import { Play, RotateCcw, Sun, Cloud, CloudLightning, CheckCircle2, AlertCircle 
 import { toast } from "sonner";
 
 import { saveHealthCheck, fetchHealthChecks, type HealthCheck } from "@/services/nostr";
-import { logActivity } from "@/services/localStore";
+import { getLocalHealthChecks, logActivity, mergeHealthChecks } from "@/services/localStore";
 import { luxuryClickVibrate } from "@/lib/vibrationUtils";
 import { cn } from "@/lib/utils";
-import { LoadingBlock } from "@/components/LoadingScreen";
 import {
   Dialog,
   DialogContent,
@@ -43,8 +42,11 @@ interface DailyCheckinCardProps {
  * from theme tokens instead of a hard-coded black panel.
  */
 export function DailyCheckinCard({ onUpdate }: DailyCheckinCardProps) {
-  const [history, setHistory] = useState<HealthCheck[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Render from the device copy immediately. Waiting on the relay query meant a
+  // 6-second "Loading today's check-in" block on every open, and forever when a
+  // relay was unreachable — even though the answer was already on disk.
+  const [history, setHistory] = useState<HealthCheck[]>(() => getLocalHealthChecks());
+  const [syncing, setSyncing] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showMedicalAlert, setShowMedicalAlert] = useState(false);
   const [isEmergencyLocked, setIsEmergencyLocked] = useState(false);
@@ -66,40 +68,46 @@ export function DailyCheckinCard({ onUpdate }: DailyCheckinCardProps) {
   useEffect(() => {
     let cancelled = false;
 
+    const adopt = (data: HealthCheck[]) => {
+      if (cancelled || !mounted.current) return;
+      setHistory(data);
+
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const todayRec = data.find((e) => e.timestamp >= todayStart.getTime()) ?? null;
+
+      setTodayEntry(todayRec);
+      setWorkingMindset(todayRec?.mindset ?? null);
+      setWorkingNpt(todayRec?.npt ?? null);
+
+      // Stormy yesterday and not yet acknowledged → offer the interrupt.
+      let resolved = false;
+      try {
+        resolved = localStorage.getItem(STORMY_KEY) === "true";
+      } catch {
+        resolved = false;
+      }
+      if (!resolved && todayRec?.mindset === "stormy") {
+        setIsEmergencyLocked(true);
+        setUnlockTimer(UNLOCK_SECONDS);
+      }
+
+      if (data.length >= 14) {
+        const recent = data.slice(0, 14);
+        if (recent.every((e) => !e.npt)) setShowMedicalAlert(true);
+      }
+    };
+
+    // Local copy first, so nothing on the screen depends on the network.
+    adopt(getLocalHealthChecks());
+
     void (async () => {
       try {
-        const data = await fetchHealthChecks();
-        if (cancelled || !mounted.current) return;
-        setHistory(data);
-
-        const todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0);
-        const todayRec = data.find((e) => e.timestamp >= todayStart.getTime()) ?? null;
-
-        setTodayEntry(todayRec);
-        setWorkingMindset(todayRec?.mindset ?? null);
-        setWorkingNpt(todayRec?.npt ?? null);
-
-        // Stormy yesterday and not yet acknowledged → offer the interrupt.
-        let resolved = false;
-        try {
-          resolved = localStorage.getItem(STORMY_KEY) === "true";
-        } catch {
-          resolved = false;
-        }
-        if (!resolved && todayRec?.mindset === "stormy") {
-          setIsEmergencyLocked(true);
-          setUnlockTimer(UNLOCK_SECONDS);
-        }
-
-        if (data.length >= 14) {
-          const recent = data.slice(0, 14);
-          if (recent.every((e) => !e.npt)) setShowMedicalAlert(true);
-        }
+        adopt(await fetchHealthChecks());
       } catch (error) {
         console.error("[Checkin] Failed to load history", error);
       } finally {
-        if (!cancelled && mounted.current) setLoading(false);
+        if (!cancelled && mounted.current) setSyncing(false);
       }
     })();
 
@@ -150,12 +158,12 @@ export function DailyCheckinCard({ onUpdate }: DailyCheckinCardProps) {
   // Auto-save once both answers exist and nothing is stored for today yet.
   const autoSaved = useRef(false);
   useEffect(() => {
-    if (loading || saving || todayEntry || autoSaved.current) return;
+    if (saving || todayEntry || autoSaved.current) return;
     if (workingMindset && workingNpt !== null) {
       autoSaved.current = true;
       void persist(workingMindset, workingNpt);
     }
-  }, [workingMindset, workingNpt, loading, saving, todayEntry, persist]);
+  }, [workingMindset, workingNpt, saving, todayEntry, persist]);
 
   const resolveEmergency = async () => {
     if (!isCompletionConfirmed) return;
@@ -171,8 +179,6 @@ export function DailyCheckinCard({ onUpdate }: DailyCheckinCardProps) {
   const bothAnswered =
     (!!todayEntry || workingMindset !== null) && (!!todayEntry || workingNpt !== null);
   const awaitingSave = bothAnswered && !todayEntry;
-
-  if (loading) return <LoadingBlock label="Loading today's check-in" />;
 
   if (isEmergencyLocked) {
     if (typeof document === "undefined") return null;
@@ -235,12 +241,16 @@ export function DailyCheckinCard({ onUpdate }: DailyCheckinCardProps) {
             <h2 className="text-body-s font-semibold text-ink">Daily check-in</h2>
             <p className="text-meta text-ink-muted">Private · stored on this device</p>
           </div>
-          {todayEntry && (
+          {todayEntry ? (
             <span className="inline-flex items-center gap-1.5 text-meta text-success">
               <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
               Done
             </span>
-          )}
+          ) : syncing ? (
+            <span className="text-meta text-ink-faint" role="status">
+              checking relays…
+            </span>
+          ) : null}
         </div>
 
         <div className="border-b border-border px-5 py-4">

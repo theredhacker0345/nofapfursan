@@ -181,3 +181,23 @@ export const themeColor = (theme: ThemeDefinition, tokenName: string): string =>
   const raw = theme.vars[tokenName] ?? "0 0% 0%";
   return `hsl(${raw})`;
 };
+/**
+ * Reads the persisted theme id.
+ *
+ * Capacitor's web `Preferences.get` returns the stored string verbatim, while the
+ * native bridge JSON-decodes it, so a legacy build (or a hand-edited
+ * localStorage value) can leave the id JSON-quoted. Accept both shapes: a
+ * mismatch here silently reverted every user to the OS default theme, and threw
+ * inside the pre-paint script in index.html.
+ */
+export const parseStoredThemeId = (raw: string | null | undefined): string | null => {
+  if (raw == null) return null;
+  const trimmed = String(raw).trim();
+  if (!trimmed.startsWith('"')) return trimmed || null;
+  try {
+    const parsed: unknown = JSON.parse(trimmed);
+    return typeof parsed === "string" ? parsed : null;
+  } catch {
+    return trimmed.replace(/^"|"$/g, "") || null;
+  }
+};

@@ -5,7 +5,11 @@ import { Screen, SectionHead } from "@/components/Screen";
 import { DailyCheckinCard } from "@/components/DailyCheckinCard";
 import { EmptyState } from "@/components/EmptyState";
 import { fetchHealthChecks, type HealthCheck } from "@/services/nostr";
-import { localDayIndex } from "@/services/localStore";
+import {
+  getLocalHealthChecks,
+  localDayIndex,
+  mergeHealthChecks,
+} from "@/services/localStore";
 import { useStreak } from "@/hooks/useStreak";
 import { cn } from "@/lib/utils";
 
@@ -29,17 +33,19 @@ const MOOD_META: Record<Mood, { label: string; Icon: typeof Sun; bar: string }> 
  */
 export default function Vitals() {
   const { streakData } = useStreak();
-  const [history, setHistory] = useState<HealthCheck[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Device copy first — the relay pass only reconciles.
+  const [history, setHistory] = useState<HealthCheck[]>(() => getLocalHealthChecks());
+  const [syncing, setSyncing] = useState(true);
 
   const load = useCallback(async () => {
     try {
       const checks = await fetchHealthChecks();
-      setHistory(checks);
+      // Reconcile, so a check-in saved during this request survives the merge.
+      setHistory((prev) => mergeHealthChecks(prev, checks));
     } catch (error) {
       console.error("[Vitals] Load failed", error);
     } finally {
-      setLoading(false);
+      setSyncing(false);
     }
   }, []);
 
@@ -90,11 +96,16 @@ export default function Vitals() {
     <Screen title="Vitals" subtitle="Mind and body, last three weeks">
       <DailyCheckinCard onUpdate={() => void load()} days={streakData.longestStreak} />
 
-      <SectionHead>Daily check-ins</SectionHead>
+      <SectionHead>
+        Daily check-ins
+        {syncing && (
+          <span className="font-data text-meta font-normal normal-case tracking-normal text-ink-faint">
+            syncing…
+          </span>
+        )}
+      </SectionHead>
 
-      {loading ? (
-        <div className="h-40 animate-pulse rounded-lg border border-border bg-surface-2" aria-hidden="true" />
-      ) : history.length === 0 ? (
+      {history.length === 0 ? (
         <EmptyState
           icon={<Sun className="h-8 w-8" aria-hidden="true" />}
           title="No check-ins yet"

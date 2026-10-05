@@ -72,6 +72,11 @@ float. No decorative gradients, no blur panels, no emoji-as-icons, nothing below
 
 - Type: `Inter` (UI), `Inter Tight` (display), `JetBrains Mono` (values you
   compare over time). Loaded non-render-blocking with metric-matched fallbacks.
+- Theme ids round-trip through Capacitor `Preferences`, whose web backend stores
+  values verbatim while the native bridge JSON-decodes them. Both shapes are
+  accepted on read, and the pre-paint script in `index.html` handles both — a
+  mismatch there throws, leaves the light defaults in place, and silently renders
+  every dark theme as light.
 - Every theme defines the same 15 tokens — `--bg`, `--surface{,-2,-3}`,
   `--border{,-strong}`, `--ink{,-muted,-faint}`, `--accent{,-hover}`,
   `--on-accent`, `--success`, `--warning`, `--danger` — plus `color-scheme` and a
@@ -95,7 +100,8 @@ npm run preview    # serve dist on :4173
 ### Verification
 
 ```bash
-npm run verify     # lint + typecheck + build + browser audit
+npm run verify     # lint + typecheck + build + browser audit + flow tests
+npm run flows      # flow tests only, against an existing build
 ```
 
 `scripts/verify.mjs` serves the real production bundle to Chromium and fails on
@@ -109,6 +115,23 @@ anything a user would notice:
 - navigation on every route while offline
 
 Add `--screenshots` to write `scripts/shots/verify/*.png`.
+
+`scripts/flows.mjs` covers state transitions rather than rendering — 32 cases
+against the production bundle:
+
+- start / reset a streak, reload, and confirm the reset is not resurrected by a
+  later cloud sync
+- write a check-in and a journal entry, reload, and confirm nothing is lost,
+  duplicated, or clobbered by a relay response that was already in flight
+- write while offline and confirm the record lands on the device and queues for
+  delivery, and that the queue stays bounded
+- apply all six themes and assert each one actually renders *its own* palette,
+  by luminance — not merely that its tokens are populated
+- an empty relay list, a corrupt identity, malformed local records, and a
+  start date in the future
+
+Every state-dependent assertion polls for its condition rather than sleeping, so
+the suite is deterministic.
 
 CI (`.github/workflows/ci.yml`) runs the same gate on every push and pull request.
 `release.yml` produces the signed APK on a `v*` tag and fails with an explicit

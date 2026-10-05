@@ -1,7 +1,10 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">NoFap Fursan</string>
-    <string name="title_activity_main">NoFap Fursan</string>
+    <!-- Kept in step with `appName` in capacitor.config.ts. The strings were
+         still "NoFap Fursan", so the launcher label and the Capacitor label
+         disagreed. -->
+    <string name="app_name">Fursan</string>
+    <string name="title_activity_main">Fursan</string>
     <string name="package_name">com.nofapfursan.app</string>
     <string name="custom_url_scheme">com.nofapfursan.app</string>
 </resources>

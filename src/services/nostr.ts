@@ -792,9 +792,15 @@ export async function saveHealthCheck(entry: HealthCheck): Promise<boolean> {
 }
 
 /** Local ∪ relay, newest first, deduplicated per day. */
+/**
+ * Local ∪ relay, newest first, deduplicated per day.
+ *
+ * The local snapshot is deliberately read *after* the network call, not before:
+ * a request can take seconds, and reading early meant a check-in saved while it
+ * was in flight was silently dropped from the returned list.
+ */
 export async function fetchHealthChecks(): Promise<HealthCheck[]> {
-  const local = getLocalHealthChecks();
-  if (!networkState.isOnline) return local;
+  if (!networkState.isOnline) return getLocalHealthChecks();
 
   try {
     const keys = await generateOrLoadKeys();
@@ -808,12 +814,12 @@ export async function fetchHealthChecks(): Promise<HealthCheck[]> {
       const data = decryptJson<HealthCheck>(event.content, keys);
       if (data && typeof data.timestamp === "number") remote.push({ ...data, id: event.id });
     }
-    const merged = mergeHealthChecks(local, remote);
+    const merged = mergeHealthChecks(getLocalHealthChecks(), remote);
     if (remote.length > 0) void mirrorToSecureStorage();
     return merged;
   } catch (error) {
     console.error("[Nostr] fetchHealthChecks failed", error);
-    return local;
+    return getLocalHealthChecks();
   }
 }
 
@@ -850,9 +856,9 @@ export async function saveJournalEntry(entry: JournalEntry): Promise<boolean> {
   }
 }
 
+/** Local ∪ relay, newest first. See `fetchHealthChecks` for the late-snapshot rule. */
 export async function fetchJournalEntries(): Promise<JournalEntry[]> {
-  const local = getLocalJournalEntries();
-  if (!networkState.isOnline) return local;
+  if (!networkState.isOnline) return getLocalJournalEntries();
 
   try {
     const keys = await generateOrLoadKeys();
@@ -866,12 +872,12 @@ export async function fetchJournalEntries(): Promise<JournalEntry[]> {
       const data = decryptJson<JournalEntry>(event.content, keys);
       if (data && typeof data.timestamp === "number") remote.push({ ...data, id: event.id });
     }
-    const merged = mergeJournalEntries(local, remote);
+    const merged = mergeJournalEntries(getLocalJournalEntries(), remote);
     if (remote.length > 0) void mirrorToSecureStorage();
     return merged;
   } catch (error) {
     console.error("[Nostr] fetchJournalEntries failed", error);
-    return local;
+    return getLocalJournalEntries();
   }
 }
 

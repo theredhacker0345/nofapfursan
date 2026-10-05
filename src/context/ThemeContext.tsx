@@ -1,5 +1,12 @@
 import React, { createContext, useContext, useEffect, useMemo, useState, useRef, useCallback } from "react";
-import { THEMES, ThemeDefinition, DEFAULT_THEME_ID, DARK_THEME_ID, themeColor } from "@/data/themes";
+import {
+  THEMES,
+  ThemeDefinition,
+  DEFAULT_THEME_ID,
+  DARK_THEME_ID,
+  themeColor,
+  parseStoredThemeId,
+} from "@/data/themes";
 import { Preferences } from "@capacitor/preferences";
 import { getStreakData, daysSinceStart } from "@/lib/streakUtils";
 
@@ -33,7 +40,7 @@ const applyTheme = (theme: ThemeDefinition) => {
 const readStoredTheme = async (): Promise<ThemeDefinition> => {
   try {
     const { value } = await Preferences.get({ key: STORE_KEY });
-    const found = value ? THEMES.find((t) => t.id === value) : undefined;
+    const found = THEMES.find((t) => t.id === parseStoredThemeId(value));
     if (found) return found;
   } catch {
     // Unreadable preference — fall through to the OS preference.

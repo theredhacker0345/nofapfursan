@@ -6,7 +6,12 @@ import { Screen, SectionHead } from "@/components/Screen";
 import { EmptyState } from "@/components/EmptyState";
 import { Slider } from "@/components/ui/slider";
 import { saveJournalEntry, fetchJournalEntries, type JournalEntry } from "@/services/nostr";
-import { deleteLocalJournalEntry, logActivity } from "@/services/localStore";
+import {
+  deleteLocalJournalEntry,
+  getLocalJournalEntries,
+  logActivity,
+  mergeJournalEntries,
+} from "@/services/localStore";
 
 const MAX_LENGTH = 4000;
 
@@ -20,8 +25,9 @@ const formatStamp = (timestamp: number): string =>
   });
 
 export default function Journal() {
-  const [entries, setEntries] = useState<JournalEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+  // The device copy renders immediately; the relay pass only reconciles.
+  const [entries, setEntries] = useState<JournalEntry[]>(() => getLocalJournalEntries());
+  const [syncing, setSyncing] = useState(true);
   const [composing, setComposing] = useState(false);
   const [content, setContent] = useState("");
   const [mood, setMood] = useState(5);
@@ -40,12 +46,14 @@ export default function Journal() {
   const load = useCallback(async () => {
     try {
       const data = await fetchJournalEntries();
-      if (mounted.current) setEntries(data);
+      if (!mounted.current) return;
+      // Reconcile rather than replace: an entry saved while this request was in
+      // flight would otherwise be dropped from the list.
+      setEntries((prev) => mergeJournalEntries(prev, data));
     } catch (error) {
       console.error("[Journal] Load failed", error);
-      toast.error("Could not read your journal");
     } finally {
-      if (mounted.current) setLoading(false);
+      if (mounted.current) setSyncing(false);
     }
   }, []);
 
@@ -198,15 +206,15 @@ export default function Journal() {
         </div>
       )}
 
+      {syncing && (
+        <p className="pt-4 text-meta text-ink-faint" role="status">
+          Checking relays for entries on your other devices…
+        </p>
+      )}
+
       <SectionHead>{entries.length > 0 ? `${entries.length} entries` : undefined}</SectionHead>
 
-      {loading ? (
-        <div className="space-y-3" aria-hidden="true">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="h-24 animate-pulse rounded-lg border border-border bg-surface-2" />
-          ))}
-        </div>
-      ) : entries.length === 0 ? (
+      {entries.length === 0 ? (
         <EmptyState
           icon={<ScrollText className="h-8 w-8" aria-hidden="true" />}
           title="No entries yet"

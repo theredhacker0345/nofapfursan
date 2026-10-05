@@ -16,9 +16,16 @@
   <script>
     (function () {
       try {
+        // Capacitor's web Preferences backend returns the RAW string, while the
+        // native bridge JSON-decodes it. This script has to accept both, and it
+        // must never throw — a throw here silently leaves the light `:root`
+        // defaults in place, which is how every dark theme used to render as
+        // light on first paint.
         var raw = localStorage.getItem("CapacitorStorage.user_theme");
-        var theme = raw ? JSON.parse(raw) : null;
-        var id = typeof theme === "string" ? theme : theme && theme.value;
+        var id = raw;
+        if (typeof raw === "string" && raw.charAt(0) === '"') {
+          try { id = JSON.parse(raw); } catch (e) { id = raw.replace(/^"|"$/g, ""); }
+        }
         var prefersDark =
           window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
         var dark = {
