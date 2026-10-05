@@ -48,9 +48,26 @@ const main = async () => {
   const buildId = createHash("sha256").update(precache.join("|")).digest("hex").slice(0, 12);
 
   const template = await readFile(join("public", "sw.js"), "utf8");
+  // The placeholder must occur exactly once. It used to appear in the file's
+  // leading comment too, so a single-occurrence replace rewrote the comment and
+  // shipped a worker whose precache list was still an unsubstituted token.
+  const token = "__FURSAN_PRECACHE__";
+  const occurrences = template.split(token).length - 1;
+  if (occurrences !== 1) {
+    console.error(`[build-sw] expected exactly one ${token} placeholder, found ${occurrences}`);
+    process.exit(1);
+  }
+
   const worker = template
-    .replace('"__PRECACHE__"', JSON.stringify(precache, null, 2))
+    .replace(token, JSON.stringify(precache, null, 2))
     .replace("__BUILD_ID__", buildId);
+
+  // A nested array here silently turns every precache URL into a malformed
+  // request that resolves 404s, which is exactly what shipped once already.
+  if (!/const PRECACHE = \[/m.test(worker) || /const PRECACHE = \[\s*\[/m.test(worker)) {
+    console.error("[build-sw] precache list was not substituted correctly");
+    process.exit(1);
+  }
 
   await writeFile(SW, worker, "utf8");
 

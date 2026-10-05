@@ -14,6 +14,13 @@ export interface ThemeDefinition {
  * used to live only in :root and therefore collapsed on dark surfaces.
  * The design language (hairline rules, flat planes, one bronze accent) is
  * constant; only the palette shifts.
+ *
+ * `--ink-faint` carries every section label, meta line and nav caption, and its
+ * lightness is solved, not chosen by eye: it must clear WCAG AA (4.5:1) against
+ * `bg`, `surface` *and* `surface-2` simultaneously. The darkest surface is the
+ * binding constraint in the light themes and the lightest one binds in the dark
+ * themes. `npm run verify` re-checks the rendered result, so changing a surface
+ * without re-solving this token fails the build.
  */
 export const THEMES: ThemeDefinition[] = [
   {
@@ -32,7 +39,7 @@ export const THEMES: ThemeDefinition[] = [
       "--border-strong": "36 18% 77%",
       "--ink": "30 22% 6%",
       "--ink-muted": "35 10% 33%",
-      "--ink-faint": "38 8% 50%",
+      "--ink-faint": "38 8% 39%",
       "--accent": "33 68% 35%",
       "--accent-hover": "31 70% 28%",
       "--on-accent": "40 40% 98%",
@@ -57,7 +64,7 @@ export const THEMES: ThemeDefinition[] = [
       "--border-strong": "34 13% 26%",
       "--ink": "40 33% 94%",
       "--ink-muted": "38 14% 62%",
-      "--ink-faint": "38 10% 45%",
+      "--ink-faint": "38 10% 53%",
       "--accent": "33 60% 51%",
       "--accent-hover": "34 65% 58%",
       "--on-accent": "30 15% 7%",
@@ -82,7 +89,7 @@ export const THEMES: ThemeDefinition[] = [
       "--border-strong": "222 25% 32%",
       "--ink": "210 35% 95%",
       "--ink-muted": "212 20% 70%",
-      "--ink-faint": "214 15% 52%",
+      "--ink-faint": "214 15% 57%",
       "--accent": "200 80% 62%",
       "--accent-hover": "200 85% 72%",
       "--on-accent": "222 47% 9%",
@@ -107,7 +114,7 @@ export const THEMES: ThemeDefinition[] = [
       "--border-strong": "152 10% 30%",
       "--ink": "140 20% 93%",
       "--ink-muted": "145 10% 66%",
-      "--ink-faint": "148 8% 48%",
+      "--ink-faint": "148 8% 53%",
       "--accent": "122 20% 52%",
       "--accent-hover": "122 24% 60%",
       "--on-accent": "150 14% 6%",
@@ -132,7 +139,7 @@ export const THEMES: ThemeDefinition[] = [
       "--border-strong": "38 34% 30%",
       "--ink": "40 100% 94%",
       "--ink-muted": "38 32% 66%",
-      "--ink-faint": "36 22% 44%",
+      "--ink-faint": "36 22% 52%",
       "--accent": "37 72% 56%",
       "--accent-hover": "38 80% 64%",
       "--on-accent": "30 25% 5%",
@@ -157,7 +164,7 @@ export const THEMES: ThemeDefinition[] = [
       "--border-strong": "0 0% 26%",
       "--ink": "0 0% 93%",
       "--ink-muted": "0 0% 63%",
-      "--ink-faint": "0 0% 45%",
+      "--ink-faint": "0 0% 52%",
       "--accent": "33 52% 50%",
       "--accent-hover": "34 58% 57%",
       "--on-accent": "0 0% 6%",

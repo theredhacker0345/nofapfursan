@@ -97,6 +97,100 @@ const serve = () =>
     server.listen(PORT, () => resolve(server));
   });
 
+/**
+ * WCAG 2.1 contrast.
+ *
+ * Walks every visible text leaf, resolves the effective background by climbing
+ * past transparent ancestors (a hard-coded `bg-white` on a dark theme was
+ * invisible precisely because a contrast check would have caught it), and
+ * reports anything below 4.5:1 for body text or 3:1 for large text.
+ */
+const auditContrast = async (page, scope) => {
+  const failures = await page.evaluate(() => {
+    const parse = (value) => {
+      const nums = value.match(/[\d.]+/g);
+      if (!nums) return null;
+      const [r, g, b, a = 1] = nums.map(Number);
+      return { r, g, b, a };
+    };
+    const over = (fg, bg) => ({
+      r: fg.r * fg.a + bg.r * (1 - fg.a),
+      g: fg.g * fg.a + bg.g * (1 - fg.a),
+      b: fg.b * fg.a + bg.b * (1 - fg.a),
+      a: 1,
+    });
+    const lum = ({ r, g, b }) => {
+      const f = (c) => {
+        const s = c / 255;
+        return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+      };
+      return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+    };
+    const ratio = (a, b) => {
+      const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
+      return (hi + 0.05) / (lo + 0.05);
+    };
+    const bgOf = (el) => {
+      let node = el;
+      let acc = null;
+      while (node && node !== document.documentElement.parentNode) {
+        const style = getComputedStyle(node);
+        const bg = parse(style.backgroundColor);
+        if (bg && bg.a > 0) {
+          acc = acc ? over(acc, bg) : bg;
+          if (acc.a >= 0.999) return acc;
+        }
+        node = node.parentElement;
+      }
+      return acc && acc.a >= 0.999 ? acc : { r: 255, g: 255, b: 255, a: 1 };
+    };
+
+    const bad = [];
+    const seen = new Set();
+    for (const el of document.querySelectorAll("*")) {
+      if (el.closest(".sr-only") || el.classList.contains("sr-only")) continue;
+      const own = [...el.childNodes]
+        .filter((n) => n.nodeType === 3 && n.textContent.trim())
+        .map((n) => n.textContent.trim())
+        .join(" ");
+      if (!own) continue;
+
+      const rect = el.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) continue;
+      const style = getComputedStyle(el);
+      if (style.visibility === "hidden" || style.opacity === "0") continue;
+
+      const fg = parse(style.color);
+      if (!fg) continue;
+      const bg = bgOf(el);
+      const composited = fg.a < 1 ? over(fg, bg) : fg;
+      const size = parseFloat(style.fontSize);
+      const weight = Number(style.fontWeight) || 400;
+      const large = size >= 24 || (size >= 18.66 && weight >= 700);
+      const required = large ? 3 : 4.5;
+      const got = ratio(composited, bg);
+      if (got + 0.02 < required) {
+        const key = `${el.className}|${own.slice(0, 20)}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        bad.push({
+          text: own.slice(0, 32),
+          ratio: +got.toFixed(2),
+          required,
+          size: +size.toFixed(1),
+          cls: String(el.className).slice(0, 48),
+        });
+      }
+    }
+    return bad;
+  });
+
+  if (failures.length) {
+    fail(scope, `text below WCAG AA contrast (${failures.length})`, failures.slice(0, 6));
+  }
+  return failures.length;
+};
+
 const auditDom = async (page, scope) => {
   const found = await page.evaluate(() => {
     const out = { overflow: [], noAlt: [], unnamed: [], tiny: [], smallTap: [], h1: 0 };
@@ -305,6 +399,27 @@ const main = async () => {
       await page.screenshot({ path: join(SHOTS, `${route.name}.png`), fullPage: true });
     }
     report.routes.push({ ...route, ...dom, consoleErrors: consoleErrors.length });
+  }
+
+  /* ── 1b. Contrast on every theme, on the two densest screens ─────────── */
+  const THEME_SCHEME = {
+    fursan: "light",
+    fursan_dark: "dark",
+    midnight: "dark",
+    sage: "dark",
+    solar: "dark",
+    void: "dark",
+  };
+  for (const theme of Object.keys(THEME_SCHEME)) {
+    await page.evaluate((t) =>
+      localStorage.setItem("CapacitorStorage.user_theme", t), theme);
+    for (const route of ["#/", "#/settings", "#/archives", "#/journal"]) {
+      const scope = `${route}@${theme}`;
+      await page.goto(`${base}/?c=${theme}-${route}#${route}`, { waitUntil: "networkidle" });
+      await page.reload({ waitUntil: "networkidle" });
+      await page.waitForTimeout(700);
+      await auditContrast(page, scope);
+    }
   }
 
   /* ── 2. Responsive sweep ─────────────────────────────────────────── */

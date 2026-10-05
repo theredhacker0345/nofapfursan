@@ -19,6 +19,12 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
     // Dev servers and tests do not need a worker; it only adds noise.
     if (import.meta.env.DEV) return null;
 
+    // Distinguish "a new version took over" from "the very first worker claimed
+    // this page". `controllerchange` fires for both, so reloading unconditionally
+    // threw an unprompted reload at every first-time visitor right after first
+    // paint.
+    const hadControllerAtStart = Boolean(navigator.serviceWorker.controller);
+
     try {
       const registration = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
 
@@ -37,6 +43,7 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
 
       let refreshing = false;
       navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (!hadControllerAtStart) return; // first install — no reload
         if (refreshing) return;
         refreshing = true;
         window.location.reload();

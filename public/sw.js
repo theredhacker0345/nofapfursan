@@ -5,16 +5,19 @@
  * before visiting a route failed its dynamic import and rendered the global
  * error screen.
  *
- * `__PRECACHE__` is replaced with the real asset list at build time by
- * scripts/build-sw.mjs. Do not edit that placeholder.
+ * The precache manifest below is injected by scripts/build-sw.mjs as a JSON
+ * array. Two constraints, both learned the hard way:
+ *   - it must stay a bare expression, not an array literal, or the list gets
+ *     nested and every precache URL becomes malformed;
+ *   - the placeholder token must not appear anywhere else in this file, or a
+ *     single-occurrence substitution lands in the prose and the real list keeps
+ *     its placeholder.
  */
 
 const VERSION = "__BUILD_ID__";
 const CACHE_NAME = `fursan-${VERSION}`;
 
-const PRECACHE = [
-  "__PRECACHE__",
-];
+const PRECACHE = __FURSAN_PRECACHE__;
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

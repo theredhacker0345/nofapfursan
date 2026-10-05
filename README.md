@@ -100,9 +100,18 @@ npm run preview    # serve dist on :4173
 ### Verification
 
 ```bash
-npm run verify     # lint + typecheck + build + browser audit + flow tests
-npm run flows      # flow tests only, against an existing build
+npm run verify     # lint + typecheck + build + all three browser suites
+npm run flows      # state-transition tests only
+npm run offline    # service-worker / offline tests only
 ```
+
+Three suites run against the real production bundle:
+
+| Suite | Covers |
+| --- | --- |
+| `scripts/verify.mjs` | 12 routes × 4 viewports: console errors, overflow, `alt`, accessible names, sub-11px text, tap targets, `<h1>` count, heap/socket/timer growth over 24 navigations, **WCAG AA contrast on 6 themes × 4 screens**, offline navigation |
+| `scripts/flows.mjs` | 32 state-transition cases (see below) |
+| `scripts/offline.mjs` | Cold install precaches the whole build manifest, then every route renders offline — including routes never visited — plus offline writes, queue bounds and persisted retry counters |
 
 `scripts/verify.mjs` serves the real production bundle to Chromium and fails on
 anything a user would notice:
@@ -131,7 +140,14 @@ against the production bundle:
   start date in the future
 
 Every state-dependent assertion polls for its condition rather than sleeping, so
-the suite is deterministic.
+the suites are deterministic.
+
+The contrast check solved a real defect: `--ink-faint` carried every section
+label, meta line and nav caption and failed AA in **all six** themes (3.4–4.4:1).
+Its lightness is now solved against `bg`, `surface` and `surface-2`
+simultaneously rather than chosen by eye, and the pre-paint script in
+`index.html` — which carries a duplicate copy of the palette — is checked by the
+same suite.
 
 CI (`.github/workflows/ci.yml`) runs the same gate on every push and pull request.
 `release.yml` produces the signed APK on a `v*` tag and fails with an explicit
