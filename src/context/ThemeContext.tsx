@@ -60,6 +60,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const currentThemeRef = useRef(currentTheme);
   const previewTimeoutRef = useRef<number | null>(null);
+  const streakDaysRef = useRef<number | null>(null);
 
   useEffect(() => {
     currentThemeRef.current = currentTheme;
@@ -70,6 +71,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       const data = await getStreakData();
       const days = daysSinceStart(data.startDate);
+      if (days === streakDaysRef.current) return;
+      streakDaysRef.current = days;
       setUnlockedThemes(THEMES.filter((t) => days >= t.minDays).map((t) => t.id));
     } catch {
       // Keep the last known set — an unreadable streak must not lock the UI.

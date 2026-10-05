@@ -130,12 +130,12 @@ export const NostrProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     if (relays.length === 0) return;
     let cancelled = false;
-    const controller = new AbortController();
 
-    for (const url of relays) {
+    const fetchers = relays.map((url) => {
       const httpUrl = url.replace(/^ws/, "http");
+      const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), METADATA_TIMEOUT_MS);
-      void fetch(httpUrl, {
+      return fetch(httpUrl, {
         headers: { Accept: "application/nostr+json" },
         signal: controller.signal,
       })
@@ -148,11 +148,10 @@ export const NostrProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         .catch(() => {
           clearTimeout(timer);
         });
-    }
+    });
 
     return () => {
       cancelled = true;
-      controller.abort();
     };
   }, [relays]);
 

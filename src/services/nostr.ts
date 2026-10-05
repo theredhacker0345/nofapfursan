@@ -660,6 +660,8 @@ export async function resetIdentity(options: { wipeRecords?: boolean } = {}): Pr
     ),
   );
 
+  await writeQueue([]);
+
   // WebView-localStorage copies and per-identity profile metadata.
   try {
     const doomed: string[] = [];
@@ -675,8 +677,7 @@ export async function resetIdentity(options: { wipeRecords?: boolean } = {}): Pr
     /* nothing stored here */
   }
 
-  closeAllRelays();
-  updateNetworkState({ pendingCount: 0, droppedCount: 0, isSyncing: false, connectedCount: 0 });
+  await shutdownNetwork();
 }
 
 /** Clears a damaged identity so the next load mints a fresh one. */
@@ -685,6 +686,7 @@ export async function discardIdentity(): Promise<void> {
     SecureStorage.remove(NSEC_KEY),
     ...LEGACY_KEYS.map((k) => SecureStorage.remove(k)),
   ]);
+  await writeQueue([]);
   try {
     for (const key of LEGACY_KEYS) localStorage.removeItem(key);
   } catch {
