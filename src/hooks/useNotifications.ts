@@ -1,176 +1,240 @@
-import { useState, useEffect, useCallback } from "react";
-import { LocalNotifications } from '@capacitor/local-notifications';
-import { Capacitor } from '@capacitor/core';
-import { MOTIVATIONAL_MESSAGES, getFormattedMotivation } from "@/data/motivation";
+import { useSyncExternalStore, useCallback, useEffect } from "react";
+import { LocalNotifications } from "@capacitor/local-notifications";
+import { Capacitor } from "@capacitor/core";
+import { MOTIVATIONAL_MESSAGES } from "@/data/motivation";
 
-const STORAGE_KEY = "fursan_notifications_enabled";
-const INTERVAL_STORAGE_KEY = "fursan_notification_interval_hours";
+const ENABLED_KEY = "fursan_notifications_enabled";
+const INTERVAL_KEY = "fursan_notification_interval_hours";
 const DEFAULT_INTERVAL_HOURS = 3;
+const HORIZON = 10;
+
+/**
+ * Shared singleton state.
+ *
+ * This hook used to be instantiated twice (once by Settings, once inside
+ * NotificationToggle) with independent `useState` and independent effects, so
+ * the Enable button and the interval slider disagreed until a reload. Module
+ * scope plus `useSyncExternalStore` makes every consumer read one truth.
+ */
+interface NotificationState {
+  permission: NotificationPermission | string;
+  enabled: boolean;
+  intervalHours: number;
+  supported: boolean;
+}
+
+const isSupported = () => Capacitor.isNativePlatform() || typeof window !== "undefined" && "Notification" in window;
+
+const readStored = (): Pick<NotificationState, "enabled" | "intervalHours"> => {
+  try {
+    const rawInterval = parseInt(localStorage.getItem(INTERVAL_KEY) ?? "", 10);
+    return {
+      enabled: localStorage.getItem(ENABLED_KEY) === "true",
+      intervalHours: Number.isFinite(rawInterval)
+        ? Math.min(24, Math.max(1, rawInterval))
+        : DEFAULT_INTERVAL_HOURS,
+    };
+  } catch {
+    return { enabled: false, intervalHours: DEFAULT_INTERVAL_HOURS };
+  }
+};
+
+let state: NotificationState = { permission: "default", ...readStored(), supported: isSupported() };
+const listeners = new Set<() => void>();
+
+const setState = (patch: Partial<NotificationState>) => {
+  state = { ...state, ...patch };
+  for (const listener of listeners) listener();
+};
+
+const subscribe = (listener: () => void) => {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+};
+
+const getSnapshot = () => state;
+
+const persist = (patch: Partial<NotificationState>) => {
+  setState(patch);
+  try {
+    if (patch.enabled !== undefined) localStorage.setItem(ENABLED_KEY, String(patch.enabled));
+    if (patch.intervalHours !== undefined)
+      localStorage.setItem(INTERVAL_KEY, String(patch.intervalHours));
+  } catch {
+    /* storage unavailable — the in-memory value still applies */
+  }
+};
+
+const cancelAll = async () => {
+  if (!Capacitor.isNativePlatform()) return;
+  try {
+    const pending = await LocalNotifications.getPending();
+    if (pending.notifications.length > 0) await LocalNotifications.cancel(pending);
+  } catch (error) {
+    console.warn("[Notifications] Cancel failed", error);
+  }
+};
+
+const schedule = async (intervalHours: number, probe: boolean) => {
+  if (!isSupported()) return false;
+
+  await cancelAll();
+
+  const intervalMs = intervalHours * 3_600_000;
+  const body = MOTIVATIONAL_MESSAGES[Math.floor(Math.random() * MOTIVATIONAL_MESSAGES.length)];
+
+  if (Capacitor.isNativePlatform()) {
+    const notifications = Array.from({ length: HORIZON }, (_, i) => ({
+      id: i + 1,
+      title: "Fursan",
+      body,
+      schedule: { at: new Date(Date.now() + intervalMs * (i + 1)) },
+      // A monochrome drawable must exist in res/ or scheduling throws.
+      smallIcon: "ic_stat_icon",
+    }));
+    try {
+      await LocalNotifications.schedule({ notifications });
+      return true;
+    } catch (error) {
+      console.error("[Notifications] Scheduling failed", error);
+      return false;
+    }
+  }
+
+  if (!probe) {
+    // Browsers cannot schedule future notifications from a page. Be honest
+    // rather than logging "SIMULATED" and reporting success.
+    return false;
+  }
+  try {
+    new Notification("Fursan", { body, tag: "fursan-reminder" });
+    return true;
+  } catch (error) {
+    console.warn("[Notifications] Web notification failed", error);
+    return false;
+  }
+};
+
+let initialised = false;
 
 export function useNotifications() {
-  const [permission, setPermission] = useState<string>("default");
-  const [enabled, setEnabled] = useState(false);
-  const [intervalHours, setIntervalHoursState] = useState<number>(DEFAULT_INTERVAL_HOURS);
+  const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 
-  const checkPermission = useCallback(async () => {
-    if (Capacitor.isNativePlatform()) {
-      const status = await LocalNotifications.checkPermissions();
-      setPermission(status.display);
-    } else if ("Notification" in window) {
-      setPermission(Notification.permission);
+  const refreshPermission = useCallback(async () => {
+    try {
+      if (Capacitor.isNativePlatform()) {
+        const status = await LocalNotifications.checkPermissions();
+        setState({ permission: status.display });
+      } else if ("Notification" in window) {
+        setState({ permission: Notification.permission });
+      }
+    } catch (error) {
+      console.warn("[Notifications] Permission check failed", error);
     }
   }, []);
-
-  useEffect(() => {
-    checkPermission();
-    const stored = localStorage.getItem(STORAGE_KEY);
-    setEnabled(stored === "true");
-
-    const storedInterval = localStorage.getItem(INTERVAL_STORAGE_KEY);
-    if (storedInterval) {
-      setIntervalHoursState(parseInt(storedInterval));
-    }
-  }, [checkPermission]);
-
-  const scheduleNotifications = useCallback(async () => {
-    if (!Capacitor.isNativePlatform() && !("Notification" in window)) return;
-
-    try {
-      // 1. Clear all existing pending notifications to avoid duplicates
-      if (Capacitor.isNativePlatform()) {
-        const pending = await LocalNotifications.getPending();
-        if (pending.notifications.length > 0) {
-          await LocalNotifications.cancel(pending);
-        }
-      }
-
-      const notifications = [];
-      let notificationId = 1;
-
-      // Schedule periodic motivational reminders
-      const intervalMs = intervalHours * 60 * 60 * 1000;
-      for (let i = 1; i <= 10; i++) {
-        notifications.push({
-          title: "Fursan Shield ⚔️",
-          body: MOTIVATIONAL_MESSAGES[Math.floor(Math.random() * MOTIVATIONAL_MESSAGES.length)],
-          id: notificationId++,
-          schedule: { at: new Date(Date.now() + (intervalMs * i)) },
-          smallIcon: "res://ic_stat_icon",
-        });
-      }
-
-      if (Capacitor.isNativePlatform()) {
-        await LocalNotifications.schedule({ notifications });
-      } else {
-        console.log("[FURSAN] Web notifications scheduled (SIMULATED):", notifications);
-      }
-
-      console.log(`[FURSAN] scheduled ${notifications.length} reminders (Interval: ${intervalHours}h).`);
-    } catch (err) {
-      console.error("Failed to schedule notifications", err);
-    }
-  }, [intervalHours]);
-
-  const setIntervalHours = async (hours: number) => {
-    setIntervalHoursState(hours);
-    localStorage.setItem(INTERVAL_STORAGE_KEY, hours.toString());
-    if (enabled && (permission === "granted" || permission === "provisional")) {
-      await scheduleNotifications();
-    }
-  };
 
   const showTestNotification = useCallback(async () => {
-    const quote = getFormattedMotivation();
-
+    const body = MOTIVATIONAL_MESSAGES[Math.floor(Math.random() * MOTIVATIONAL_MESSAGES.length)];
     if (Capacitor.isNativePlatform()) {
-      await LocalNotifications.schedule({
-        notifications: [
-          {
-            title: "Fursan Shield Active ⚔️",
-            body: quote,
-            id: 999,
-            schedule: { at: new Date(Date.now() + 1000) },
-          }
-        ]
-      });
-    } else if ("Notification" in window && Notification.permission === "granted") {
-      new Notification("Fursan Shield Active ⚔️", { body: quote });
-    }
-  }, []);
-
-  const requestPermission = async () => {
-    if (Capacitor.isNativePlatform()) {
-      const result = await LocalNotifications.requestPermissions();
-      setPermission(result.display);
-
-      if (result.display === "granted") {
-        setEnabled(true);
-        localStorage.setItem(STORAGE_KEY, "true");
-        await scheduleNotifications();
-        await showTestNotification();
+      try {
+        await LocalNotifications.schedule({
+          notifications: [
+            { id: 999, title: "Fursan", body, schedule: { at: new Date(Date.now() + 800) } },
+          ],
+        });
         return true;
+      } catch (error) {
+        console.warn("[Notifications] Test notification failed", error);
+        return false;
       }
-    } else if ("Notification" in window) {
-      const result = await Notification.permission;
-      if (result === "default") {
-        const webResult = await Notification.requestPermission();
-        setPermission(webResult);
-        if (webResult === "granted") {
-          setEnabled(true);
-          localStorage.setItem(STORAGE_KEY, "true");
-          await showTestNotification();
-          return true;
-        }
-      } else {
-        setPermission(result);
-        if (result === "granted") {
-          setEnabled(true);
-          localStorage.setItem(STORAGE_KEY, "true");
-          await showTestNotification();
-          return true;
-        }
+    }
+    if ("Notification" in window && Notification.permission === "granted") {
+      try {
+        new Notification("Fursan", { body });
+        return true;
+      } catch {
+        return false;
       }
     }
     return false;
-  };
+  }, []);
 
-  const toggleNotifications = async () => {
-    if (!enabled) {
-      const success = await requestPermission();
-      return success;
-    } else {
-      setEnabled(false);
-      localStorage.setItem(STORAGE_KEY, "false");
+  const enable = useCallback(async () => {
+    try {
+      let granted = false;
       if (Capacitor.isNativePlatform()) {
-        const pending = await LocalNotifications.getPending();
-        if (pending.notifications.length > 0) {
-          await LocalNotifications.cancel(pending);
-        }
+        const result = await LocalNotifications.requestPermissions();
+        setState({ permission: result.display });
+        granted = result.display === "granted";
+      } else if ("Notification" in window) {
+        const result =
+          Notification.permission === "default"
+            ? await Notification.requestPermission()
+            : Notification.permission;
+        setState({ permission: result });
+        granted = result === "granted";
       }
+
+      if (!granted) {
+        persist({ enabled: false });
+        return false;
+      }
+
+      persist({ enabled: true });
+      await schedule(state.intervalHours, false);
+      void showTestNotification();
+      return true;
+    } catch (error) {
+      console.error("[Notifications] Enable failed", error);
+      persist({ enabled: false });
       return false;
     }
-  };
+  }, [showTestNotification]);
 
-  const handleUpdate = useCallback(() => {
-    if (enabled && (permission === "granted" || permission === "provisional")) {
-      scheduleNotifications();
-    }
-  }, [enabled, permission, scheduleNotifications]);
+  const disable = useCallback(async () => {
+    persist({ enabled: false });
+    await cancelAll();
+    return false;
+  }, []);
 
-  // Reschedule whenever the app is opened or settings change
+  const toggleNotifications = useCallback(
+    () => (state.enabled ? disable() : enable()),
+    [disable, enable],
+  );
+
+  const setIntervalHours = useCallback(
+    async (hours: number) => {
+      const clamped = Math.min(24, Math.max(1, Math.round(hours)));
+      persist({ intervalHours: clamped });
+      if (state.enabled) await schedule(clamped, false);
+    },
+    [],
+  );
+
+  // Initialising during render would be a side effect; do it once on mount.
   useEffect(() => {
-    if (enabled && (permission === "granted" || permission === "provisional")) {
-      scheduleNotifications();
-    }
-  }, [enabled, permission, scheduleNotifications, handleUpdate]);
+    if (initialised) return;
+    initialised = true;
+    void (async () => {
+      await refreshPermission();
+      const stored = readStored();
+      setState(stored);
+      if (stored.enabled) await schedule(stored.intervalHours, false);
+    })();
+  }, [refreshPermission]);
 
   return {
-    permission,
-    enabled,
-    intervalHours,
+    permission: snapshot.permission,
+    enabled: snapshot.enabled,
+    intervalHours: snapshot.intervalHours,
     setIntervalHours,
     toggleNotifications,
     showTestNotification,
-    isSupported: Capacitor.isNativePlatform() || "Notification" in window,
+    refreshPermission,
+    /** False on the web, where future notifications cannot be scheduled. */
+    canScheduleAhead: Capacitor.isNativePlatform(),
+    isSupported: snapshot.supported,
   };
 }

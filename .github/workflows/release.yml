@@ -1,64 +1,76 @@
-name: Build and Release APK
+name: Build and release signed APK
 
 on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to build a release from'
+        required: true
 
 env:
-  JAVA_VERSION: '17'
+  JAVA_VERSION: '21'
   NODE_VERSION: '20'
 
 jobs:
   build-and-release:
-    name: Build Release APK
+    name: Signed release APK
     runs-on: ubuntu-latest
-    
+    timeout-minutes: 40
+
     permissions:
       contents: write
-    
-    steps:
-      # Checkout the repository
-      - name: Checkout Repository
-        uses: actions/checkout@v4
 
-      # Set up Node.js for web build
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
-      # Install npm dependencies
-      - name: Install Dependencies
-        run: npm ci
+      - name: Verify, lint and build the web bundle
+        run: npm run verify
 
-      # Build the web app
-      - name: Build Web App
-        run: npm run build
-
-      # Set up Java 17 for Android build
-      - name: Setup Java 17
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: 'temurin'
           cache: 'gradle'
 
-      # Sync Capacitor to Android
-      - name: Sync Capacitor
+      - name: Capacitor sync
         run: npx cap sync android
 
-      # Decode and create keystore file from base64 secret
-      - name: Decode Keystore
+      # The previous version ran `assembleRelease` unconditionally while writing
+      # the keystore behind `if: env.X != ''`, so a repository without the
+      # secrets failed deep inside Gradle with an opaque error. Check up front.
+      - name: Check signing secrets are present
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+        run: |
+          missing=0
+          for name in KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD SIGNING_KEY; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Repository secret $name is not set. Add it in Settings → Secrets, then re-run the tag."
+              missing=1
+            fi
+          done
+          [ "$missing" -eq 0 ] || exit 1
+
+      - name: Decode keystore
         env:
           SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
         run: |
           echo "$SIGNING_KEY" | base64 -d > android/app/release-keystore.jks
-        if: ${{ env.SIGNING_KEY != '' }}
 
-      # Create keystore.properties for Gradle
-      - name: Create Keystore Properties
+      - name: Write keystore.properties
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
@@ -70,59 +82,42 @@ jobs:
           keyAlias=$KEY_ALIAS
           keyPassword=$KEY_PASSWORD
           EOF
-        if: ${{ env.KEYSTORE_PASSWORD != '' }}
 
-      # Make gradlew executable
-      - name: Make Gradlew Executable
+      - name: Make gradlew executable
         run: chmod +x android/gradlew
 
-      # Build release APK
-      - name: Build Release APK
+      - name: Assemble release APK
         working-directory: android
         run: ./gradlew assembleRelease --no-daemon
 
-      # Get the version from tag
-      - name: Get Version
-        id: version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-
-      # Rename APK with version
-      - name: Rename APK
+      - name: Rename and checksum
+        id: artifact
         run: |
-          mv android/app/build/outputs/apk/release/app-release.apk \
-             android/app/build/outputs/apk/release/NoFapHydra-${{ steps.version.outputs.VERSION }}.apk
+          set -euo pipefail
+          version="${GITHUB_REF#refs/tags/}"
+          [ -n "$version" ] || version="${{ inputs.tag }}"
+          src=android/app/build/outputs/apk/release/app-release.apk
+          dst="android/app/build/outputs/apk/release/Fursan-${version}.apk"
+          mv "$src" "$dst"
+          sha="$(sha256sum "$dst" | cut -d ' ' -f 1)"
+          echo "VERSION=$version" >> $GITHUB_OUTPUT
+          echo "PATH=$dst" >> $GITHUB_OUTPUT
+          echo "SHA256=$sha" >> $GITHUB_OUTPUT
 
-      # Generate checksum (before release so it can be included in notes)
-      - name: Generate Checksum
-        id: checksum
-        run: |
-          SHA256=$(sha256sum android/app/build/outputs/apk/release/NoFapHydra-${{ steps.version.outputs.VERSION }}.apk | cut -d ' ' -f 1)
-          echo "SHA256=$SHA256" >> $GITHUB_OUTPUT
-
-      # Create GitHub Release and upload APK
-      - name: Create GitHub Release
+      - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          name: NoFap Hydra ${{ steps.version.outputs.VERSION }}
+          name: Fursan ${{ steps.artifact.outputs.VERSION }}
           body: |
-            ## 🐉 NoFap Hydra ${{ steps.version.outputs.VERSION }}
-            
-            ### What's New
-            - See commit history for changes
-            
-            ### Installation
-            1. Download the APK file below
-            2. Enable "Install from unknown sources" in Android settings
-            3. Open the APK to install
-            
-            ### Checksum
-            ```
-            SHA256: ${{ steps.checksum.outputs.SHA256 }}
-            ```
-          draft: false
-          prerelease: ${{ contains(steps.version.outputs.VERSION, '-beta') || contains(steps.version.outputs.VERSION, '-alpha') }}
-          files: |
-            android/app/build/outputs/apk/release/NoFapHydra-${{ steps.version.outputs.VERSION }}.apk
+            ## Fursan ${{ steps.artifact.outputs.VERSION }}
+
+            Privacy-first, decentralized streak tracking. Your records live on your
+            device; the encrypted backup syncs through the Nostr network.
+
+            **SHA-256** — `${{ steps.artifact.outputs.SHA256 }}`
+
+            Install the APK below, allow installation from unknown sources once, and
+            open it. Nothing is uploaded to a server.
+          prerelease: ${{ contains(steps.artifact.outputs.VERSION, '-') }}
+          files: ${{ steps.artifact.outputs.PATH }}
           fail_on_unmatched_files: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

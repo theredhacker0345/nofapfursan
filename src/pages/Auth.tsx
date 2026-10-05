@@ -1,172 +1,162 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Key, User, ArrowLeft, Loader2, ShieldCheck, Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Link, useNavigate } from "react-router-dom";
+import { KeyRound, Eye, EyeOff, Loader2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
+
+import { Logo } from "@/components/Logo";
 import { importKey, generateOrLoadKeys } from "@/services/nostr";
-import { FursanLogo } from "@/components/FursanLogo";
+import { APP_VERSION } from "@/data/version";
 
-interface NIP07Extension {
-  getPublicKey: () => Promise<string>;
-}
-
-const Auth = () => {
-  const [privateKey, setPrivateKey] = useState("");
-  const [loading, setLoading] = useState(false);
+/**
+ * "Generate a fresh identity" is the primary action — it is what a new user
+ * needs. Importing an nsec is the secondary path, and it now carries the
+ * warning it always should have: the key is unrecoverable and it replaces
+ * whatever identity is currently on the device.
+ */
+export default function Auth() {
   const navigate = useNavigate();
+  const [nsec, setNsec] = useState("");
+  const [revealed, setRevealed] = useState(false);
+  const [busy, setBusy] = useState<null | "import" | "generate">(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleGenerate = async () => {
-    setLoading(true);
+  const generate = async () => {
+    setBusy("generate");
+    setError(null);
     try {
       await generateOrLoadKeys();
-      toast.success("Identity Created", {
-        description: "New keys generated and stored in local vault."
+      toast.success("Identity ready", {
+        description: "Your key never leaves this device.",
       });
       navigate("/");
-    } catch (error) {
-      toast.error("Initialization Failed");
-    }
-    setLoading(false);
-  };
-
-  const handleLogin = async () => {
-    setLoading(true);
-    try {
-      if (!privateKey.startsWith("nsec")) {
-        toast.error("Invalid Format", {
-          description: "Keys must begin with 'nsec' prefix."
-        });
-        setLoading(false);
-        return;
-      }
-
-      const success = await importKey(privateKey);
-      if (success) {
-        toast.success("Identity Merged", {
-          description: "Secure protocol established."
-        });
-        navigate("/");
-      }
-    } catch (error) {
-      console.error(error);
-      toast.error("Authentication Error", {
-        description: "Verify private key integrity."
-      });
-    }
-    setLoading(false);
-  };
-
-  const handleExtensionLogin = async () => {
-    const nostrExtension = (window as { nostr?: NIP07Extension }).nostr;
-    if (!nostrExtension) {
-      toast.error("Extension Not Found", {
-        description: "Please install Alby, Nos2X, or similar."
-      });
-      return;
-    }
-
-    setLoading(true);
-    try {
-      // Verify the extension is reachable. Fursan signs events locally with its
-      // own keys, so extension login only confirms the extension is present.
-      await nostrExtension.getPublicKey();
-      toast.info("Extension Detected", {
-        description: "Fursan signs with its own vault keys — use an nsec or generate a new ID to continue."
-      });
-    } catch (e) {
-      toast.error("Extension Access Denied");
+    } catch (err) {
+      console.error("[Auth] Generate failed", err);
+      setError("Could not create an identity. Device storage may be unavailable.");
     } finally {
-      setLoading(false);
+      setBusy(null);
+    }
+  };
+
+  const runImport = async () => {
+    setBusy("import");
+    setError(null);
+    try {
+      const ok = await importKey(nsec);
+      if (!ok) throw new Error("Rejected");
+      toast.success("Identity restored");
+      navigate("/");
+    } catch (err) {
+      console.error("[Auth] Import failed", err);
+      setError("That is not a valid nsec. Check the characters and try again.");
+    } finally {
+      setBusy(null);
     }
   };
 
   return (
-    <div className="min-h-screen bg-bg flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-md animate-in fade-in zoom-in duration-700">
-        <Button
-          variant="ghost"
-          className="mb-8 rounded-xl border-border text-ink hover:bg-surface-2/50 uppercase text-[10px] font-black tracking-widest shadow-sm"
-          onClick={() => navigate("/")}
+    <div className="flex min-h-dvh flex-col items-center justify-center bg-bg px-5 py-12">
+      <div className="w-full max-w-content">
+        <Link
+          to="/"
+          aria-label="Back to today"
+          className="inline-flex h-11 items-center gap-1.5 rounded-md px-1 text-label uppercase text-ink-muted transition-colors hover:text-ink"
         >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Cancel
-        </Button>
+          <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+          Back
+        </Link>
 
-        <div className="card p-10 md:p-12 space-y-10">
-          <div className="flex flex-col items-center gap-6">
-            <div className="relative">
-              <div className="absolute inset-0 bg-ink/10 blur-2xl rounded-full scale-150 animate-pulse" />
-              <FursanLogo className="w-20 h-20  relative z-10" />
-            </div>
-            <div className="text-center">
-              <h1 className="text-4xl font-display tracking-tight text-ink">Welcome Back</h1>
-              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-ink-muted mt-1">Your Identity, Encrypted</p>
-              <p className="text-xs font-medium text-ink-muted italic mt-2">"Discipline over desire."</p>
-            </div>
-          </div>
-
-          <div className="space-y-6">
-            <div className="space-y-3">
-              <Label htmlFor="privateKey" className="text-[11px] font-black uppercase tracking-widest text-ink">Credential Input (nsec)</Label>
-              <div className="relative group">
-                <Key className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-ink group-focus-within:text-ink-muted transition-colors" />
-                <Input
-                  id="privateKey"
-                  type="password"
-                  placeholder="NSEC_PROTOCOL_KEY..."
-                  value={privateKey}
-                  onChange={(e) => setPrivateKey(e.target.value)}
-                  className="pl-12 h-14 rounded-xl border-border border-2 bg-surface-2/40 focus-visible:ring-primary font-mono text-xs text-ink placeholder:text-ink-muted/50"
-                />
-              </div>
-            </div>
-
-            <Button
-              onClick={handleLogin}
-              disabled={loading || !privateKey}
-              className="w-full h-16 bg-ink text-white rounded-xl uppercase text-xs font-black tracking-widest shadow-xl shadow-sm hover:scale-[1.01] active:scale-95 transition-all"
-            >
-              {loading ? <Loader2 className="w-5 h-5 mr-3 animate-spin" /> : <ShieldCheck className="w-5 h-5 mr-3" />}
-              Initialize Link
-            </Button>
-          </div>
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border"></span></div>
-            <div className="relative flex justify-center text-[10px] uppercase font-black tracking-widest"><span className="bg-[#FAF6F0] px-4 text-ink-muted/70">Alternative Portals</span></div>
-          </div>
-
-          <div className="grid gap-4">
-            <Button
-              onClick={handleExtensionLogin}
-              disabled={loading}
-              variant="outline"
-              className="w-full h-14 rounded-xl border-border bg-white text-ink font-bold uppercase text-[11px] tracking-widest hover:bg-surface-2 transition-all shadow-sm"
-            >
-              <User className="w-4 h-4 mr-2 text-ink" />
-              Nostr Extension (NIP-07)
-            </Button>
-
-            <Button
-              onClick={handleGenerate}
-              disabled={loading}
-              variant="outline"
-              className="w-full h-14 rounded-xl border-border bg-white text-ink font-bold uppercase text-[11px] tracking-widest hover:bg-surface-2 transition-all shadow-sm"
-            >
-              <Sparkles className="w-4 h-4 mr-2 text-ink" />
-              Generate Random ID
-            </Button>
-          </div>
+        <div className="mt-6 flex flex-col items-center gap-3 text-center">
+          <Logo size={40} showWordmark={false} />
+          <h1 className="text-display-l font-semibold text-ink">Set up Fursan</h1>
+          <p className="max-w-prose text-body-s text-ink-muted">
+            There is no account. Fursan generates a cryptographic identity on this
+            device and encrypts everything you write with it.
+          </p>
         </div>
 
-        <div className="mt-12 text-center">
-          <p className="text-[10px] font-bold text-ink/20 uppercase tracking-[0.4em]">Fursan Persistence Engine v2.5.0</p>
+        <div className="card mt-8 p-5">
+          <button
+            type="button"
+            onClick={() => void generate()}
+            disabled={busy !== null}
+            className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-ink text-label uppercase text-bg transition-opacity hover:opacity-90 disabled:opacity-50"
+          >
+            {busy === "generate" ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <KeyRound className="h-4 w-4" aria-hidden="true" />
+            )}
+            Create a new identity
+          </button>
+
+          <div className="my-5 flex items-center gap-3">
+            <span className="h-px flex-1 bg-border" aria-hidden="true" />
+            <span className="text-label uppercase text-ink-faint">or restore</span>
+            <span className="h-px flex-1 bg-border" aria-hidden="true" />
+          </div>
+
+          <label htmlFor="nsec" className="text-label uppercase text-ink-faint">
+            Your nsec
+          </label>
+          <div className="relative mt-2">
+            <input
+              id="nsec"
+              type={revealed ? "text" : "password"}
+              value={nsec}
+              autoComplete="off"
+              spellCheck={false}
+              onChange={(e) => {
+                setNsec(e.target.value);
+                if (error) setError(null);
+              }}
+              placeholder="nsec1…"
+              aria-describedby={error ? "auth-error" : "auth-hint"}
+              className="h-12 w-full rounded-md border border-border bg-surface-2 px-3 pr-12 font-data text-data text-ink placeholder:text-ink-faint"
+            />
+            <button
+              type="button"
+              onClick={() => setRevealed((v) => !v)}
+              aria-label={revealed ? "Hide the key" : "Show the key"}
+              className="absolute right-0 top-0 inline-flex h-12 w-12 items-center justify-center rounded-md text-ink-faint transition-colors hover:text-ink"
+            >
+              {revealed ? (
+                <EyeOff className="h-4 w-4" aria-hidden="true" />
+              ) : (
+                <Eye className="h-4 w-4" aria-hidden="true" />
+              )}
+            </button>
+          </div>
+
+          <p id="auth-hint" className="mt-2 text-meta text-ink-muted">
+            Your key never leaves this device. Fursan cannot recover it for you — if you
+            lose it, the streak stays on the relays but only that key can read it.
+          </p>
+
+          {error && (
+            <p
+              id="auth-error"
+              role="alert"
+              className="mt-2 text-meta text-danger"
+            >
+              {error}
+            </p>
+          )}
+
+          <button
+            type="button"
+            onClick={() => void runImport()}
+            disabled={busy !== null || !nsec.trim()}
+            className="mt-4 inline-flex h-12 w-full items-center justify-center gap-2 rounded-md border border-border text-label uppercase text-ink transition-colors hover:bg-surface-2 disabled:opacity-40"
+          >
+            {busy === "import" && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+            Restore this identity
+          </button>
         </div>
+
+        <p className="mt-8 text-center font-data text-meta text-ink-faint">
+          Fursan {APP_VERSION}
+        </p>
       </div>
     </div>
   );
-};
-
-export default Auth;
+}

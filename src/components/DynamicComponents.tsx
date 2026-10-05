@@ -1,158 +1,88 @@
-import { motion } from "framer-motion";
-import { Flame } from "lucide-react";
+import { useMemo } from "react";
+import { getLocalHealthChecks, localDayIndex } from "@/services/localStore";
+import { calculateConsecutiveCheckins } from "@/lib/streakUtils";
 import { cn } from "@/lib/utils";
 
-// ============================================================================
-// DYNAMIC FIRE ICON
-// ============================================================================
+const WEEKS = 14;
+const DAYS_PER_WEEK = 7;
 
-interface DynamicFireProps {
-    streakDays: number;
-    className?: string;
-}
+/**
+ * 14-week check-in grid.
+ *
+ * The old version animated all 98 cells in with `delay: i * 0.005` on a class
+ * (`grid-rows-7`) that does not exist in the Tailwind theme, and used
+ * `Math.floor((today - date) / 864e5)` against local midnights — which drifts
+ * by an hour twice a year and mislabels the grid. Day maths now runs through the
+ * shared local-day index.
+ */
+export function ActivityHeatmap() {
+  const { grid, summary } = useMemo(() => {
+    const days = new Set(
+      getLocalHealthChecks().map((entry) => localDayIndex(new Date(entry.timestamp))),
+    );
+    const history = getLocalHealthChecks();
 
-export function DynamicFire({ streakDays, className }: DynamicFireProps) {
-    // Determine color and glow based on streak
-    const getFireStyle = () => {
-        if (streakDays === 0) {
-            return {
-                color: "text-gray-400",
-                glow: "",
-                scale: 1,
-            };
-        }
+    const today = new Date();
+    const cells: { key: string; filled: boolean; future: boolean; label: string }[] = [];
 
-        if (streakDays < 30) {
-            return {
-                color: "text-orange-500",
-                glow: "drop-shadow-[0_0_8px_rgba(249,115,22,0.4)]",
-                scale: 1.1,
-            };
-        }
+    const start = new Date(today);
+    start.setDate(start.getDate() - (WEEKS * DAYS_PER_WEEK - 1));
 
-        // 30+ days: God Mode (Purple/Gold)
-        return {
-            color: "text-purple-400",
-            glow: "drop-shadow-[0_0_15px_rgba(168,85,247,0.6)] filter-[brightness(1.2)]",
-            scale: 1.2,
-        };
+    for (let i = 0; i < WEEKS * DAYS_PER_WEEK; i++) {
+      const date = new Date(start);
+      date.setDate(start.getDate() + i);
+      const key = localDayIndex(date);
+      const future = key > localDayIndex(today);
+      cells.push({
+        key: `${key}`,
+        filled: days.has(key),
+        future,
+        label: date.toLocaleDateString(undefined, {
+          weekday: "short",
+          month: "short",
+          day: "numeric",
+        }),
+      });
+    }
+
+    return {
+      grid: Array.from({ length: WEEKS }, (_, w) => cells.slice(w * DAYS_PER_WEEK, (w + 1) * DAYS_PER_WEEK)),
+      summary: {
+        streak: calculateConsecutiveCheckins(history),
+        total: days.size,
+      },
     };
+  }, []);
 
-    const style = getFireStyle();
+  return (
+    <div className="card p-5">
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="text-label uppercase text-ink-faint">Check-in consistency</p>
+        <p className="font-data text-meta text-ink-muted">
+          {summary.streak} day streak · {summary.total} total
+        </p>
+      </div>
 
-    return (
-        <motion.div
-            initial={{ scale: 1 }}
-            animate={{
-                scale: [style.scale, style.scale * 1.1, style.scale],
-                rotate: streakDays >= 30 ? [0, 5, -5, 0] : 0
-            }}
-            transition={{
-                duration: 3,
-                repeat: Infinity,
-                ease: "easeInOut"
-            }}
-            className={cn("relative", className)}
-        >
-            <Flame
+      <div className="mt-4 flex gap-1" role="img" aria-label={`${summary.total} check-ins over the last ${WEEKS} weeks. Current run: ${summary.streak} days.`}>
+        {grid.map((week, w) => (
+          <div key={w} className="flex flex-1 flex-col gap-1">
+            {week.map((cell) => (
+              <span
+                key={cell.key}
+                title={`${cell.label}${cell.filled ? " — checked in" : ""}`}
                 className={cn(
-                    "w-full h-full transition-all duration-500",
-                    style.color,
-                    style.glow
+                  "aspect-square w-full rounded-[3px]",
+                  cell.filled ? "bg-accent" : cell.future ? "bg-transparent" : "bg-surface-3",
                 )}
-                fill={streakDays > 0 ? "currentColor" : "none"}
-            />
+              />
+            ))}
+          </div>
+        ))}
+      </div>
 
-            {/* Golden core for 30+ days */}
-            {streakDays >= 30 && (
-                <motion.div
-                    className="absolute inset-0 flex items-center justify-center opacity-50"
-                    animate={{ opacity: [0.3, 0.6, 0.3] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                >
-                    <Flame className="w-2/3 h-2/3 text-yellow-300 drop-shadow-md" fill="currentColor" />
-                </motion.div>
-            )}
-        </motion.div>
-    );
-}
-
-// ============================================================================
-// ACTIVITY HEATMAP
-// ============================================================================
-
-interface ActivityHeatmapProps {
-    startDate: string | null;
-}
-
-export function ActivityHeatmap({ startDate }: ActivityHeatmapProps) {
-    // Generate valid dates
-    const generateDates = () => {
-        const dates = [];
-        // Generate for last 12 weeks (approx 84 days) for a GitHub-like grid
-        const weeks = 12;
-        const days = weeks * 7;
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        const start = startDate ? new Date(startDate) : null;
-        if (start) start.setHours(0, 0, 0, 0);
-
-        for (let i = days - 1; i >= 0; i--) {
-            const date = new Date(today);
-            date.setDate(date.getDate() - i);
-
-            let level = 0; // 0: empty, 1: active (low), 2: active (high)
-
-            // Logic: If we have a start date and this date is AFTER start date, it's green
-            if (start && date >= start) {
-                // Make recent days "hotter"
-                const diff = Math.floor((today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-                level = diff < 7 ? 2 : 1;
-            }
-
-            dates.push({ date, level });
-        }
-        return dates;
-    };
-
-    const grid = generateDates();
-
-    return (
-        <div className="w-full p-4 bg-surface rounded-xl border border-border shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-medium text-ink-muted flex items-center gap-2">
-                    Activity History
-                </h3>
-            </div>
-
-            {/* Heatmap Grid - 7 rows (days), X columns (weeks) */}
-            {/* We use CSS grid with auto-flow-col to stack by column (weeks) like GitHub */}
-            <div className="grid grid-rows-7 grid-flow-col gap-1 w-full overflow-x-auto pb-2">
-                {grid.map((item, i) => (
-                    <motion.div
-                        key={i}
-                        initial={{ opacity: 0, scale: 0.5 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: i * 0.005 }}
-                        className={cn(
-                            "w-3 h-3 rounded-[2px]",
-                            item.level === 0 && "bg-surface-2/40",
-                            item.level === 1 && "bg-surface-2/40 border border-border",
-                            item.level === 2 && "bg-surface-2 shadow-[0_0_8px_rgba(16,185,129,0.4)]"
-                        )}
-                        title={item.date.toLocaleDateString()}
-                    />
-                ))}
-            </div>
-
-            <div className="flex items-center justify-end gap-2 text-[10px] text-ink-muted mt-2">
-                <span>Less</span>
-                <div className="w-2 h-2 rounded-[2px] bg-surface-2/40" />
-                <div className="w-2 h-2 rounded-[2px] bg-surface-2/40" />
-                <div className="w-2 h-2 rounded-[2px] bg-surface-2" />
-                <span>More</span>
-            </div>
-        </div>
-    );
+      <p className="mt-4 text-meta text-ink-faint">
+        One square per day. Filled means you checked in.
+      </p>
+    </div>
+  );
 }

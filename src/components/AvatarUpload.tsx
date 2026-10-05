@@ -1,164 +1,134 @@
-import React, { useState, useContext } from 'react';
-import { Camera, Loader2, UploadCloud, AlertCircle } from 'lucide-react';
-import { toast } from 'sonner';
-import { generateOrLoadKeys } from "@/services/nostr";
-import { useNostr } from "@/hooks/useNostr";
-import { finalizeEvent } from "nostr-tools";
+import { useRef, useState, type ChangeEvent } from "react";
+import { Camera, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+
+import { Avatar } from "@/components/Avatar";
+import { luxuryClickVibrate } from "@/lib/vibrationUtils";
+import { cn } from "@/lib/utils";
 
 interface AvatarUploadProps {
-    currentAvatar?: string;
-    onUploadSuccess: (url: string) => void;
+  currentAvatar: string;
+  onUploadSuccess: (url: string) => void;
+  /** Storage key for the local avatar. Pass the pubkey to keep it per-identity. */
+  storageKey?: string;
 }
 
-export const AvatarUpload = ({ currentAvatar, onUploadSuccess }: AvatarUploadProps) => {
-    const [uploading, setUploading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const { publish } = useNostr();
+const MAX_EDGE = 256;
+const MAX_BYTES = 220 * 1024; // comfortably inside the localStorage budget
 
-    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
+/**
+ * Images never leave the device.
+ *
+ * The previous implementation uploaded to `nostr.build` and, on any non-OK
+ * response, silently fell back to `void.cat` — a public anonymous file host —
+ * and then published the resulting URL into the user's public Nostr profile.
+ * That is incompatible with a product whose entire pitch is "your data stays
+ * yours". Images are now downscaled and stored as a local data URL.
+ */
+const downscale = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("read failed"));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("decode failed"));
+      img.onload = () => {
+        const scale = Math.min(1, MAX_EDGE / Math.max(img.width, img.height));
+        const w = Math.max(1, Math.round(img.width * scale));
+        const h = Math.max(1, Math.round(img.height * scale));
 
-        if (!file.type.startsWith('image/')) {
-            toast.error('Invalid file type', { description: 'Please upload an image file.' });
-            return;
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          reject(new Error("canvas unavailable"));
+          return;
         }
-
-        if (file.size > 5 * 1024 * 1024) {
-            toast.error('File too large', { description: 'Maximum file size is 5MB.' });
-            return;
-        }
-
-        setUploading(true);
-        setError(null);
-
-        try {
-            const identity = await generateOrLoadKeys();
-            let authHeader = '';
-
-            if (identity?.privateKey) {
-                const authEvent = {
-                    kind: 27235,
-                    created_at: Math.floor(Date.now() / 1000),
-                    tags: [['u', 'https://nostr.build/api/v2/upload/files'], ['method', 'POST']],
-                    content: '',
-                };
-                const signedAuth = finalizeEvent(authEvent, identity.privateKey);
-                const jsonString = JSON.stringify(signedAuth);
-                const b64Auth = btoa(unescape(encodeURIComponent(jsonString)));
-                authHeader = `Nostr ${b64Auth}`;
-            }
-
-            const formData = new FormData();
-            formData.append('file', file);
-
-            let response = await fetch('https://nostr.build/api/v2/upload/files', {
-                method: 'POST',
-                body: formData,
-                headers: authHeader ? { 'Authorization': authHeader } : undefined
-            });
-
-            if (!response.ok) {
-                console.log("Falling back to void.cat");
-                response = await fetch('https://void.cat/upload', { method: 'POST', body: formData });
-            }
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`Upload failed: ${response.status} - ${errorText}`);
-            }
-
-            const result = await response.json();
-            const url = result.data?.[0]?.url || result.url || result.file?.url;
-
-            if (!url) {
-                throw new Error('URL not found in response');
-            }
-
-            onUploadSuccess(url);
-
-            // Also publish to Nostr kind-0 metadata so avatar appears everywhere
-            try {
-                await publishProfileAvatar(url);
-                toast.success('Avatar Updated!', { description: 'Profile picture synced to Nostr.' });
-            } catch (e) {
-                console.warn('Avatar uploaded but metadata sync failed:', e);
-                toast.success('Avatar uploaded!', { description: 'Synced locally. Nostr sync will retry.' });
-            }
-        } catch (err) {
-            console.error('Upload error:', err);
-            setError('Upload failed');
-            toast.error('Upload Failed', { description: 'Could not upload. Please try again.' });
-        } finally {
-            setUploading(false);
-            e.target.value = '';
-        }
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/jpeg", 0.82));
+      };
+      img.src = String(reader.result);
     };
+    reader.readAsDataURL(file);
+  });
 
-    const publishProfileAvatar = async (url: string) => {
-        const identity = await generateOrLoadKeys();
-        if (!identity?.privateKey) return;
+export function AvatarUpload({
+  currentAvatar,
+  onUploadSuccess,
+  storageKey = "fursan_avatar",
+}: AvatarUploadProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [localPreview, setLocalPreview] = useState<string | null>(null);
 
-        const metadata = {
-            name: localStorage.getItem(`nostr_username_${identity.publicKey}`) || '',
-            picture: url,
-            about: localStorage.getItem(`nostr_about_${identity.publicKey}`) || '',
-        };
+  const src = localPreview ?? (currentAvatar || null);
 
-        const event = {
-            kind: 0,
-            created_at: Math.floor(Date.now() / 1000),
-            tags: [],
-            content: JSON.stringify(metadata),
-        };
+  const handleChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
 
-        const signedEvent = finalizeEvent(event, identity.privateKey);
-        await publish(signedEvent);
-    };
+    if (!file.type.startsWith("image/")) {
+      toast.error("That file is not an image");
+      return;
+    }
+    if (file.size > 12 * 1024 * 1024) {
+      toast.error("Image is too large");
+      return;
+    }
 
-    return (
-        <div className="relative group">
-            <div className={`w-24 h-24 overflow-hidden border-4 ${error ? 'border-red-500' : 'border-black'} bg-white flex items-center justify-center transition-colors`}>
-                {currentAvatar ? (
-                    <img src={currentAvatar} alt="Avatar" className="w-full h-full object-cover grayscale" />
-                ) : (
-                    <Camera className="w-8 h-8 text-black/20" />
-                )}
-            </div>
+    setBusy(true);
+    try {
+      const dataUrl = await downscale(file);
+      if (dataUrl.length > MAX_BYTES) {
+        toast.error("Image is too detailed to store locally");
+        return;
+      }
+      localStorage.setItem(storageKey, dataUrl);
+      setLocalPreview(dataUrl);
+      onUploadSuccess(dataUrl);
+      void luxuryClickVibrate();
+      toast.success("Avatar updated — stored on this device only");
+    } catch (error) {
+      console.error("[Avatar] Processing failed", error);
+      toast.error("Could not read that image");
+    } finally {
+      setBusy(false);
+    }
+  };
 
-            <div
-                className="absolute inset-0 flex items-center justify-center bg-black/60 text-white opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity duration-200"
-                onClick={() => {
-                    const input = document.createElement('input');
-                    input.type = 'file';
-                    input.accept = 'image/*';
-                    input.onchange = (e: Event) => {
-                        const target = e.target as HTMLInputElement;
-                        const event = {
-                            target,
-                        } as React.ChangeEvent<HTMLInputElement>;
-                        handleFileChange(event);
-                    };
-                    input.click();
-                }}
-            >
-                {uploading ? (
-                    <div className="flex flex-col items-center gap-1">
-                        <Loader2 className="w-6 h-6 animate-spin" />
-                        <span className="text-[8px] uppercase font-black tracking-widest">Uploading...</span>
-                    </div>
-                ) : error ? (
-                    <div className="flex flex-col items-center gap-1">
-                        <AlertCircle className="w-6 h-6" />
-                        <span className="text-[8px] uppercase font-black tracking-widest">Retry</span>
-                    </div>
-                ) : (
-                    <div className="flex flex-col items-center gap-1">
-                        <UploadCloud className="w-6 h-6" />
-                        <span className="text-[8px] uppercase font-black tracking-widest">Upload</span>
-                    </div>
-                )}
-            </div>
-        </div>
-    );
-};
+  return (
+    <div className="relative shrink-0">
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        aria-label="Change avatar"
+        className={cn(
+          "group relative inline-flex h-[72px] w-[72px] items-center justify-center overflow-hidden rounded-full border border-border bg-surface-2",
+          "transition-colors hover:border-ink-faint",
+        )}
+      >
+        <Avatar src={src} alt="" size={72} className="border-0" />
+        <span className="absolute inset-0 flex items-center justify-center bg-bg/70 text-ink opacity-0 transition-opacity duration-fast group-hover:opacity-100 group-focus-visible:opacity-100">
+          {busy ? (
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+          ) : (
+            <Camera className="h-4 w-4" aria-hidden="true" />
+          )}
+        </span>
+      </button>
+      {/* Triggered by the button above; kept out of the accessibility tree so
+          the button remains the single named control for this action. */}
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleChange}
+        className="sr-only"
+        tabIndex={-1}
+        aria-hidden="true"
+      />
+    </div>
+  );
+}

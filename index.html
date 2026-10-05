@@ -8,48 +8,98 @@
   <meta name="description"
     content="Discipline over desire. A privacy-first, decentralized streak tracker built on the Nostr protocol." />
   <meta name="author" content="Fursan" />
-  <meta name="keywords" content="nofap, streak tracker, self-control, discipline, sabr, habit tracker" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="theme-color" content="#100E0C" />
 
-  <!-- Font preconnect for faster connection -->
+  <!-- Paint the stored theme before first paint so there is no flash.
+       Must stay in sync with src/data/themes.ts. -->
+  <script>
+    (function () {
+      try {
+        var raw = localStorage.getItem("CapacitorStorage.user_theme");
+        var theme = raw ? JSON.parse(raw) : null;
+        var id = typeof theme === "string" ? theme : theme && theme.value;
+        var prefersDark =
+          window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+        var dark = {
+          fursan_dark: ["30 10% 6%", "32 12% 10%", "36 15% 13%", "36 14% 17%", "34 14% 17%",
+            "34 13% 26%", "40 33% 94%", "38 14% 62%", "38 10% 45%", "33 60% 51%",
+            "34 65% 58%", "30 15% 7%", "148 42% 52%", "40 70% 58%", "6 65% 60%"],
+          midnight: ["222 47% 9%", "222 40% 12%", "222 35% 16%", "222 33% 20%", "222 30% 22%",
+            "222 25% 32%", "210 35% 95%", "212 20% 70%", "214 15% 52%", "200 80% 62%",
+            "200 85% 72%", "222 47% 9%", "152 45% 55%", "40 75% 60%", "0 70% 65%"],
+          sage: ["150 12% 5%", "152 12% 8%", "154 12% 12%", "154 11% 16%", "154 12% 19%",
+            "152 10% 30%", "140 20% 93%", "145 10% 66%", "148 8% 48%", "122 20% 52%",
+            "122 24% 60%", "150 14% 6%", "145 40% 50%", "40 60% 56%", "6 55% 60%"],
+          solar: ["30 25% 3%", "32 22% 7%", "34 28% 12%", "34 26% 17%", "36 30% 20%",
+            "38 34% 30%", "40 100% 94%", "38 32% 66%", "36 22% 44%", "37 72% 56%",
+            "38 80% 64%", "30 25% 5%", "145 45% 52%", "42 80% 60%", "8 70% 62%"],
+          void: ["0 0% 0%", "0 0% 4.7%", "0 0% 9%", "0 0% 15%", "0 0% 15%",
+            "0 0% 26%", "0 0% 93%", "0 0% 63%", "0 0% 45%", "33 52% 50%",
+            "34 58% 57%", "0 0% 6%", "148 40% 55%", "42 72% 60%", "6 68% 63%"],
+        };
+        var light = [
+          "38 33% 95%", "40 40% 98%", "38 24% 91%", "38 20% 87%", "38 24% 87%",
+          "36 18% 77%", "30 22% 6%", "35 10% 33%", "38 8% 50%", "33 68% 35%",
+          "31 70% 28%", "40 40% 98%", "152 40% 27%", "41 78% 27%", "6 62% 38%",
+        ];
+        var v = (id && dark[id]) || (prefersDark ? dark.fursan_dark : light);
+        var keys = ["--bg", "--surface", "--surface-2", "--surface-3", "--border",
+          "--border-strong", "--ink", "--ink-muted", "--ink-faint", "--accent",
+          "--accent-hover", "--on-accent", "--success", "--warning", "--danger"];
+        var root = document.documentElement;
+        for (var i = 0; i < keys.length; i++) root.style.setProperty(keys[i], v[i]);
+        var isDark = !!(id && dark[id]) || (!id && prefersDark);
+        root.style.colorScheme = isDark ? "dark" : "light";
+        root.classList.toggle("dark", isDark);
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.content = isDark ? "#100E0C" : "#F7F4EE";
+      } catch (e) {
+        /* defaults in CSS apply */
+      }
+    })();
+  </script>
+
+  <!-- One font request, non-render-blocking. Metric-matched fallback faces are
+       declared first in index.css so this causes no layout shift. -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <!-- Non-render-blocking font loading -->
-  <link rel="preload"
-    href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=optional"
-    as="style" />
-  <link rel="stylesheet"
-    href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=optional"
-    media="print" onload="this.media='all'" />
+  <link
+    rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Inter+Tight:wght@600;700&family=JetBrains+Mono:wght@500;600&display=swap"
+    media="print"
+    onload="this.media='all'; this.onload=null;" />
   <noscript>
     <link rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=optional" />
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Inter+Tight:wght@600;700&family=JetBrains+Mono:wght@500;600&display=swap" />
   </noscript>
 
-  <!-- PWA Meta Tags -->
-  <meta name="theme-color" content="#FDF5E6" />
-  <meta name="mobile-web-app-capable" content="yes" />
+  <!-- PWA -->
+  <link rel="icon" type="image/png" href="/icon-192.png" />
+  <link rel="apple-touch-icon" href="/icon-192.png" />
+  <link rel="manifest" href="/manifest.webmanifest" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Fursan" />
-  <link rel="icon" type="image/png" href="/logo.png" />
-  <link rel="apple-touch-icon" href="/icon-192.png" />
-  <link rel="manifest" href="/manifest.webmanifest" />
 
   <!-- Open Graph -->
-  <meta property="og:title" content="Fursan - Discipline over desire" />
+  <meta property="og:title" content="Fursan — Discipline over desire" />
   <meta property="og:description"
-    content="The privacy-first streak tracker built on the Nostr protocol. Stay disciplined, join the community, and keep your data secure." />
+    content="A privacy-first streak tracker built on the Nostr protocol. No account, no ads, no trackers." />
   <meta property="og:type" content="website" />
   <meta property="og:image" content="https://fursan.app/og-image.png" />
 
-  <!-- Twitter -->
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:site" content="@FursanApp" />
   <meta name="twitter:image" content="https://fursan.app/og-image.png" />
 </head>
 
 <body>
   <div id="root"></div>
+  <noscript>
+    <p style="font-family: system-ui, sans-serif; padding: 2rem; line-height: 1.5">
+      Fursan needs JavaScript to encrypt and store your records on this device.
+    </p>
+  </noscript>
   <script type="module" src="/src/main.tsx"></script>
 </body>
 

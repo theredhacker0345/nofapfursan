@@ -1,82 +1,50 @@
-import { motion } from "framer-motion";
-import { FursanLogo } from "@/components/FursanLogo";
-import { Sparkles } from "lucide-react";
+import { Logo } from "@/components/Logo";
 
 interface LoadingScreenProps {
-    message?: string;
-    subMessage?: string;
+  message?: string;
+  subMessage?: string;
 }
 
+/**
+ * Token-driven and calm. The previous version hard-coded a cream background
+ * (unreadable on all three dark themes), ran three infinite rings plus a 12s
+ * rotation, and its progress bar had no positioned parent so the sweep covered
+ * the whole page.
+ */
 export function LoadingScreen({
-    message = "Loading...",
-    subMessage = "Getting things ready"
+  message = "Loading",
+  subMessage = "Preparing your records",
 }: LoadingScreenProps) {
-    return (
-        <div className="min-h-screen bg-[#FAF6F0] flex flex-col items-center justify-center p-6 space-y-8 overflow-hidden">
-            <div className="relative">
-                {/* Glowing outer aura */}
-                <div className="absolute inset-0 rounded-full bg-ink/10 blur-3xl animate-pulse scale-150" />
+  return (
+    <div
+      className="flex min-h-dvh flex-col items-center justify-center gap-6 bg-bg px-6 text-center"
+      role="status"
+      aria-live="polite"
+    >
+      <Logo size={40} showWordmark={false} />
 
-                {/* Animated Islamic Geometric Pattern hints */}
-                <motion.div
-                    initial={{ rotate: 0 }}
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
-                    className="w-40 h-40 border-2 border-dashed border-border/40 rounded-full flex items-center justify-center p-1"
-                >
-                    <div className="absolute inset-4 border border-border rounded-full" />
-                </motion.div>
+      <div className="space-y-2">
+        <p className="text-section font-semibold text-ink">{message}</p>
+        <p className="text-meta text-ink-muted">{subMessage}</p>
+      </div>
 
-                {/* The Logo */}
-                <motion.div
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ duration: 1 }}
-                    className="absolute inset-0 flex items-center justify-center"
-                >
-                    <div className="bg-white p-6 rounded-full shadow-2xl shadow-sm border-2 border-border">
-                        <FursanLogo className="w-16 h-16 " />
-                    </div>
-                </motion.div>
+      <div className="relative h-px w-40 overflow-hidden bg-border" aria-hidden="true">
+        <div className="absolute inset-y-0 left-0 w-1/3 animate-sync-pulse bg-accent" />
+      </div>
+    </div>
+  );
+}
 
-                {/* Subtle expanding rings */}
-                {[...Array(3)].map((_, i) => (
-                    <motion.div
-                        key={i}
-                        initial={{ scale: 1, opacity: 0.4 }}
-                        animate={{ scale: 2, opacity: 0 }}
-                        transition={{ duration: 3, repeat: Infinity, delay: i * 1, ease: "easeOut" }}
-                        className="absolute inset-0 border border-ink/30 rounded-full"
-                    />
-                ))}
-            </div>
-
-            <div className="text-center space-y-4 relative z-10">
-                <div className="flex items-center justify-center gap-2 mb-1">
-                    <Sparkles className="w-4 h-4 text-ink animate-pulse" />
-                    <h2 className="text-ink text-3xl font-display tracking-widest">{message}</h2>
-                    <Sparkles className="w-4 h-4 text-ink animate-pulse" />
-                </div>
-
-                <div className="flex flex-col items-center gap-4">
-                    <p className="text-[11px] font-black uppercase tracking-[0.5em] text-ink/40">{subMessage}</p>
-                    <p className="text-xs font-medium text-ink/60 italic">Discipline over desire.</p>
-
-                    {/* Royal progress bar */}
-                    <div className="w-56 h-1.5 bg-surface-2 rounded-full overflow-hidden border border-border">
-                        <motion.div
-                            initial={{ x: "-100%" }}
-                            animate={{ x: "100%" }}
-                            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                            className="absolute inset-0 bg-gradient-to-r from-transparent via-primary to-transparent"
-                        />
-                    </div>
-                </div>
-            </div>
-
-            {/* Background design accents */}
-            <div className="fixed top-0 left-0 w-64 h-64 bg-ink/5 blur-[120px] rounded-full -translate-x-1/2 -translate-y-1/2" />
-            <div className="fixed bottom-0 right-0 w-64 h-64 bg-ink/5 blur-[120px] rounded-full translate-x-1/2 translate-y-1/2" />
-        </div>
-    );
+/** In-page variant — keeps layout stable while a region resolves. */
+export function LoadingBlock({ label = "Loading" }: { label?: string }) {
+  return (
+    <div
+      className="flex items-center justify-center gap-3 rounded-lg border border-border bg-surface px-5 py-8"
+      role="status"
+      aria-live="polite"
+    >
+      <div className="h-3 w-3 animate-sync-pulse rounded-full bg-accent" aria-hidden="true" />
+      <span className="text-meta text-ink-muted">{label}</span>
+    </div>
+  );
 }

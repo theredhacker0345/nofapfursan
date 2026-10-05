@@ -1,71 +1,60 @@
-import { Bell, BellOff, Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Bell, BellOff } from "lucide-react";
+import { toast } from "sonner";
 import { useNotifications } from "@/hooks/useNotifications";
-import { toast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 export function NotificationToggle() {
-  const { enabled, toggleNotifications, isSupported, permission, intervalHours } = useNotifications();
-
-  if (!isSupported) return null;
+  const { enabled, toggleNotifications, permission, intervalHours, canScheduleAhead } =
+    useNotifications();
 
   const handleToggle = async () => {
-    const result = await toggleNotifications();
+    const on = await toggleNotifications();
 
-    if (result) {
-      toast({
-        title: "Notifications Enabled 🔔",
-        description: `You'll receive Islamic motivational reminders every ${intervalHours} hours`,
+    if (on) {
+      toast.success("Reminders on", {
+        description: canScheduleAhead
+          ? `A reminder every ${intervalHours}h on this device.`
+          : "Browsers can only show reminders while Fursan is open.",
       });
     } else if (permission === "denied") {
-      toast({
-        title: "Notifications Blocked",
-        description: "Please enable notifications in your browser settings",
-        variant: "destructive",
+      toast.error("Notifications blocked", {
+        description: "Allow notifications for Fursan in your system settings.",
       });
-    } else if (!result && enabled) {
-      toast({
-        title: "Notifications Disabled",
-        description: "You won't receive motivational reminders",
-      });
+    } else if (enabled) {
+      toast("Reminders off");
     }
   };
 
   return (
-    <div className="card p-4 animate-fade-in" style={{ animationDelay: "0.2s" }}>
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0 flex-1">
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center shadow-md flex-shrink-0 ${enabled
-            ? 'bg-ink shadow-sm'
-            : 'bg-gradient-to-br from-muted to-muted'
-            }`}>
-            {enabled ? (
-              <Bell className="w-5 h-5 text-white" />
-            ) : (
-              <BellOff className="w-5 h-5 text-ink-muted" />
-            )}
-          </div>
-          <div className="min-w-0 flex-1">
-            <h3 className="font-bold text-ink flex items-center gap-1.5 truncate">
-              <Sparkles className="w-4 h-4 text-ink flex-shrink-0" />
-              Daily Reminders
-            </h3>
-            <p className="text-[11px] text-ink-muted font-medium leading-tight truncate">
-              {enabled
-                ? `On • Motivational reminders every ${intervalHours}h`
-                : "Get motivational reminders"}
-            </p>
-          </div>
-        </div>
-        <Button
-          onClick={handleToggle}
-          className={`${enabled
-            ? "bg-white border-2 border-border text-ink/80 hover:bg-surface-2"
-            : "bg-ink text-white"
-            } rounded-full px-4 sm:px-5 font-bold shadow-md hover:shadow-lg flex-shrink-0 text-xs sm:text-sm h-9 sm:h-10`}
-        >
-          {enabled ? "Disable" : "Enable"}
-        </Button>
-      </div>
+    <div className="flex w-full items-center gap-3">
+      <span
+        className={cn(
+          "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border",
+          enabled ? "bg-ink text-bg" : "bg-surface-2 text-ink-muted",
+        )}
+        aria-hidden="true"
+      >
+        {enabled ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
+      </span>
+
+      <span className="min-w-0 flex-1">
+        <span className="block text-body-s font-medium text-ink">Daily reminders</span>
+        <span className="block text-meta text-ink-muted">
+          {enabled ? `Every ${intervalHours}h` : "Off"}
+        </span>
+      </span>
+
+      <button
+        type="button"
+        onClick={handleToggle}
+        aria-pressed={enabled}
+        className={cn(
+          "inline-flex h-11 shrink-0 items-center justify-center rounded-md px-5 text-label uppercase transition-opacity hover:opacity-90",
+          enabled ? "border border-border text-ink-muted" : "bg-ink text-bg",
+        )}
+      >
+        {enabled ? "Disable" : "Enable"}
+      </button>
     </div>
   );
 }

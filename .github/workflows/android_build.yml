@@ -1,48 +1,58 @@
-name: Build Hydra APK
+name: Android debug build
+
+# A cheap sanity build that the Android project still compiles. Debug APKs are
+# produced on demand (workflow_dispatch) or for a tag, not on every push — the
+# previous version built one on every commit to main, which cost ~15 minutes of
+# CI for an artifact nobody downloaded.
+
 on:
+  workflow_dispatch:
   push:
-    branches: [ main, master ] # Triggers whenever you push to these branches
-  workflow_dispatch: # Allows you to trigger the build manually from GitHub UI
+    tags:
+      - 'v*'
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  build:
+  sync:
+    name: Capacitor sync + Gradle compile
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
-      - name: Checkout Source
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: '20'
           cache: 'npm'
 
-      - name: Verify Node Version
-        run: node -v
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
 
-      - name: Install Dependencies
-        run: npm ci --force
-
-      - name: Build Web Project
-        run: npm run build
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
-          distribution: 'zulu'
+          distribution: 'temurin'
           java-version: '21'
+          cache: 'gradle'
 
-      - name: Capacitor Sync
+      - name: Verify, lint and build the web bundle
+        run: npm run verify
+
+      - name: Capacitor sync
         run: npx cap sync android
 
-      - name: Build Android APK (Debug)
-        run: |
-          cd android
-          chmod +x gradlew
-          ./gradlew assembleDebug
+      - name: Make gradlew executable
+        run: chmod +x android/gradlew
 
-      - name: Upload APK Artifact
+      - name: Assemble debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Hydra-Chat-Debug-APK
+          name: Fursan-debug-APK
           path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14

@@ -1,232 +1,188 @@
-import { useState, useEffect, useMemo } from "react";
-import { Header } from "@/components/Header";
-import { BottomNav } from "@/components/BottomNav";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Sun, Cloud, CloudLightning } from "lucide-react";
+
+import { Screen, SectionHead } from "@/components/Screen";
 import { DailyCheckinCard } from "@/components/DailyCheckinCard";
-import { LoadingScreen } from "@/components/LoadingScreen";
-import { fetchHealthChecks, HealthCheck } from "@/services/nostr";
+import { EmptyState } from "@/components/EmptyState";
+import { fetchHealthChecks, type HealthCheck } from "@/services/nostr";
+import { localDayIndex } from "@/services/localStore";
 import { useStreak } from "@/hooks/useStreak";
-import {
-    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
-} from "recharts";
-import { Shield, Lock, Activity, Zap, Info, ShieldCheck, Flame } from "lucide-react";
-import { format, subDays, isSameDay } from "date-fns";
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-    DialogTrigger
-} from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 
+const WINDOW_DAYS = 21;
+
+type Mood = "sharp" | "foggy" | "stormy";
+
+const MOOD_META: Record<Mood, { label: string; Icon: typeof Sun; bar: string }> = {
+  sharp: { label: "Sharp", Icon: Sun, bar: "bg-success" },
+  foggy: { label: "Foggy", Icon: Cloud, bar: "bg-warning" },
+  stormy: { label: "Stormy", Icon: CloudLightning, bar: "bg-danger" },
+};
+
+/**
+ * The trend chart is hand-rolled CSS instead of Recharts.
+ *
+ * Recharts cost a 378 kB chunk (105 kB gzipped) — the single largest asset in the
+ * app — to draw fifteen bars. It also brought five hard-coded hex colours that
+ * broke on every dark theme, a legend whose dots matched no bar, and 9px axis
+ * labels. Fourteen bars of pure CSS cost zero bytes of JavaScript.
+ */
 export default function Vitals() {
-    const { streakData } = useStreak();
-    const [healthHistory, setHealthHistory] = useState<HealthCheck[]>([]);
-    const [loading, setLoading] = useState(true);
+  const { streakData } = useStreak();
+  const [history, setHistory] = useState<HealthCheck[]>([]);
+  const [loading, setLoading] = useState(true);
 
-    const loadData = async (silent = false) => {
-        if (!silent) setLoading(true);
-        try {
-            const checks = await fetchHealthChecks();
-            setHealthHistory(checks || []);
-        } catch (e) {
-            console.error("Failed to fetch health checks", e);
-        }
-        if (!silent) setLoading(false);
-    };
+  const load = useCallback(async () => {
+    try {
+      const checks = await fetchHealthChecks();
+      setHistory(checks);
+    } catch (error) {
+      console.error("[Vitals] Load failed", error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-    useEffect(() => {
-        loadData();
-    }, []);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
-    const handleRefresh = () => {
-        loadData(true);
-    };
-
-    const currentLiveDays = useMemo(() => {
-        if (!streakData.startDate) return 0;
-        return Math.floor((new Date().getTime() - new Date(streakData.startDate).getTime()) / (1000 * 60 * 60 * 24));
-    }, [streakData.startDate]);
-
-    // Prepare Recovery Trend Chart Data
-    const trendData = useMemo(() => {
-        const data = [];
-        const today = new Date();
-
-        for (let i = 14; i >= 0; i--) {
-            const date = subDays(today, i);
-            const dateStr = format(date, "MMM d");
-            const check = healthHistory.find(h => isSameDay(new Date(h.timestamp), date));
-
-            let mindsetValue = 4; // small stub so empty days are still visible
-            let color = "#ecd9ae"; // Warm gold-tint (visible on cream card) for missing days
-
-            if (check) {
-                switch (check.mindset) {
-                    case 'sharp': mindsetValue = 100; color = "#10b981"; break;
-                    case 'foggy': mindsetValue = 60; color = "#fbbf24"; break;
-                    case 'stormy': mindsetValue = 30; color = "#ef4444"; break;
-                    default: mindsetValue = 10; color = "#94a3b8";
-                }
-            }
-
-            data.push({
-                date: dateStr,
-                value: mindsetValue,
-                color: color,
-                npt: check?.npt ? "YES" : (check ? "NO" : "NA"),
-                mindset: check?.mindset?.toUpperCase() || "OFFLINE"
-            });
-        }
-        return data;
-    }, [healthHistory]);
-
-    if (loading) {
-        return <LoadingScreen message="Loading..." subMessage="Updating your progress" />;
+  const days = useMemo(() => {
+    const byDay = new Map<number, HealthCheck>();
+    for (const entry of history) {
+      const key = localDayIndex(new Date(entry.timestamp));
+      const existing = byDay.get(key);
+      if (!existing || entry.timestamp > existing.timestamp) byDay.set(key, entry);
     }
 
-    return (
-        <div className="min-h-screen bg-bg pb-24">
-            <div className="container max-w-lg mx-auto px-4">
-                <Header />
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-                <header className="mb-8 mt-4 animate-fade-in" style={{ animationDelay: "0.1s" }}>
-                    <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-foreground to-foreground/80 flex items-center justify-center shadow-lg">
-                            <Lock className="w-6 h-6 text-white" />
-                        </div>
-                        <div>
-                            <h1 className="text-3xl font-black text-ink tracking-tighter uppercase">Health Tracker</h1>
-                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-ink-muted">Your daily progress</p>
-                        </div>
-                    </div>
-                </header>
+    return Array.from({ length: WINDOW_DAYS }, (_, i) => {
+      const date = new Date(today);
+      date.setDate(today.getDate() - (WINDOW_DAYS - 1 - i));
+      const key = localDayIndex(date);
+      const entry = byDay.get(key);
+      return {
+        key,
+        date,
+        entry,
+        label: date.toLocaleDateString(undefined, { weekday: "short" }),
+        day: date.getDate(),
+        isToday: i === WINDOW_DAYS - 1,
+      };
+    });
+  }, [history]);
 
-                <div className="mb-8 animate-fade-in" style={{ animationDelay: "0.15s" }}>
-                    <DailyCheckinCard onUpdate={handleRefresh} days={currentLiveDays} />
-                </div>
+  const stats = useMemo(() => {
+    if (history.length === 0) return null;
+    const sharp = history.filter((h) => h.mindset === "sharp").length;
+    const signal = history.filter((h) => h.npt).length;
+    return {
+      sharpPct: Math.round((sharp / history.length) * 100),
+      signalPct: Math.round((signal / history.length) * 100),
+      total: history.length,
+      latest: history[0]?.mindset as Mood | undefined,
+    };
+  }, [history]);
 
-                <div className="grid gap-8">
-                    {/* Recovery Trend Chart */}
-                    <div className="card overflow-hidden animate-fade-in" style={{ animationDelay: "0.2s" }}>
-                        <div className="p-5 border-b border-border flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-foreground flex items-center justify-center shadow-md">
-                                    <Activity className="w-4 h-4 text-white" />
-                                </div>
-                                <div>
-                                    <h3 className="text-sm font-black uppercase tracking-tight text-ink">Progress Report</h3>
-                                    <p className="text-[10px] font-bold text-ink-muted uppercase tracking-widest">Mind & Body results</p>
-                                </div>
-                            </div>
-                            <Dialog>
-                                <DialogTrigger asChild>
-                                    <button aria-label="About the progress chart" className="p-2.5 hover:bg-surface-2/50 rounded-full transition-colors">
-                                        <Info className="w-4 h-4 text-ink" />
-                                    </button>
-                                </DialogTrigger>
-                                <DialogContent className="rounded-2xl border-border bg-white">
-                                    <DialogHeader>
-                                        <DialogTitle className="text-ink text-2xl font-black uppercase tracking-tighter">Your Progress</DialogTitle>
-                                        <DialogDescription className="text-ink/70 font-medium text-sm pt-4">
-                                            This chart shows your daily mindset (Green: Good, Amber: Okay, Red: Struggling) along with your physical results. Try to stay in the Green!
-                                        </DialogDescription>
-                                    </DialogHeader>
-                                </DialogContent>
-                            </Dialog>
-                        </div>
-                        <div className="p-6">
-                            <div className="h-[240px] w-full">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={trendData} margin={{ left: -20, right: 10, top: 10 }}>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#d97706" strokeOpacity={0.05} />
-                                        <XAxis
-                                            dataKey="date"
-                                            axisLine={false}
-                                            tickLine={false}
-                                            tick={{ fontSize: 9, fontWeight: 900, fill: '#92400e' }}
-                                        />
-                                        <Tooltip
-                                            cursor={{ fill: 'rgba(217, 119, 6, 0.05)' }}
-                                            content={({ active, payload }) => {
-                                                if (active && payload && payload.length) {
-                                                    const data = payload[0].payload;
-                                                    return (
-                                                        <div className="bg-white border-2 border-border p-3 rounded-2xl shadow-2xl">
-                                                            <p className="text-[9px] font-black uppercase text-ink-muted mb-2">{data.date}</p>
-                                                            <div className="space-y-1">
-                                                                <p className="text-[10px] font-black text-ink uppercase flex items-center gap-1.5">
-                                                                    <Zap className="w-3 h-3 text-ink" />
-                                                                    Mindset: {data.mindset}
-                                                                </p>
-                                                                <p className="text-[10px] font-black text-ink uppercase flex items-center gap-1.5">
-                                                                    <Activity className="w-3 h-3 text-danger" />
-                                                                    Biological: {data.npt}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                }
-                                                return null;
-                                            }}
-                                        />
-                                        <Bar dataKey="value" radius={[4, 4, 4, 4]}>
-                                            {trendData.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={entry.color} />
-                                            ))}
-                                        </Bar>
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </div>
+  return (
+    <Screen title="Vitals" subtitle="Mind and body, last three weeks">
+      <DailyCheckinCard onUpdate={() => void load()} days={streakData.longestStreak} />
 
-                            <div className="mt-6 flex items-center justify-between p-4 rounded-xl bg-surface-2 border border-border">
-                                <div className="flex items-center gap-3">
-                                    <ShieldCheck className="w-5 h-5 text-ink-muted" />
-                                    <div>
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-ink">Your Status</p>
-                                        <p className="text-[9px] font-bold text-ink-muted uppercase">
-                                            {healthHistory.some(h => h.mindset === 'stormy') ? "Keep working at it" : "Looking Good"}
-                                        </p>
-                                    </div>
-                                </div>
-                                <div className="flex gap-2">
-                                    <div className="w-2 h-2 rounded-full bg-surface-2 shadow-sm" title="Sharp" />
-                                    <div className="w-2 h-2 rounded-full bg-surface-2 shadow-sm" title="Foggy" />
-                                    <div className="w-2 h-2 rounded-full bg-danger/50 shadow-sm" title="Stormy" />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+      <SectionHead>Daily check-ins</SectionHead>
 
-                    {/* Fortress Stats Summary */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="card p-5 text-center space-y-2">
-                            <div className="w-10 h-10 rounded-full bg-surface-2 flex items-center justify-center mx-auto mb-2">
-                                <Zap className="w-5 h-5 text-accent" />
-                            </div>
-                            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-ink/40">Good mindset %</p>
-                            <p className="text-2xl font-black text-black">
-                                {healthHistory.length > 0 ? Math.round((healthHistory.filter(h => h.mindset === 'sharp').length / healthHistory.length) * 100) : 0}%
-                            </p>
-                        </div>
-                        <div className="card p-5 text-center space-y-2">
-                            <div className="w-10 h-10 rounded-full bg-danger/5 flex items-center justify-center mx-auto mb-2">
-                                <Flame className="w-5 h-5 text-danger" />
-                            </div>
-                            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-ink/40">Physical health %</p>
-                            <p className="text-2xl font-black text-black">
-                                {healthHistory.length > 0 ? Math.round((healthHistory.filter(h => h.npt).length / healthHistory.length) * 100) : 0}%
-                            </p>
-                        </div>
-                    </div>
-                </div>
+      {loading ? (
+        <div className="h-40 animate-pulse rounded-lg border border-border bg-surface-2" aria-hidden="true" />
+      ) : history.length === 0 ? (
+        <EmptyState
+          icon={<Sun className="h-8 w-8" aria-hidden="true" />}
+          title="No check-ins yet"
+          description="Once you record a few days, your pattern shows up here."
+        />
+      ) : (
+        <>
+          <figure className="card p-5">
+            <figcaption className="sr-only">
+              Daily mindset for the last {WINDOW_DAYS} days. {stats?.sharpPct ?? 0}% sharp,
+              {" "}
+              {stats?.signalPct ?? 0}% with a morning signal.
+            </figcaption>
 
-                <footer className="mt-16 mb-8 text-center text-ink/10">
-                    <p className="font-bold uppercase tracking-[0.5em] text-[8px]">Stay strong and keep going. ⚔️</p>
-                </footer>
+            <div className="flex items-end gap-[3px]" role="presentation">
+              {days.map((day) => {
+                const mood = day.entry?.mindset;
+                const meta = mood ? MOOD_META[mood] : null;
+                return (
+                  <div
+                    key={day.key}
+                    title={`${day.date.toLocaleDateString()} — ${meta ? meta.label : "No check-in"}`}
+                    className="flex min-w-0 flex-1 flex-col items-center gap-1.5"
+                  >
+                    <span
+                      className={cn(
+                        "w-full rounded-[3px]",
+                        meta ? cn(meta.bar, "h-8") : "h-2 bg-surface-3",
+                        day.isToday && "ring-1 ring-accent",
+                      )}
+                    />
+                    <span
+                      className={cn(
+                        "font-data text-[10px] leading-none",
+                        day.isToday ? "text-ink" : "text-ink-faint",
+                      )}
+                    >
+                      {day.day}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
-            <BottomNav />
-        </div>
-    );
-}
 
+            <ul className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+              {(Object.keys(MOOD_META) as Mood[]).map((mood) => {
+                const { label, bar } = MOOD_META[mood];
+                return (
+                  <li key={mood} className="inline-flex items-center gap-1.5 text-meta text-ink-muted">
+                    <span className={cn("h-2 w-2 rounded-full", bar)} aria-hidden="true" />
+                    {label}
+                  </li>
+                );
+              })}
+              <li className="inline-flex items-center gap-1.5 text-meta text-ink-muted">
+                <span className="h-2 w-2 rounded-full bg-surface-3" aria-hidden="true" />
+                No check-in
+              </li>
+            </ul>
+          </figure>
+
+          <SectionHead>Summary</SectionHead>
+          <div className="surface-group grid grid-cols-2 divide-x divide-border">
+            <div className="px-5 py-4">
+              <p className="text-label uppercase text-ink-faint">Sharp days</p>
+              <p className="mt-1 font-data text-data-lg text-ink">
+                {stats?.sharpPct ?? 0}
+                <span className="text-ink-muted">%</span>
+              </p>
+            </div>
+            <div className="px-5 py-4">
+              <p className="text-label uppercase text-ink-faint">Morning signal</p>
+              <p className="mt-1 font-data text-data-lg text-ink">
+                {stats?.signalPct ?? 0}
+                <span className="text-ink-muted">%</span>
+              </p>
+            </div>
+          </div>
+
+          {stats?.latest && (
+            <p className="mt-4 text-body-s text-ink-muted">
+              Most recent check-in:{" "}
+              <span className="font-medium text-ink">{MOOD_META[stats.latest].label}</span> over{" "}
+              {stats.total} recorded.
+            </p>
+          )}
+        </>
+      )}
+    </Screen>
+  );
+}

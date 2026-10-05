@@ -1,52 +1,41 @@
-import { useState, useEffect } from "react";
-import { Sparkles, RefreshCw, Quote } from "lucide-react";
+import { useState } from "react";
+import { RefreshCw, Quote } from "lucide-react";
 import { getRandomMotivation } from "@/data/motivation";
-import { Button } from "@/components/ui/button";
 
+/**
+ * The quote is set at `text-title` — it used to render at 64px, larger than the
+ * streak number itself, and it carried a `text-ink-muted/50/50` class (a
+ * double-alpha typo Tailwind generates nothing for) so the glyph had no colour.
+ */
 export function MotivationCard() {
-  const [motivation, setMotivation] = useState<{ text: string, source?: string } | null>(null);
-
-  useEffect(() => {
-    setMotivation(getRandomMotivation());
-  }, []);
-
-  const refreshQuote = () => {
-    setMotivation(getRandomMotivation());
-  };
-
-  if (!motivation) return null;
+  const [motivation, setMotivation] = useState(() => getRandomMotivation());
 
   return (
-    <div className="card p-6 animate-fade-in" style={{ animationDelay: "0.25s" }}>
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-ink flex items-center justify-center shadow-lg shadow-sm">
-            <Sparkles className="w-4 h-4 text-white" />
-          </div>
-          <span className="text-ink font-bold uppercase tracking-widest text-xs">Daily Wisdom</span>
-        </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="Show another quote"
-          onClick={refreshQuote}
-          className="text-ink-muted hover:text-ink-muted hover:bg-surface-2/50"
+    <div className="card p-5">
+      <div className="flex items-center justify-between">
+        <p className="text-label uppercase text-ink-faint">Today&apos;s line</p>
+        <button
+          type="button"
+          aria-label="Show another line"
+          onClick={() => setMotivation(getRandomMotivation())}
+          className="inline-flex h-11 w-11 items-center justify-center rounded-md text-ink-faint transition-colors hover:bg-surface-2 hover:text-ink"
         >
-          <RefreshCw className="w-5 h-5" aria-hidden="true" />
-        </Button>
+          <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+        </button>
       </div>
 
-      <div className="relative">
-        <Quote className="absolute -top-4 -left-2 w-10 h-10 text-ink-muted/50/50 rotate-180" />
-        <blockquote className="text-xl md:text-2xl font-display text-ink leading-tight mb-4 relative z-10 px-2 break-words">
+      <figure className="mt-2">
+        <blockquote className="text-title font-medium leading-snug text-ink">
+          <Quote
+            className="mr-1 inline-block h-4 w-4 -translate-y-0.5 text-ink-faint"
+            aria-hidden="true"
+          />
           {motivation.text}
         </blockquote>
         {motivation.source && (
-          <p className="text-[11px] font-bold uppercase tracking-widest text-ink-muted text-right pr-2">
-            — {motivation.source}
-          </p>
+          <figcaption className="mt-2 text-meta text-ink-muted">— {motivation.source}</figcaption>
         )}
-      </div>
+      </figure>
     </div>
   );
 }

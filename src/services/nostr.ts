@@ -1,901 +1,885 @@
 /**
- * Nostr-based Private Persistence Layer with Offline Queue
- * 
- * This service implements:
- * - NIP-44 encryption for private streak data
- * - Key management using @capacitor/preferences
- * - Publishing encrypted notes to relays
- * - Fetching and decrypting streak data
- * - OFFLINE QUEUE: Stores events when offline, auto-syncs when back online
+ * Nostr persistence layer.
+ *
+ * Design rules that this file enforces:
+ *  1. Local store first. Every write lands on the device before it touches a
+ *     relay, so an outage, a blocked relay or a reinstall never loses history.
+ *  2. One pool. A single shared `SimplePool` with reconnect + ping, and every
+ *     query bounded by `maxWait` *and* a hard race timeout — an unreachable
+ *     relay can no longer leave a screen spinning forever.
+ *  3. Bounded offline queue with a persisted retry counter and a dead-letter
+ *     drop, so storage cannot grow without limit.
+ *  4. Nothing wipes storage implicitly. `resetIdentity` removes named keys on
+ *     both the Capacitor Preferences backend and the WebView localStorage.
  */
 
 import { Preferences } from "@capacitor/preferences";
 import { Network, ConnectionStatus } from "@capacitor/network";
 import {
-    generateSecretKey,
-    getPublicKey,
-    finalizeEvent,
-    SimplePool,
-    VerifiedEvent,
-    nip19,
-    nip44,
+  generateSecretKey,
+  getPublicKey,
+  finalizeEvent,
+  SimplePool,
+  VerifiedEvent,
+  nip19,
+  nip44,
 } from "nostr-tools";
 import { bytesToHex, hexToBytes } from "@noble/hashes/utils";
 
-// Relay configuration - multiple relays for redundancy
-export const RELAYS = ["wss://nos.lol", "wss://relay.damus.io", "wss://relay.snort.social"];
-const DEFAULT_RELAYS = RELAYS;
+import { SecureStorage } from "./secureStorage";
+import {
+  HealthCheck,
+  JournalEntry,
+  saveLocalHealthCheck,
+  saveLocalJournalEntry,
+  getLocalHealthChecks,
+  getLocalJournalEntries,
+  mergeHealthChecks,
+  mergeJournalEntries,
+  mirrorToSecureStorage,
+} from "./localStore";
 
-// Minimum number of relay acknowledgments needed for success
-const MIN_RELAY_CONFIRMATIONS = 1;
+/* ──────────────────────────────────────────────────────────────────────────
+   Relays
+   ────────────────────────────────────────────────────────────────────────── */
 
-const pool = new SimplePool();
+export const DEFAULT_RELAYS = [
+  "wss://nos.lol",
+  "wss://relay.damus.io",
+  "wss://relay.snort.social",
+];
 
-/**
- * Get the current relay list, including user-defined ones
- */
-async function getRelays(): Promise<string[]> {
-    try {
-        const { value } = await Preferences.get({ key: 'user_relays' });
-        if (value) {
-            return JSON.parse(value);
-        }
-    } catch (e) {
-        // Corrupted relay list - fall back to defaults below
-    }
-    return RELAYS;
-}
+/** @deprecated Use {@link DEFAULT_RELAYS}. */
+export const RELAYS = DEFAULT_RELAYS;
 
-// Private kind for encrypted streak data (NIP-78)
-const STREAK_CLOUD_KIND = 30078;
-const STREAK_CLOUD_D_TAG = "nofapfursan-streak";
+const RELAY_KEY = "user_relays";
 
-// Storage key for pending offline events
-const PENDING_SYNC_KEY = "pending_sync";
+const isRelayUrl = (value: unknown): value is string =>
+  typeof value === "string" && /^wss?:\/\/[^\s]+$/i.test(value.trim());
 
-// ============================================================================
-// TYPES
-// ============================================================================
-
-export interface StreakPayload {
-    days: number;
-    startDate: string | null;
-    longestStreak: number;
-    totalRelapses: number;
-    timestamp: number;
-}
-
-export interface NostrKeys {
-    privateKey: Uint8Array;
-    publicKey: string;
-    privateKeyHex: string;
-}
-
-export interface PendingEvent {
-    id: string;
-    signedEvent: VerifiedEvent;
-    createdAt: number;
-    retryCount: number;
-}
-
-export interface NetworkState {
-    isOnline: boolean;
-    isSyncing: boolean;
-    pendingCount: number;
-}
-
-// ============================================================================
-// NETWORK STATE MANAGEMENT
-// ============================================================================
-
-// Global network state
-let networkState: NetworkState = {
-    isOnline: true,
-    isSyncing: false,
-    pendingCount: 0,
+const normaliseRelays = (value: unknown): string[] => {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of value) {
+    if (!isRelayUrl(raw)) continue;
+    const url = raw.trim().replace(/\/+$/, "");
+    if (seen.has(url)) continue;
+    seen.add(url);
+    out.push(url);
+  }
+  return out;
 };
 
-// Subscribers for network state changes
-type NetworkStateListener = (state: NetworkState) => void;
-const networkStateListeners: Set<NetworkStateListener> = new Set();
-
 /**
- * Subscribe to network state changes
+ * Never returns an empty list. A relay set of `[]` used to make every
+ * `querySync` hang forever and silently blank three screens.
  */
-export function subscribeToNetworkState(listener: NetworkStateListener): () => void {
-    networkStateListeners.add(listener);
-    // Immediately notify with current state
-    listener(networkState);
-
-    return () => {
-        networkStateListeners.delete(listener);
-    };
+export async function getRelays(): Promise<string[]> {
+  try {
+    const { value } = await Preferences.get({ key: RELAY_KEY });
+    const relays = normaliseRelays(value ? JSON.parse(value) : null);
+    if (relays.length > 0) return relays;
+  } catch {
+    // Corrupt or unreadable — fall back below.
+  }
+  return [...DEFAULT_RELAYS];
 }
 
-/**
- * Update network state and notify all listeners
- */
-function updateNetworkState(updates: Partial<NetworkState>): void {
-    networkState = { ...networkState, ...updates };
-    networkStateListeners.forEach((listener) => listener(networkState));
+export async function setRelays(urls: string[]): Promise<string[]> {
+  const relays = normaliseRelays(urls);
+  const next = relays.length > 0 ? relays : [...DEFAULT_RELAYS];
+  await Preferences.set({ key: RELAY_KEY, value: JSON.stringify(next) });
+  return next;
 }
 
-/**
- * Get current network state
- */
-export function getNetworkState(): NetworkState {
-    return { ...networkState };
+export async function addRelay(url: string): Promise<string[] | null> {
+  if (!isRelayUrl(url)) return null;
+  const trimmed = url.trim().replace(/\/+$/, "");
+  const current = await getRelays();
+  if (current.includes(trimmed)) return current;
+  const next = await setRelays([...current, trimmed]);
+  return next;
 }
 
-// ============================================================================
-// OFFLINE QUEUE MANAGEMENT
-// ============================================================================
+/** Refuses to remove the final relay — the app must always have somewhere to write. */
+export async function removeRelay(url: string): Promise<{ relays: string[]; removed: boolean }> {
+  const current = await getRelays();
+  const remaining = current.filter((r) => r !== url);
+  if (remaining.length === 0) return { relays: current, removed: false };
+  const relays = await setRelays(remaining);
+  pool.close([url]);
+  return { relays, removed: true };
+}
 
-/**
- * Get pending events from storage
- */
-async function getPendingEvents(): Promise<PendingEvent[]> {
-    try {
-        const { value } = await Preferences.get({ key: PENDING_SYNC_KEY });
-        if (value) {
-            return JSON.parse(value);
-        }
-    } catch (error) {
-        console.error("[Nostr] Error reading pending events:", error);
+/* ──────────────────────────────────────────────────────────────────────────
+   Shared pool + bounded queries
+   ────────────────────────────────────────────────────────────────────────── */
+
+const pool = new SimplePool({ enablePing: true, enableReconnect: true });
+
+export const getPool = () => pool;
+
+/** Shuts every socket down. Used on identity reset and app teardown. */
+export function closeAllRelays(): void {
+  pool.close([]);
+}
+
+export interface RelayHealth {
+  reachable: boolean;
+  metadata?: { name?: string; description?: string; supported_nips?: number[] };
+}
+
+/** Connectivity probe used before a relay is added to the list. */
+export async function verifyRelay(url: string): Promise<RelayHealth> {
+  const trimmed = url.trim().replace(/\/+$/, "");
+  if (!isRelayUrl(trimmed)) return { reachable: false };
+  try {
+    await pool.ensureRelay(trimmed, { connectionTimeout: CONNECT_TIMEOUT_MS });
+  } catch {
+    return { reachable: false };
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), METADATA_TIMEOUT_MS);
+  try {
+    const res = await fetch(trimmed.replace(/^ws/, "http"), {
+      headers: { Accept: "application/nostr+json" },
+      signal: controller.signal,
+    });
+    if (res.ok) {
+      const data = (await res.json()) as RelayHealth["metadata"];
+      return { reachable: true, metadata: data };
     }
+  } catch {
+    /* NIP-11 is optional — reachability is what matters here */
+  } finally {
+    clearTimeout(timer);
+  }
+  return { reachable: true };
+}
+
+const QUERY_TIMEOUT_MS = 6000;
+const CONNECT_TIMEOUT_MS = 5000;
+const withTimeout = async <T,>(promise: Promise<T>, ms: number, fallback: T): Promise<T> => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((resolve) => {
+        timer = setTimeout(() => resolve(fallback), ms);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+};
+
+/**
+ * `querySync` resolves on relay arrival order and never sorts; on top of that an
+ * empty/dead relay set can leave the promise pending forever. This wrapper
+ * sorts by `created_at` descending and always resolves.
+ */
+async function queryRelays(
+  filter: Record<string, unknown>,
+  relays: string[],
+  timeoutMs = QUERY_TIMEOUT_MS,
+): Promise<VerifiedEvent[]> {
+  if (relays.length === 0) return [];
+  try {
+    const events = await withTimeout(
+      pool.querySync(relays, filter as never, { maxWait: timeoutMs }) as Promise<VerifiedEvent[]>,
+      timeoutMs + 500,
+      [] as VerifiedEvent[],
+    );
+    return events.sort((a, b) => b.created_at - a.created_at);
+  } catch (error) {
+    console.warn("[Nostr] Query failed", error);
     return [];
+  }
 }
 
-/**
- * Save pending events to storage
- */
-async function savePendingEvents(events: PendingEvent[]): Promise<void> {
-    await Preferences.set({
-        key: PENDING_SYNC_KEY,
-        value: JSON.stringify(events),
-    });
+/* ──────────────────────────────────────────────────────────────────────────
+   Network state
+   ────────────────────────────────────────────────────────────────────────── */
+
+export interface NetworkState {
+  isOnline: boolean;
+  isSyncing: boolean;
+  pendingCount: number;
+  droppedCount: number;
+}
+
+let networkState: NetworkState = {
+  isOnline: true,
+  isSyncing: false,
+  pendingCount: 0,
+  droppedCount: 0,
+};
+
+type NetworkStateListener = (state: NetworkState) => void;
+const networkStateListeners = new Set<NetworkStateListener>();
+
+export function subscribeToNetworkState(listener: NetworkStateListener): () => void {
+  networkStateListeners.add(listener);
+  listener({ ...networkState });
+  return () => {
+    networkStateListeners.delete(listener);
+  };
+}
+
+function updateNetworkState(updates: Partial<NetworkState>): void {
+  networkState = { ...networkState, ...updates };
+  for (const listener of networkStateListeners) listener({ ...networkState });
+}
+
+export function getNetworkState(): NetworkState {
+  return { ...networkState };
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Offline queue
+   ────────────────────────────────────────────────────────────────────────── */
+
+interface PendingEvent {
+  id: string;
+  event: VerifiedEvent;
+  createdAt: number;
+  retryCount: number;
+  /** "streak" | "health" | "journal" — used for the storage-full message. */
+  kind: string;
+}
+
+const PENDING_KEY = "pending_sync";
+/** Bounds local storage; beyond this the oldest records are dropped first. */
+const MAX_QUEUE = 200;
+/** After this many failed attempts the event is dead-lettered, not retried forever. */
+const MAX_RETRIES = 12;
+
+async function readQueue(): Promise<PendingEvent[]> {
+  try {
+    const { value } = await Preferences.get({ key: PENDING_KEY });
+    if (!value) return [];
+    const parsed: unknown = JSON.parse(value);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (e): e is PendingEvent =>
+        !!e && typeof e === "object" && typeof (e as PendingEvent).id === "string",
+    );
+  } catch {
+    return [];
+  }
+}
+
+async function writeQueue(events: PendingEvent[]): Promise<boolean> {
+  try {
+    await Preferences.set({ key: PENDING_KEY, value: JSON.stringify(events) });
     updateNetworkState({ pendingCount: events.length });
+    return true;
+  } catch (error) {
+    console.error("[Nostr] Queue write failed — storage is full", error);
+    return false;
+  }
 }
 
-/**
- * Add an event to the offline queue
- */
-async function queueEvent(signedEvent: VerifiedEvent): Promise<void> {
-    const pending = await getPendingEvents();
+async function enqueue(event: VerifiedEvent, kind: string): Promise<boolean> {
+  const queue = await readQueue();
+  if (queue.some((e) => e.id === event.id)) return true;
 
-    // Check for duplicate (by event id)
-    if (pending.some((e) => e.id === signedEvent.id)) {
-        console.log("[Nostr] Event already in queue, skipping:", signedEvent.id);
-        return;
+  queue.push({ id: event.id, event, createdAt: Date.now(), retryCount: 0, kind });
+
+  const trimmed = queue;
+  let dropped = 0;
+  while (trimmed.length > MAX_QUEUE) {
+    trimmed.shift();
+    dropped++;
+  }
+  if (dropped > 0) updateNetworkState({ droppedCount: networkState.droppedCount + dropped });
+
+  return writeQueue(trimmed);
+}
+
+let flushInFlight: Promise<void> | null = null;
+
+async function flushQueue(): Promise<void> {
+  if (flushInFlight) return flushInFlight;
+
+  flushInFlight = (async () => {
+    const queue = await readQueue();
+    if (queue.length === 0) {
+      updateNetworkState({ isSyncing: false, pendingCount: 0 });
+      return;
     }
 
-    const newEvent: PendingEvent = {
-        id: signedEvent.id,
-        signedEvent,
-        createdAt: Date.now(),
-        retryCount: 0,
-    };
-
-    pending.push(newEvent);
-    await savePendingEvents(pending);
-
-    console.log("[Nostr] Event queued for offline sync:", signedEvent.id);
-    console.log("[Nostr] Pending queue size:", pending.length);
-}
-
-/**
- * Remove an event from the queue after successful publish
- */
-async function removeFromQueue(eventId: string): Promise<void> {
-    const pending = await getPendingEvents();
-    const filtered = pending.filter((e) => e.id !== eventId);
-    await savePendingEvents(filtered);
-}
-
-/**
- * Flush all pending events to relays
- */
-async function flushPendingEvents(): Promise<void> {
-    const pending = await getPendingEvents();
-
-    if (pending.length === 0) {
-        console.log("[Nostr] No pending events to flush");
-        return;
-    }
-
-    console.log(`[Nostr] Flushing ${pending.length} pending events...`);
     updateNetworkState({ isSyncing: true });
+    const remaining: PendingEvent[] = [];
+    let dropped = 0;
 
-    for (const pendingEvent of pending) {
-        try {
-            const success = await resilientPublish(pendingEvent.signedEvent);
-
-            if (success) {
-                console.log("[FURSAN-DEBUG]: Nostr Event Published (from queue)", pendingEvent.signedEvent.id);
-                console.log("[Nostr] Flushed queued event:", pendingEvent.signedEvent.id);
-                await removeFromQueue(pendingEvent.id);
-            } else {
-                console.error("[Nostr] Failed to flush event (no relay confirmations):", pendingEvent.id);
-                pendingEvent.retryCount++;
-            }
-        } catch (error) {
-            console.error("[Nostr] Failed to flush event:", pendingEvent.id, error);
-            pendingEvent.retryCount++;
+    for (const item of queue) {
+      try {
+        if (await publishEvent(item.event)) continue; // acked — drop from queue
+        if (item.retryCount + 1 >= MAX_RETRIES) {
+          dropped++;
+          continue;
         }
+        remaining.push({ ...item, retryCount: item.retryCount + 1 });
+      } catch {
+        remaining.push({ ...item, retryCount: item.retryCount + 1 });
+      }
     }
 
+    if (dropped > 0) {
+      console.warn(`[Nostr] ${dropped} queued event(s) abandoned after ${MAX_RETRIES} attempts`);
+      updateNetworkState({ droppedCount: networkState.droppedCount + dropped });
+    }
+    // Always persists — the retry counters must survive the session.
+    await writeQueue(remaining);
     updateNetworkState({ isSyncing: false });
+  })().finally(() => {
+    flushInFlight = null;
+  });
 
-    // Update pending count after flush
-    const remaining = await getPendingEvents();
-    updateNetworkState({ pendingCount: remaining.length });
-
-    console.log("[Nostr] Flush complete. Remaining:", remaining.length);
+  return flushInFlight;
 }
 
-// ============================================================================
-// RESILIENT PUBLISH
-// ============================================================================
-
-interface RelayResult {
-    relay: string;
-    success: boolean;
-    error?: string;
+export async function manualFlush(): Promise<void> {
+  if (!networkState.isOnline) {
+    console.info("[Nostr] Offline — nothing to flush");
+    return;
+  }
+  await flushQueue();
 }
 
-/**
- * Publish to multiple relays with fault tolerance.
- * Success is determined by at least one relay acknowledgment (Promise.any style).
- */
-async function resilientPublish(signedEvent: VerifiedEvent): Promise<boolean> {
-    const currentRelays = await getRelays();
-    const results: RelayResult[] = [];
+export async function getPendingCount(): Promise<number> {
+  return (await readQueue()).length;
+}
 
+/* ──────────────────────────────────────────────────────────────────────────
+   Publish
+   ────────────────────────────────────────────────────────────────────────── */
+
+const PUBLISH_TIMEOUT_MS = 6000;
+const METADATA_TIMEOUT_MS = 3000;
+const MIN_RELAY_CONFIRMATIONS = 1;
+
+/** Resolves true as soon as one relay accepts the event. */
+export async function publishEvent(event: VerifiedEvent, relays?: string[]): Promise<boolean> {
+  const targets = relays ?? (await getRelays());
+  if (targets.length === 0) return false;
+
+  let acked = false;
+  const attempts = targets.map(async (url) => {
     try {
-        // Create individual promises for each relay
-        const relayPromises = currentRelays.map(async (relay): Promise<RelayResult> => {
-            try {
-                // SimplePool.publish returns an array of promises for each relay
-                // We need to handle each relay individually for better error handling
-                const promise = pool.publish([relay], signedEvent);
-                await Promise.race([
-                    Promise.all(promise),
-                    // Timeout after 10 seconds per relay
-                    new Promise((_, reject) =>
-                        setTimeout(() => reject(new Error("Timeout")), 10000)
-                    )
-                ]);
-
-                return { relay, success: true };
-            } catch (error) {
-                const errorMessage = error instanceof Error ? error.message : "Unknown error";
-                console.warn(`[Nostr] Relay ${relay} failed:`, errorMessage);
-                return { relay, success: false, error: errorMessage };
-            }
-        });
-
-        // Wait for all relay attempts to complete (don't fail early)
-        const allResults = await Promise.allSettled(relayPromises);
-
-        // Process results
-        for (const result of allResults) {
-            if (result.status === "fulfilled") {
-                results.push(result.value);
-            } else {
-                // This shouldn't happen since we catch errors inside, but handle it
-                results.push({ relay: "unknown", success: false, error: result.reason });
-            }
-        }
-
-        // Count successful relays
-        const successfulRelays = results.filter(r => r.success);
-        const failedRelays = results.filter(r => !r.success);
-
-        // Log detailed results
-        console.log(`[Nostr] Publish results: ${successfulRelays.length}/${currentRelays.length} relays succeeded`);
-
-        if (successfulRelays.length > 0) {
-            console.log("[Nostr] ✓ Successful relays:", successfulRelays.map(r => r.relay).join(", "));
-        }
-
-        if (failedRelays.length > 0) {
-            console.log("[Nostr] ✗ Failed relays:", failedRelays.map(r => `${r.relay} (${r.error})`).join(", "));
-        }
-
-        // Success if at least MIN_RELAY_CONFIRMATIONS relays acknowledged
-        return successfulRelays.length >= MIN_RELAY_CONFIRMATIONS;
-
-    } catch (e) {
-        console.error("[Nostr] Fatal error in resilientPublish:", e);
-        return false;
+      await pool.ensureRelay(url, { connectionTimeout: CONNECT_TIMEOUT_MS });
+    } catch {
+      return; // unreachable — the publish below will reject fast anyway
     }
+    try {
+      const [result] = await pool.publish([url], event);
+      await result;
+      acked = true;
+    } catch {
+      /* try the next relay */
+    }
+  });
+
+  await withTimeout(
+    Promise.allSettled(attempts).then(() => undefined),
+    PUBLISH_TIMEOUT_MS,
+    undefined,
+  );
+  return acked;
 }
 
-// ============================================================================
-// NETWORK LISTENER
-// ============================================================================
-
-let networkListenerInitialized = false;
-
 /**
- * Initialize network status listener
+ * Publish with a durable local fallback: on success the relay acknowledges,
+ * otherwise the signed event is queued and the caller is still told the write
+ * succeeded — because it did, on the device.
  */
+async function publishOrQueue(event: VerifiedEvent, kind: string): Promise<boolean> {
+  if (!networkState.isOnline) {
+    await enqueue(event, kind);
+    return true;
+  }
+  if (await publishEvent(event)) return true;
+  return enqueue(event, kind);
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Network listener
+   ────────────────────────────────────────────────────────────────────────── */
+
+let networkListenerHandle: { remove: () => Promise<void> } | null = null;
+let healthTimer: ReturnType<typeof setInterval> | null = null;
+
 export async function initNetworkListener(): Promise<void> {
-    if (networkListenerInitialized) {
-        return;
+  if (networkListenerHandle) return;
+
+  try {
+    const status = await Network.getStatus();
+    updateNetworkState({ isOnline: status.connected });
+  } catch {
+    updateNetworkState({ isOnline: true });
+  }
+
+  networkListenerHandle = await Network.addListener("networkStatusChange", (status: ConnectionStatus) => {
+    const wasOffline = !networkState.isOnline;
+    updateNetworkState({ isOnline: status.connected });
+    if (wasOffline && status.connected) void flushQueue();
+  });
+
+  const queue = await readQueue();
+  updateNetworkState({ pendingCount: queue.length });
+  if (networkState.isOnline && queue.length > 0) void flushQueue();
+
+  // Keeps the queue moving and re-establishes sockets that dropped while the
+  // app was backgrounded. `enableReconnect` alone does not recover a socket
+  // that was killed by the OS.
+  if (healthTimer) clearInterval(healthTimer);
+  healthTimer = setInterval(() => {
+    if (!document.hidden && networkState.isOnline) {
+      if (networkState.pendingCount > 0) void flushQueue();
+      else void warmRelays();
     }
+  }, 45_000);
 
-    networkListenerInitialized = true;
-
-    // Get initial network status
-    try {
-        const status = await Network.getStatus();
-        updateNetworkState({ isOnline: status.connected });
-        console.log("[Nostr] Initial network status:", status.connected ? "online" : "offline");
-
-        // Flush any pending events if we're online at startup
-        if (status.connected) {
-            const pending = await getPendingEvents();
-            updateNetworkState({ pendingCount: pending.length });
-
-            if (pending.length > 0) {
-                console.log("[Nostr] Found pending events on startup, flushing...");
-                await flushPendingEvents();
-            }
-        }
-    } catch (error) {
-        console.error("[Nostr] Error getting initial network status:", error);
-        // Assume online if we can't check
-        updateNetworkState({ isOnline: true });
-    }
-
-    // Listen for network changes
-    Network.addListener("networkStatusChange", async (status: ConnectionStatus) => {
-        const wasOffline = !networkState.isOnline;
-        const isNowOnline = status.connected;
-
-        console.log("[Nostr] Network status changed:", isNowOnline ? "online" : "offline");
-        updateNetworkState({ isOnline: isNowOnline });
-
-        // If we just came back online, flush pending events
-        if (wasOffline && isNowOnline) {
-            console.log("[Nostr] Connection restored! Flushing pending events...");
-            await flushPendingEvents();
-        }
-    });
-
-    console.log("[Nostr] Network listener initialized");
+  document.addEventListener("visibilitychange", onVisible);
 }
 
-// ============================================================================
-// KEY MANAGEMENT - FORTRESS PROTOCOL
-// ============================================================================
+function onVisible() {
+  if (document.visibilityState !== "visible" || !networkState.isOnline) return;
+  void warmRelays();
+  if (networkState.pendingCount > 0) void flushQueue();
+}
 
-import { SecureStorage } from "./secureStorage";
+async function warmRelays() {
+  const relays = await getRelays();
+  const status = pool.listConnectionStatus();
+  await Promise.allSettled(
+    relays.map(async (url) => {
+      if (status.get(url) === true) return;
+      try {
+        await pool.ensureRelay(url, { connectionTimeout: CONNECT_TIMEOUT_MS });
+      } catch {
+        /* retried on the next tick */
+      }
+    }),
+  );
+}
+
+/** Releases sockets and timers. Safe to call more than once. */
+export async function shutdownNetwork(): Promise<void> {
+  if (healthTimer) {
+    clearInterval(healthTimer);
+    healthTimer = null;
+  }
+  document.removeEventListener("visibilitychange", onVisible);
+  if (networkListenerHandle) {
+    await networkListenerHandle.remove().catch(() => undefined);
+    networkListenerHandle = null;
+  }
+  closeAllRelays();
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Identity
+   ────────────────────────────────────────────────────────────────────────── */
+
+export interface NostrKeys {
+  privateKey: Uint8Array;
+  publicKey: string;
+  privateKeyHex: string;
+}
+
+const NSEC_KEY = "user_nsec";
+const LEGACY_KEYS = ["user_private_key", "nostr_private_key"];
+
+const isHexKey = (value: string): boolean => /^[0-9a-f]{64}$/i.test(value.trim());
+
+/** Every key this app owns — the explicit wipe list. */
+const APP_KEYS = [
+  NSEC_KEY,
+  ...LEGACY_KEYS,
+  PENDING_KEY,
+  RELAY_KEY,
+  "user_theme",
+  "fursan_streak_data",
+  "fursan_health_log",
+  "fursan_journal",
+  "fursan_activity_log",
+];
+
+const LOCAL_STORAGE_PREFIXES = ["nostr_username_", "nostr_avatar_", "fursan_"];
 
 /**
- * Generate new Nostr keys or load existing ones from Secure Storage
+ * Loads the identity, creating one on first run.
+ *
+ * Throws `IdentityError` when a stored key is unusable so callers can offer a
+ * real recovery path — a corrupt key used to brick the whole app silently.
  */
+export class IdentityError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "IdentityError";
+  }
+}
+
 export async function generateOrLoadKeys(): Promise<NostrKeys> {
+  // Consolidate any legacy plain-localStorage keys first.
+  for (const key of LEGACY_KEYS) {
     try {
-        // 1. MIGRATION PHASE: Check for legacy keys in insecure storage
-        // We check common legacy keys and consolidate them to 'user_nsec' in SecureStorage
-        await SecureStorage.migrateFromInsecure('user_private_key');
-        await SecureStorage.migrateFromInsecure('nostr_private_key');
-
-        // Also check if they are in Preferences but under old keys, and migrate to standard 'user_nsec'
-        // (only when no active identity exists yet, so imports are never clobbered)
-        const existingNsec = await SecureStorage.get('user_nsec');
-        if (!existingNsec) {
-            const oldPrefKey = await SecureStorage.get('user_private_key');
-            if (oldPrefKey) {
-                await SecureStorage.set('user_nsec', oldPrefKey);
-                await SecureStorage.remove('user_private_key');
-            }
-
-            const oldPrefKey2 = await SecureStorage.get('nostr_private_key');
-            if (oldPrefKey2) {
-                await SecureStorage.set('user_nsec', oldPrefKey2);
-                await SecureStorage.remove('nostr_private_key');
-            }
-        }
-
-        // 2. LOAD PHASE: Try to get the standard key from Secure Storage
-        const value = await SecureStorage.get('user_nsec');
-
-        if (value) {
-            // console.log("[FURSAN] Fortress Identity Loaded."); // Commented out for max privacy logs
-            const privKey = hexToBytes(value);
-            return {
-                privateKey: privKey,
-                publicKey: getPublicKey(privKey),
-                privateKeyHex: value
-            };
-        }
-
-        // 3. GENERATION PHASE: Create new identity if none exists
-        const newKey = generateSecretKey();
-        const hex = bytesToHex(newKey);
-        await SecureStorage.set('user_nsec', hex);
-
-        console.log("[FURSAN] New Fortress Identity Created.");
-        return {
-            privateKey: newKey,
-            publicKey: getPublicKey(newKey),
-            privateKeyHex: hex
-        };
-    } catch (error) {
-        console.error("[Nostr] Critical Identity Error:", error);
-        throw error;
+      const legacy = localStorage.getItem(key);
+      if (legacy && isHexKey(legacy) && !(await SecureStorage.get(NSEC_KEY))) {
+        await SecureStorage.set(NSEC_KEY, legacy);
+      }
+      localStorage.removeItem(key);
+    } catch {
+      /* storage unavailable */
     }
+  }
+
+  const stored = await SecureStorage.get(NSEC_KEY);
+
+  if (stored) {
+    if (!isHexKey(stored)) {
+      throw new IdentityError("Stored identity is not a valid key.");
+    }
+    const privateKey = hexToBytes(stored);
+    return { privateKey, publicKey: getPublicKey(privateKey), privateKeyHex: stored };
+  }
+
+  const privateKey = generateSecretKey();
+  const privateKeyHex = bytesToHex(privateKey);
+  try {
+    await SecureStorage.set(NSEC_KEY, privateKeyHex);
+  } catch (error) {
+    console.error("[Nostr] Could not persist new identity", error);
+    throw new IdentityError("Device storage is unavailable; identity was not saved.");
+  }
+  return { privateKey, publicKey: getPublicKey(privateKey), privateKeyHex };
 }
 
-/**
- * Check if keys exist in Secure Storage
- */
 export async function hasKeys(): Promise<boolean> {
-    const value = await SecureStorage.get('user_nsec');
-    return !!value;
+  const value = await SecureStorage.get(NSEC_KEY);
+  return !!value && isHexKey(value);
 }
 
 /**
- * Clear stored keys (PANIC BUTTON USE ONLY)
+ * Destroys the identity and everything tied to it.
+ *
+ * Deliberately targeted: `localStorage.clear()` used to delete the unsynced
+ * offline queue on web while erasing nothing at all on Android.
  */
-export async function clearKeys(): Promise<void> {
-    await SecureStorage.remove('user_nsec');
-    // Double tap to be sure
-    await SecureStorage.remove('user_private_key');
-    await SecureStorage.remove('nostr_private_key');
-    localStorage.clear(); // NUKE LOCAL STORAGE
-}
+export async function resetIdentity(options: { wipeRecords?: boolean } = {}): Promise<void> {
+  await Promise.all(
+    APP_KEYS.filter((key) => options.wipeRecords || key !== "fursan_streak_data").map((key) =>
+      SecureStorage.remove(key).catch(() => undefined),
+    ),
+  );
 
-/**
- * Export keys in NIP-19 format
- */
-export async function exportKeys(): Promise<{ nsec: string; npub: string } | null> {
-    try {
-        const keys = await generateOrLoadKeys();
-
-        // Encode to NIP-19
-        const nsec = nip19.nsecEncode(keys.privateKey);
-        const npub = nip19.npubEncode(keys.publicKey);
-
-        return { nsec, npub };
-    } catch (error) {
-        console.error("[Nostr] Failed to export keys:", error);
-        return null;
+  // WebView-localStorage copies and per-identity profile metadata.
+  try {
+    const doomed: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key) continue;
+      if (LOCAL_STORAGE_PREFIXES.some((p) => key.startsWith(p)) || key.startsWith("CapacitorStorage.")) {
+        doomed.push(key);
+      }
     }
+    for (const key of doomed) localStorage.removeItem(key);
+  } catch {
+    /* nothing stored here */
+  }
+
+  closeAllRelays();
+  updateNetworkState({ pendingCount: 0, droppedCount: 0, isSyncing: false });
+}
+
+/** Clears a damaged identity so the next load mints a fresh one. */
+export async function discardIdentity(): Promise<void> {
+  await Promise.all([
+    SecureStorage.remove(NSEC_KEY),
+    ...LEGACY_KEYS.map((k) => SecureStorage.remove(k)),
+  ]);
+  try {
+    for (const key of LEGACY_KEYS) localStorage.removeItem(key);
+  } catch {
+    /* ignore */
+  }
+  networkState = { isOnline: networkState.isOnline, isSyncing: false, pendingCount: 0, droppedCount: 0 };
+}
+
+export async function exportKeys(): Promise<{ nsec: string; npub: string } | null> {
+  try {
+    const keys = await generateOrLoadKeys();
+    return { nsec: nip19.nsecEncode(keys.privateKey), npub: nip19.npubEncode(keys.publicKey) };
+  } catch (error) {
+    console.error("[Nostr] Failed to export keys", error);
+    return null;
+  }
 }
 
 /**
- * Import an identity from an nsec string
+ * Imports an nsec. The outgoing identity's queued events are discarded first —
+ * publishing another identity's encrypted records from this session would leak
+ * them under the wrong key.
  */
 export async function importKey(nsec: string): Promise<boolean> {
-    try {
-        // Decode and validate
-        const { type, data } = nip19.decode(nsec);
+  const { type, data } = nip19.decode(nsec.trim());
+  if (type !== "nsec") throw new Error("Expected an nsec (npub cannot restore your streak).");
 
-        if (type !== 'nsec') {
-            throw new Error("Invalid key type. Expected 'nsec'.");
-        }
+  const privateKey = data as Uint8Array;
+  if (privateKey.length !== 32) throw new Error("That key is not 32 bytes.");
 
-        const privateKey = data as Uint8Array;
-        const privateKeyHex = bytesToHex(privateKey);
-        const publicKey = getPublicKey(privateKey);
-
-        // Save new identity directly to the active fortress key so it takes
-        // effect immediately on the next identity load
-        await SecureStorage.set('user_nsec', privateKeyHex);
-        await SecureStorage.remove('nostr_private_key');
-        await SecureStorage.remove('user_private_key');
-
-        // Reset any state if necessary
-        networkState = {
-            isOnline: networkState.isOnline,
-            isSyncing: false,
-            pendingCount: 0
-        };
-
-        console.log("[Nostr] Imported new identity:", publicKey);
-        return true;
-    } catch (error) {
-        console.error("[Nostr] Failed to import key:", error);
-        throw error;
-    }
+  await writeQueue([]);
+  closeAllRelays();
+  await SecureStorage.set(NSEC_KEY, bytesToHex(privateKey));
+  for (const key of LEGACY_KEYS) await SecureStorage.remove(key).catch(() => undefined);
+  updateNetworkState({ pendingCount: 0 });
+  return true;
 }
 
-// Re-export nip19 for UI components
+export async function getPublicKeyNpub(): Promise<string | null> {
+  try {
+    return (await generateOrLoadKeys()).publicKey;
+  } catch {
+    return null;
+  }
+}
+
 export { nip19 };
 
-// ============================================================================
-// ENCRYPTION/DECRYPTION
-// ============================================================================
+/* ──────────────────────────────────────────────────────────────────────────
+   NIP-44 helpers
+   ────────────────────────────────────────────────────────────────────────── */
 
 /**
- * Encrypt streak data using NIP-44
+ * Self-directed conversation key: the payload is readable only by the holder of
+ * the private key that signed it, which is exactly the intent for private
+ * records mirrored to public relays.
  */
-function encryptStreakData(
-    data: StreakPayload,
-    privateKey: Uint8Array,
-    publicKey: string
-): string {
-    const plaintext = JSON.stringify(data);
-    const conversationKey = nip44.v2.utils.getConversationKey(
-        privateKey,
-        publicKey
-    );
-    return nip44.v2.encrypt(plaintext, conversationKey);
+function selfKey(keys: NostrKeys) {
+  return nip44.v2.utils.getConversationKey(keys.privateKey, keys.publicKey);
 }
 
-/**
- * Decrypt streak data using NIP-44
- */
-function decryptStreakData(
-    ciphertext: string,
-    privateKey: Uint8Array,
-    publicKey: string
-): StreakPayload | null {
-    try {
-        const conversationKey = nip44.v2.utils.getConversationKey(
-            privateKey,
-            publicKey
-        );
-        const plaintext = nip44.v2.decrypt(ciphertext, conversationKey);
-        return JSON.parse(plaintext);
-    } catch (error) {
-        console.error("[Nostr] Failed to decrypt streak data:", error);
-        return null;
-    }
+const encryptJson = (value: unknown, keys: NostrKeys): string =>
+  nip44.v2.encrypt(JSON.stringify(value), selfKey(keys));
+
+const decryptJson = <T,>(ciphertext: string, keys: NostrKeys): T | null => {
+  try {
+    return JSON.parse(nip44.v2.decrypt(ciphertext, selfKey(keys))) as T;
+  } catch {
+    return null;
+  }
+};
+
+const noteTags = (tag: string) => [
+  ["t", tag],
+  ["encrypted", "nip44"],
+];
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Streak
+   ────────────────────────────────────────────────────────────────────────── */
+
+export interface StreakPayload {
+  days: number;
+  startDate: string | null;
+  longestStreak: number;
+  totalRelapses: number;
+  /** Mirrors `StreakData.updatedAt`; drives last-writer-wins cloud merges. */
+  updatedAt: number;
+  timestamp: number;
 }
 
-// ============================================================================
-// MAIN API
-// ============================================================================
+const STREAK_KIND = 30078;
+const STREAK_D_TAG = "nofapfursan-streak";
 
-/**
- * Save streak data to Nostr relays using Kind 30078 (NIP-78)
- */
 export async function saveStreak(streakData: StreakPayload): Promise<boolean> {
-    try {
-        const keys = await generateOrLoadKeys();
-
-        // Encrypt the streak data
-        const encryptedContent = encryptStreakData(
-            streakData,
-            keys.privateKey,
-            keys.publicKey
-        );
-
-        // Create the event (Kind 30078)
-        const eventTemplate = {
-            kind: STREAK_CLOUD_KIND,
-            created_at: Math.floor(Date.now() / 1000),
-            tags: [
-                ["d", STREAK_CLOUD_D_TAG],
-                ["t", "nofapfursan"],
-                ["encrypted", "nip44"],
-            ],
-            content: encryptedContent,
-        };
-
-        // Sign the event
-        const signedEvent = finalizeEvent(eventTemplate, keys.privateKey);
-
-        // Check network status
-        if (!networkState.isOnline) {
-            console.log("[Nostr] Offline - queueing cloud sync for later");
-            await queueEvent(signedEvent);
-            return true;
-        }
-
-        const success = await resilientPublish(signedEvent);
-
-        if (success) {
-            console.log("[Nostr] Streak synced to cloud (Kind 30078):", signedEvent.id);
-            return true;
-        } else {
-            console.warn("[Nostr] Relay publish failed, queueing for later");
-            await queueEvent(signedEvent);
-            return true;
-        }
-    } catch (error) {
-        console.error("[Nostr] Error saving streak:", error);
-        return false;
-    }
+  try {
+    const keys = await generateOrLoadKeys();
+    const event = finalizeEvent(
+      {
+        kind: STREAK_KIND,
+        created_at: Math.floor(Date.now() / 1000),
+        tags: [["d", STREAK_D_TAG], ["t", "nofapfursan"], ["encrypted", "nip44"]],
+        content: encryptJson(streakData, keys),
+      },
+      keys.privateKey,
+    );
+    return publishOrQueue(event, "streak");
+  } catch (error) {
+    console.error("[Nostr] saveStreak failed", error);
+    return false;
+  }
 }
 
-/**
- * Fetch the latest streak data from Nostr relays (Kind 30078)
- */
 export async function fetchStreak(): Promise<StreakPayload | null> {
-    if (!networkState.isOnline) return null;
-
-    try {
-        const keys = await generateOrLoadKeys();
-        const currentRelays = await getRelays();
-
-        const filter = {
-            kinds: [STREAK_CLOUD_KIND],
-            authors: [keys.publicKey],
-            "#d": [STREAK_CLOUD_D_TAG],
-            limit: 1,
-        };
-
-        const events = await pool.querySync(currentRelays, filter);
-
-        if (events.length === 0) {
-            console.log("[Nostr] No cloud streak data found (Kind 30078)");
-            return null;
-        }
-
-        const latestEvent = events[0];
-        const streakData = decryptStreakData(
-            latestEvent.content,
-            keys.privateKey,
-            keys.publicKey
-        );
-
-        return streakData;
-    } catch (error) {
-        console.error("[Nostr] Error fetching streak from cloud:", error);
-        return null;
+  if (!networkState.isOnline) return null;
+  try {
+    const keys = await generateOrLoadKeys();
+    const relays = await getRelays();
+    const events = await queryRelays(
+      { kinds: [STREAK_KIND], authors: [keys.publicKey], "#d": [STREAK_D_TAG], limit: 10 },
+      relays,
+    );
+    // Newest first: `querySync` returns arrival order, not chronological.
+    for (const event of events) {
+      const payload = decryptJson<StreakPayload>(event.content, keys);
+      if (payload) return payload;
     }
+    return null;
+  } catch (error) {
+    console.error("[Nostr] fetchStreak failed", error);
+    return null;
+  }
 }
 
 /**
- * Sync local streak with relay - fetches remote and merges smartly
+ * Cloud pull. Pushing is owned by the caller so a merge never silently
+ * overwrites a fresher local decision.
  */
-export async function syncStreak(
-    localStreak: StreakPayload
-): Promise<StreakPayload> {
-    const remoteStreak = await fetchStreak();
+export async function syncStreak(localStreak: StreakPayload): Promise<StreakPayload> {
+  const remoteStreak = await fetchStreak();
+  if (!remoteStreak) return localStreak;
 
-    if (!remoteStreak) {
-        await saveStreak(localStreak);
-        return localStreak;
-    }
+  const localAt = localStreak.updatedAt || localStreak.timestamp || 0;
+  const remoteAt = remoteStreak.updatedAt || remoteStreak.timestamp || 0;
 
-    const merged: StreakPayload = {
-        days: Math.max(localStreak.days, remoteStreak.days),
-        startDate:
-            localStreak.timestamp > remoteStreak.timestamp
-                ? localStreak.startDate
-                : remoteStreak.startDate,
-        longestStreak: Math.max(
-            localStreak.longestStreak,
-            remoteStreak.longestStreak
-        ),
-        totalRelapses: Math.max(
-            localStreak.totalRelapses,
-            remoteStreak.totalRelapses
-        ),
-        timestamp: Math.max(localStreak.timestamp, remoteStreak.timestamp),
-    };
-
-    if (merged.timestamp > remoteStreak.timestamp) {
-        await saveStreak(merged);
-    }
-
-    return merged;
+  return {
+    days: Math.max(localStreak.days, remoteStreak.days),
+    startDate: remoteAt > localAt ? remoteStreak.startDate : localStreak.startDate,
+    longestStreak: Math.max(localStreak.longestStreak, remoteStreak.longestStreak),
+    totalRelapses: Math.max(localStreak.totalRelapses, remoteStreak.totalRelapses),
+    updatedAt: Math.max(localAt, remoteAt),
+    timestamp: Math.max(localStreak.timestamp, remoteStreak.timestamp),
+  };
 }
 
-/**
- * Get the user's public key (npub) for display
- */
-export async function getPublicKeyNpub(): Promise<string | null> {
-    try {
-        const keys = await generateOrLoadKeys();
-        return keys.publicKey;
-    } catch {
-        return null;
-    }
-}
+/* ──────────────────────────────────────────────────────────────────────────
+   Health check-ins
+   ────────────────────────────────────────────────────────────────────────── */
 
-/**
- * Manually trigger a flush of pending events
- */
-export async function manualFlush(): Promise<void> {
-    if (networkState.isOnline) {
-        await flushPendingEvents();
-    } else {
-        console.log("[Nostr] Cannot flush - still offline");
-    }
-}
+const HEALTH_TAG = "nofapfursan-health";
+export type { HealthCheck };
 
-/**
- * Get count of pending events
- */
-export async function getPendingCount(): Promise<number> {
-    const pending = await getPendingEvents();
-    return pending.length;
-}
-
-// ============================================================================
-// HEALTH CHECK FEATURE
-// ============================================================================
-
-export interface HealthCheck {
-    id?: string;
-    npt: boolean; // Did you wake up with NPT?
-    mindset: 'sharp' | 'foggy' | 'stormy';
-    timestamp: number;
-}
-
-const HEALTH_CHECK_TAG = "nofapfursan-health";
-
-/**
- * Save an encrypted health check entry
- */
 export async function saveHealthCheck(entry: HealthCheck): Promise<boolean> {
-    try {
-        const keys = await generateOrLoadKeys();
+  // Device first — this is the write that must never fail silently.
+  if (!saveLocalHealthCheck(entry)) {
+    toastFailure();
+    return false;
+  }
+  void mirrorToSecureStorage();
 
-        // Encrypt the JSON entry
-        const plaintext = JSON.stringify(entry);
-        const conversationKey = nip44.v2.utils.getConversationKey(keys.privateKey, keys.publicKey);
-        const ciphertext = nip44.v2.encrypt(plaintext, conversationKey);
-
-        const eventTemplate = {
-            kind: 1, // Using kind 1 with a specific tag for health logs
-            created_at: Math.floor(Date.now() / 1000),
-            tags: [
-                ["t", HEALTH_CHECK_TAG],
-                ["encrypted", "nip44"],
-            ],
-            content: ciphertext,
-        };
-
-        const signedEvent = finalizeEvent(eventTemplate, keys.privateKey);
-
-        if (!networkState.isOnline) {
-            await queueEvent(signedEvent);
-            return true;
-        }
-
-        const success = await resilientPublish(signedEvent);
-        if (!success) {
-            await queueEvent(signedEvent);
-        }
-
-        return true;
-    } catch (error) {
-        console.error("Failed to save health check:", error);
-        return false;
-    }
+  try {
+    const keys = await generateOrLoadKeys();
+    const event = finalizeEvent(
+      {
+        kind: 1,
+        created_at: Math.floor(Date.now() / 1000),
+        tags: noteTags(HEALTH_TAG),
+        content: encryptJson(entry, keys),
+      },
+      keys.privateKey,
+    );
+    await publishOrQueue(event, "health");
+    return true;
+  } catch (error) {
+    console.error("[Nostr] saveHealthCheck relay step failed", error);
+    return true; // the local record is already durable
+  }
 }
 
-/**
- * Fetch health check entries
- */
+/** Local ∪ relay, newest first, deduplicated per day. */
 export async function fetchHealthChecks(): Promise<HealthCheck[]> {
-    if (!networkState.isOnline) return [];
+  const local = getLocalHealthChecks();
+  if (!networkState.isOnline) return local;
 
-    try {
-        const keys = await generateOrLoadKeys();
-        const currentRelays = await getRelays();
-
-        const filter = {
-            kinds: [1],
-            authors: [keys.publicKey],
-            "#t": [HEALTH_CHECK_TAG],
-            limit: 100, // Fetch enough to cover more than 14 days
-        };
-
-        const events = await pool.querySync(currentRelays, filter);
-        const entries: HealthCheck[] = [];
-        const conversationKey = nip44.v2.utils.getConversationKey(keys.privateKey, keys.publicKey);
-
-        for (const event of events) {
-            try {
-                const plaintext = nip44.v2.decrypt(event.content, conversationKey);
-                const data = JSON.parse(plaintext);
-                entries.push({ ...data, id: event.id });
-            } catch (e) {
-                console.warn("Failed to decrypt health check", event.id);
-            }
-        }
-
-        return entries.sort((a, b) => b.timestamp - a.timestamp);
-    } catch (error) {
-        console.error("Failed to fetch health checks:", error);
-        return [];
+  try {
+    const keys = await generateOrLoadKeys();
+    const relays = await getRelays();
+    const events = await queryRelays(
+      { kinds: [1], authors: [keys.publicKey], "#t": [HEALTH_TAG], limit: 150 },
+      relays,
+    );
+    const remote: HealthCheck[] = [];
+    for (const event of events) {
+      const data = decryptJson<HealthCheck>(event.content, keys);
+      if (data && typeof data.timestamp === "number") remote.push({ ...data, id: event.id });
     }
+    const merged = mergeHealthChecks(local, remote);
+    if (remote.length > 0) void mirrorToSecureStorage();
+    return merged;
+  } catch (error) {
+    console.error("[Nostr] fetchHealthChecks failed", error);
+    return local;
+  }
 }
 
-// ============================================================================
-// JOURNAL FEATURE
-// ============================================================================
-
-export interface JournalEntry {
-    id?: string;
-    content: string; // "Learnings"
-    mood: number; // 1-10
-    energy: number; // 1-10
-    timestamp: number;
-}
+/* ──────────────────────────────────────────────────────────────────────────
+   Journal
+   ────────────────────────────────────────────────────────────────────────── */
 
 const JOURNAL_TAG = "nofapfursan-journal";
+export type { JournalEntry };
 
-/**
- * Save an encrypted journal entry
- */
 export async function saveJournalEntry(entry: JournalEntry): Promise<boolean> {
-    try {
-        const keys = await generateOrLoadKeys();
+  if (!saveLocalJournalEntry(entry)) {
+    toastFailure();
+    return false;
+  }
+  void mirrorToSecureStorage();
 
-        // Encrypt the JSON entry
-        const plaintext = JSON.stringify(entry);
-        const conversationKey = nip44.v2.utils.getConversationKey(keys.privateKey, keys.publicKey);
-        const ciphertext = nip44.v2.encrypt(plaintext, conversationKey);
-
-        const eventTemplate = {
-            kind: 1, // Standard note, but encrypted content
-            created_at: Math.floor(Date.now() / 1000),
-            tags: [
-                ["t", JOURNAL_TAG],
-                ["encrypted", "nip44"],
-            ],
-            content: ciphertext,
-        };
-
-        const signedEvent = finalizeEvent(eventTemplate, keys.privateKey);
-
-        if (!networkState.isOnline) {
-            await queueEvent(signedEvent);
-            return true;
-        }
-
-        const success = await resilientPublish(signedEvent);
-        if (!success) {
-            await queueEvent(signedEvent);
-        }
-
-        return true;
-    } catch (error) {
-        console.error("Failed to save journal entry:", error);
-        return false;
-    }
+  try {
+    const keys = await generateOrLoadKeys();
+    const event = finalizeEvent(
+      {
+        kind: 1,
+        created_at: Math.floor(Date.now() / 1000),
+        tags: noteTags(JOURNAL_TAG),
+        content: encryptJson(entry, keys),
+      },
+      keys.privateKey,
+    );
+    await publishOrQueue(event, "journal");
+    return true;
+  } catch (error) {
+    console.error("[Nostr] saveJournalEntry relay step failed", error);
+    return true; // the local record is already durable
+  }
 }
 
-/**
- * Fetch journal entries
- */
 export async function fetchJournalEntries(): Promise<JournalEntry[]> {
-    if (!networkState.isOnline) return [];
+  const local = getLocalJournalEntries();
+  if (!networkState.isOnline) return local;
 
-    try {
-        const keys = await generateOrLoadKeys();
-        const currentRelays = await getRelays();
-
-        try {
-            const filter = {
-                kinds: [1],
-                authors: [keys.publicKey],
-                "#t": [JOURNAL_TAG],
-                limit: 50,
-            };
-
-            const events = await pool.querySync(currentRelays, filter);
-            const entries: JournalEntry[] = [];
-            const conversationKey = nip44.v2.utils.getConversationKey(keys.privateKey, keys.publicKey);
-
-            for (const event of events) {
-                try {
-                    const plaintext = nip44.v2.decrypt(event.content, conversationKey);
-                    const data = JSON.parse(plaintext);
-                    entries.push({ ...data, id: event.id });
-                } catch (e) {
-                    console.warn("Failed to decrypt journal entry", event.id);
-                }
-            }
-
-            return entries.sort((a, b) => b.timestamp - a.timestamp);
-        } finally {
-            // pool.close(RELAYS);
-        }
-    } catch (error) {
-        console.error("Failed to fetch journal entries:", error);
-        return [];
+  try {
+    const keys = await generateOrLoadKeys();
+    const relays = await getRelays();
+    const events = await queryRelays(
+      { kinds: [1], authors: [keys.publicKey], "#t": [JOURNAL_TAG], limit: 150 },
+      relays,
+    );
+    const remote: JournalEntry[] = [];
+    for (const event of events) {
+      const data = decryptJson<JournalEntry>(event.content, keys);
+      if (data && typeof data.timestamp === "number") remote.push({ ...data, id: event.id });
     }
+    const merged = mergeJournalEntries(local, remote);
+    if (remote.length > 0) void mirrorToSecureStorage();
+    return merged;
+  } catch (error) {
+    console.error("[Nostr] fetchJournalEntries failed", error);
+    return local;
+  }
 }
-// End of Nostr Service
+
+/** Storage-full is the one failure the user must see, so it gets a toast. */
+function toastFailure() {
+  const message = "Device storage is full — this entry could not be saved.";
+  if (typeof window !== "undefined" && typeof window.dispatchEvent === "function") {
+    window.dispatchEvent(new CustomEvent("fursan:storage-full", { detail: message }));
+  }
+  console.error(`[Nostr] ${message}`);
+}

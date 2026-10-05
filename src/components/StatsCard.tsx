@@ -1,85 +1,66 @@
-import { Trophy, RotateCcw, Target, Star } from "lucide-react";
-import { StreakData, calculateStreak } from "@/lib/streakUtils";
+import { Shield } from "lucide-react";
+import { StreakData, calculateStreak, getNextMilestone, isNewRecord } from "@/lib/streakUtils";
+import { MilestoneIcon } from "@/components/MilestoneIcon";
 
 interface StatsCardProps {
   data: StreakData;
 }
 
+interface MetricProps {
+  label: string;
+  value: string;
+  unit?: string;
+  note?: string;
+  icon?: React.ReactNode;
+  emphasis?: boolean;
+}
+
+function Metric({ label, value, unit, note, icon, emphasis }: MetricProps) {
+  return (
+    <div className="flex items-center gap-4 px-5 py-4">
+      {icon && <span className="shrink-0 text-ink-faint">{icon}</span>}
+      <div className="min-w-0 flex-1">
+        <p className="text-label uppercase text-ink-faint">{label}</p>
+        <p className="mt-0.5 flex items-baseline gap-1.5">
+          <span className={`font-data text-data-lg ${emphasis ? "text-ink" : "text-ink"}`}>{value}</span>
+          {unit && <span className="text-meta text-ink-muted">{unit}</span>}
+        </p>
+      </div>
+      {note && <span className="shrink-0 text-meta text-ink-muted">{note}</span>}
+    </div>
+  );
+}
+
+/**
+ * One flat surface, one metric grammar, no shadows and no gradient pills.
+ * The previous version rendered a `bg-white/60` block, `text-gray-700` values
+ * (invisible on dark themes) and a permanently-true "NEW RECORD" badge.
+ */
 export function StatsCard({ data }: StatsCardProps) {
-  const currentStreak = calculateStreak(data.startDate);
-
-  // The effective longest streak is the max of the historic record and current progress
-  const effectiveLongest = Math.max(data.longestStreak || 0, currentStreak.days || 0);
-
-  // Goals logic
-  const goals = [7, 14, 30, 60, 90, 180, 365];
-  const nextGoal = goals.find(g => g > currentStreak.days) || 365;
-  const daysRemaining = nextGoal - currentStreak.days;
-  const progress = Math.min(100, Math.round((currentStreak.days / nextGoal) * 100));
-
-  // New record logic: current streak has purely surpassed the historic longest streak
-  const isNewRecord = currentStreak.days > 0 && currentStreak.days >= data.longestStreak;
+  const { days } = calculateStreak(data.startDate);
+  const best = Math.max(data.longestStreak || 0, days);
+  const next = getNextMilestone(days);
+  const record = isNewRecord(days, data.longestStreak);
 
   return (
-    <div className="card p-6 animate-fade-in" style={{ animationDelay: "0.1s" }}>
-      <div className="flex items-center gap-2 mb-6">
-        <Star className="w-5 h-5 text-ink" />
-        <h3 className="text-sm font-black uppercase tracking-[0.2em] text-ink/70">Battle Statistics</h3>
-      </div>
-
-      <div className="space-y-4">
-        {/* Longest Streak */}
-        <div className="flex items-center justify-between p-4 rounded-lg bg-gradient-to-r bg-surface-2 border border-border">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-full bg-ink flex items-center justify-center shadow-lg shadow-sm flex-shrink-0">
-              <Trophy className="w-5 h-5 text-white" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] uppercase font-bold text-ink-muted tracking-tight truncate">Personal Best</p>
-              <p className="text-xl font-black text-ink truncate">{effectiveLongest} Days</p>
-            </div>
-          </div>
-          {isNewRecord && (
-            <span className="flex-shrink-0 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest bg-ink text-white rounded-full shadow-lg shadow-sm animate-pulse ml-2">
-              NEW RECORD ⚔️
-            </span>
-          )}
-        </div>
-
-        {/* Total Resets */}
-        <div className="flex items-center justify-between p-4 rounded-lg bg-white/60 border border-border">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-muted to-muted flex items-center justify-center flex-shrink-0">
-              <RotateCcw className="w-5 h-5 text-gray-600" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] uppercase font-bold text-ink-muted/80 tracking-tight truncate">Total Resets</p>
-              <p className="text-xl font-black text-gray-700 truncate">{data.totalRelapses}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Next Goal with Progress Bar */}
-        <div className="p-4 rounded-lg bg-gradient-to-r bg-surface-2 border border-border/50">
-          <div className="flex items-center gap-3 mb-3 min-w-0">
-            <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center shadow-lg shadow-sm flex-shrink-0">
-              <Target className="w-5 h-5 text-white" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[10px] uppercase font-bold text-accent/60 tracking-tight truncate">Next Milestone: Day {nextGoal}</p>
-              <p className="text-xl font-black text-ink truncate">{daysRemaining} Days To Go</p>
-            </div>
-          </div>
-          {/* Progress bar */}
-          <div className="h-2 bg-surface-2 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-accent transition-all duration-500 rounded-full"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-          <p className="text-[9px] text-right mt-1 text-accent/60 font-bold">{progress}% Complete</p>
-        </div>
-      </div>
+    <div className="surface-group">
+      <Metric
+        label="Current streak"
+        value={String(days)}
+        unit={days === 1 ? "day" : "days"}
+        icon={<Shield className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />}
+        emphasis
+        note={record ? "Personal best" : undefined}
+      />
+      <Metric label="Personal best" value={String(best)} unit={best === 1 ? "day" : "days"} />
+      <Metric label="Relapses" value={String(data.totalRelapses || 0)} />
+      <Metric
+        label="Next milestone"
+        value={next ? String(next.minDays - days) : "—"}
+        unit={next ? "days" : undefined}
+        note={next ? next.name : "All reached"}
+        icon={next ? <MilestoneIcon milestone={next} /> : undefined}
+      />
     </div>
   );
 }

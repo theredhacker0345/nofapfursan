@@ -1,260 +1,263 @@
-import { useState, useRef, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Copy, Eye, EyeOff, AlertTriangle, Download, Upload, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { Copy, Eye, EyeOff, AlertTriangle, Download, Upload } from "lucide-react";
-import { exportKeys, importKey } from "@/services/nostr";
+
+import { exportKeys, importKey, fetchStreak } from "@/services/nostr";
+import { saveStreakData } from "@/lib/streakUtils";
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-    DialogFooter,
-    DialogClose,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
 } from "@/components/ui/dialog";
-import { useNostrStreak } from "@/hooks/useNostrStreak";
-import { getStreakData, saveStreakData } from "@/lib/streakUtils";
 
+const HOLD_MS = 900;
+
+/**
+ * Hold-to-reveal for the private key. The mechanism was sound; the presentation
+ * was a black-on-white brutalist block (`border-black rounded-none bg-gray-50`)
+ * that fought the rest of the product. Now token-driven, with the reveal still
+ * requiring a deliberate press-and-hold on touch or mouse.
+ */
 export function SecuritySettings() {
-    const [keys, setKeys] = useState<{ nsec: string; npub: string } | null>(null);
-    const [isRevealed, setIsRevealed] = useState(false);
-    const [importNsec, setImportNsec] = useState("");
-    const [importDialogOpen, setImportDialogOpen] = useState(false);
-    const [holdProgress, setHoldProgress] = useState(0);
-    const [loading, setLoading] = useState(false);
+  const [keys, setKeys] = useState<{ nsec: string; npub: string } | null>(null);
+  const [isRevealed, setIsRevealed] = useState(false);
+  const [importNsec, setImportNsec] = useState("");
+  const [importOpen, setImportOpen] = useState(false);
+  const [holdProgress, setHoldProgress] = useState(0);
+  const [loading, setLoading] = useState(false);
 
-    const holdTimerRef = useRef<NodeJS.Timeout | null>(null);
-    const { fetchStreak, initializeKeys } = useNostrStreak();
+  const holdTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const startedAt = useRef(0);
 
-    useEffect(() => {
-        loadKeys();
-    }, []);
+  const loadKeys = useCallback(async () => {
+    setKeys(await exportKeys());
+  }, []);
 
-    const loadKeys = async () => {
-        const k = await exportKeys();
-        setKeys(k);
-    };
+  useEffect(() => {
+    void loadKeys();
+  }, [loadKeys]);
 
-    // Hold to reveal logic
-    const startHold = () => {
-        if (isRevealed) {
-            setIsRevealed(false);
-            return;
-        }
+  const cancelHold = useCallback(() => {
+    if (holdTimer.current) {
+      clearInterval(holdTimer.current);
+      holdTimer.current = null;
+    }
+    setHoldProgress(0);
+  }, []);
 
-        setHoldProgress(0);
-        const startTime = Date.now();
-        const DURATION = 1000; // 1 second hold
+  useEffect(() => cancelHold, [cancelHold]);
 
-        const interval = setInterval(() => {
-            const elapsed = Date.now() - startTime;
-            const progress = Math.min((elapsed / DURATION) * 100, 100);
-            setHoldProgress(progress);
+  const startHold = () => {
+    if (isRevealed) {
+      setIsRevealed(false);
+      return;
+    }
+    cancelHold();
+    startedAt.current = performance.now();
+    holdTimer.current = setInterval(() => {
+      const elapsed = performance.now() - startedAt.current;
+      setHoldProgress(Math.min(100, (elapsed / HOLD_MS) * 100));
+      if (elapsed >= HOLD_MS) {
+        setIsRevealed(true);
+        cancelHold();
+      }
+    }, 40);
+  };
 
-            if (elapsed >= DURATION) {
-                setIsRevealed(true);
-                setHoldProgress(0);
-                clearInterval(interval);
-            }
-        }, 50);
+  const copy = async (text: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success(`${label} copied`);
+    } catch {
+      toast.error("Clipboard blocked");
+    }
+  };
 
-        holdTimerRef.current = interval;
-    };
-
-    const cancelHold = () => {
-        if (holdTimerRef.current) {
-            clearInterval(holdTimerRef.current);
-            holdTimerRef.current = null;
-        }
-        setHoldProgress(0);
-    };
-
-    const copyToClipboard = (text: string, label: string) => {
-        navigator.clipboard.writeText(text);
-        toast.success(`${label} copied to clipboard`);
-    };
-
-    const handleImport = async () => {
-        if (!importNsec.startsWith("nsec")) {
-            toast.error("Invalid key format. Must start with 'nsec'.");
-            return;
-        }
-
-        setLoading(true);
-        try {
-            await importKey(importNsec);
-            await initializeKeys(); // Reload hook state
-            setImportDialogOpen(false);
-            setImportNsec("");
-            toast.success("Identity imported successfully!");
-
-            // Auto-fetch streak
-            toast.info("Restoring your streak from relays...");
-            const streak = await fetchStreak();
-
-            if (streak) {
-                // Save to local storage
-                const localFormat = {
-                    startDate: streak.startDate,
-                    longestStreak: streak.longestStreak,
-                    totalRelapses: streak.totalRelapses,
-                };
-                saveStreakData(localFormat);
-                toast.success("Streak restored!");
-                // Force refresh somehow? Window reload is nuclear but effective for this critical change
-                setTimeout(() => window.location.reload(), 1500);
-            } else {
-                toast.warning("No backup found for this key.");
-            }
-
-            loadKeys(); // Refresh displayed keys
-        } catch (error) {
-            toast.error("Failed to import key. Please check it and try again.");
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleDownload = () => {
-        if (!keys) return;
-        const element = document.createElement("a");
-        const file = new Blob([`Nostr Private Key (nsec): ${keys.nsec}\nKeep this file secure and offline!`], { type: 'text/plain' });
-        element.href = URL.createObjectURL(file);
-        element.download = "fursan_backup_nsec.txt";
-        document.body.appendChild(element);
-        element.click();
-        document.body.removeChild(element);
-        toast.success("Backup file downloaded.");
-    };
-
-    return (
-        <div className="space-y-6 pt-8 border-t border-black/10">
-            <div className="flex items-center gap-2">
-                <h2 className="text-sm font-bold uppercase tracking-widest">Backup & Security</h2>
-            </div>
-
-            <div className="space-y-6">
-                {/* Export Section */}
-                <div className="space-y-4">
-                    <div className="space-y-1">
-                        <Label className="text-[10px] uppercase text-ink-muted">Private Access Key (nsec)</Label>
-                        <div className="relative">
-                            <div className="h-12 w-full border border-black bg-white px-3 py-2 flex items-center overflow-hidden">
-                                <span className="truncate font-mono text-xs w-full">
-                                    {isRevealed && keys ? keys.nsec : "•••••••••••••••••••••••••••••••••••••"}
-                                </span>
-                            </div>
-
-                            {/* Hold Progress Bar */}
-                            {holdProgress > 0 && (
-                                <div className="absolute inset-0 bg-black/5 pointer-events-none">
-                                    <div
-                                        className="h-full bg-black/10 transition-all duration-75 ease-linear"
-                                        style={{ width: `${holdProgress}%` }}
-                                    />
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="flex flex-col sm:flex-row gap-2">
-                        <Button
-                            variant="outline"
-                            className={`flex-1 border-black rounded-none h-11 text-xs uppercase font-bold select-none touch-none ${isRevealed ? "bg-black text-white hover:bg-black/90" : "bg-white text-black"}`}
-                            onMouseDown={startHold}
-                            onMouseUp={cancelHold}
-                            onMouseLeave={cancelHold}
-                            onTouchStart={startHold}
-                            onTouchEnd={cancelHold}
-                            onContextMenu={(e) => e.preventDefault()}
-                        >
-                            {isRevealed ? "Hide" : "Hold to Reveal"}
-                        </Button>
-
-                        <div className="flex gap-2 flex-1">
-                            <Button
-                                variant="outline"
-                                className="flex-1 border-black rounded-none h-11 text-xs uppercase font-bold bg-white text-black hover:bg-gray-50"
-                                onClick={() => keys && copyToClipboard(keys.nsec, "Private Key")}
-                                disabled={!isRevealed}
-                            >
-                                <Copy className="h-4 w-4 mr-2" />
-                                Copy
-                            </Button>
-
-                            <Button
-                                variant="outline"
-                                className="flex-1 border-black rounded-none h-11 text-xs uppercase font-bold bg-white text-black hover:bg-gray-50"
-                                onClick={handleDownload}
-                                disabled={!isRevealed}
-                            >
-                                <Download className="h-4 w-4 mr-2" />
-                                File
-                            </Button>
-                        </div>
-                    </div>
-
-                    <div className="p-3 border border-black bg-gray-50 flex items-start gap-2">
-                        <AlertTriangle className="h-4 w-4 text-black shrink-0 mt-0.5" />
-                        <p className="text-[10px] leading-tight font-medium uppercase break-words">
-                            Never share your nsec! If you lose this key, you lose your identity and your streak.
-                        </p>
-                    </div>
-                </div>
-
-                {/* Import Section */}
-                <div className="pt-6">
-                    <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
-                        <DialogTrigger asChild>
-                            <Button variant="outline" className="w-full border-black rounded-none h-12 text-xs uppercase font-bold bg-white text-black hover:bg-gray-50">
-                                <Upload className="mr-2 h-4 w-4" />
-                                Import Existing Identity
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="border-black rounded-none shadow-none max-w-[90vw] md:max-w-md">
-                            <DialogHeader>
-                                <DialogTitle className="uppercase tracking-widest text-lg font-bold">Restore Identity</DialogTitle>
-                                <DialogDescription className="text-xs uppercase leading-relaxed text-ink-muted">
-                                    Paste your nsec key below. This will replace the current identity on this device.
-                                </DialogDescription>
-                            </DialogHeader>
-
-                            <div className="space-y-4 py-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="nsec" className="text-[10px] uppercase">nsec Private Key</Label>
-                                    <Input
-                                        id="nsec"
-                                        placeholder="nsec1..."
-                                        value={importNsec}
-                                        onChange={(e) => setImportNsec(e.target.value)}
-                                        className="font-mono text-xs border-black rounded-none h-12 bg-white"
-                                    />
-                                </div>
-                            </div>
-
-                            <DialogFooter className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-                                <Button
-                                    variant="outline"
-                                    onClick={() => setImportDialogOpen(false)}
-                                    className="border-black rounded-none h-12 uppercase text-xs font-bold sm:flex-1"
-                                >
-                                    Cancel
-                                </Button>
-                                <Button
-                                    onClick={handleImport}
-                                    disabled={!importNsec || loading}
-                                    className="bg-black text-white hover:bg-black/90 border-none rounded-none h-12 uppercase text-xs font-bold sm:flex-1"
-                                >
-                                    {loading ? "Importing..." : "Restore & Sync"}
-                                </Button>
-                            </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
-                </div>
-            </div>
-        </div>
+  const download = () => {
+    if (!keys) return;
+    const blob = new Blob(
+      [`Fursan identity backup\n\nnsec (private, never share): ${keys.nsec}\nnpub (public): ${keys.npub}\n`],
+      { type: "text/plain" },
     );
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "fursan-identity-backup.txt";
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Backup file saved");
+  };
+
+  const runImport = async () => {
+    const trimmed = importNsec.trim();
+    if (!trimmed.startsWith("nsec1")) {
+      toast.error("That is not an nsec. It has to start with nsec1.");
+      return;
+    }
+    setLoading(true);
+    try {
+      await importKey(trimmed);
+      setImportOpen(false);
+      setImportNsec("");
+      setIsRevealed(false);
+
+      const remote = await fetchStreak();
+      if (remote) {
+        await saveStreakData({
+          startDate: remote.startDate,
+          longestStreak: remote.longestStreak,
+          totalRelapses: remote.totalRelapses,
+          updatedAt: remote.updatedAt || remote.timestamp || Date.now(),
+        });
+        toast.success("Identity restored with your streak");
+        setTimeout(() => window.location.reload(), 900);
+      } else {
+        toast.success("Identity restored", {
+          description: "No cloud streak was found for this key — starting fresh.",
+        });
+        setTimeout(() => window.location.reload(), 900);
+      }
+    } catch (error) {
+      console.error("[Identity] Import failed", error);
+      toast.error("Could not import that key");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div>
+      <div className="border-b border-border px-5 py-4">
+        <div className="flex items-center justify-between gap-3">
+          <label htmlFor="nsec-field" className="text-label uppercase text-ink-faint">
+            Private key
+          </label>
+          <span className="text-meta text-ink-faint">
+            {isRevealed ? "visible" : "hold to reveal"}
+          </span>
+        </div>
+
+        <div
+          className="relative mt-2 overflow-hidden rounded-md border border-border bg-surface-2 px-3 py-2.5"
+          role="group"
+        >
+          <span id="nsec-field" className="block break-all font-data text-data text-ink-muted">
+            {isRevealed && keys ? keys.nsec : "•".repeat(48)}
+          </span>
+          {holdProgress > 0 && (
+            <span
+              className="absolute inset-y-0 left-0 bg-accent/10 transition-[width] duration-75 ease-linear"
+              style={{ width: `${holdProgress}%` }}
+              aria-hidden="true"
+            />
+          )}
+        </div>
+
+        <div className="mt-2 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onPointerDown={startHold}
+            onPointerUp={cancelHold}
+            onPointerLeave={cancelHold}
+            onPointerCancel={cancelHold}
+            onContextMenu={(e) => e.preventDefault()}
+            className="inline-flex h-11 select-none touch-none items-center gap-1.5 rounded-md border border-border px-4 text-label uppercase text-ink transition-colors hover:bg-surface-2"
+          >
+            {isRevealed ? (
+              <EyeOff className="h-3.5 w-3.5" aria-hidden="true" />
+            ) : (
+              <Eye className="h-3.5 w-3.5" aria-hidden="true" />
+            )}
+            {isRevealed ? "Hide" : "Hold to reveal"}
+          </button>
+
+          <button
+            type="button"
+            disabled={!isRevealed || !keys}
+            onClick={() => keys && void copy(keys.nsec, "Private key")}
+            className="inline-flex h-11 items-center gap-1.5 rounded-md border border-border px-4 text-label uppercase text-ink transition-colors hover:bg-surface-2 disabled:opacity-40"
+          >
+            <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+            Copy
+          </button>
+
+          <button
+            type="button"
+            disabled={!isRevealed || !keys}
+            onClick={download}
+            className="inline-flex h-11 items-center gap-1.5 rounded-md border border-border px-4 text-label uppercase text-ink transition-colors hover:bg-surface-2 disabled:opacity-40"
+          >
+            <Download className="h-3.5 w-3.5" aria-hidden="true" />
+            File
+          </button>
+        </div>
+
+        <p className="mt-3 inline-flex items-start gap-2 rounded-md border border-warning/40 bg-warning/5 px-3 py-2 text-meta text-ink-muted">
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" aria-hidden="true" />
+          Never share your nsec. Nobody — including us — can recover it for you.
+        </p>
+      </div>
+
+      <div className="px-5 py-4">
+        <Dialog open={importOpen} onOpenChange={setImportOpen}>
+          <DialogTrigger asChild>
+            <button
+              type="button"
+              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md border border-border text-label uppercase text-ink transition-colors hover:bg-surface-2"
+            >
+              <Upload className="h-3.5 w-3.5" aria-hidden="true" />
+              Restore an existing identity
+            </button>
+          </DialogTrigger>
+          <DialogContent className="max-w-content rounded-lg border border-border bg-surface">
+            <DialogHeader>
+              <DialogTitle className="text-section text-ink">Restore identity</DialogTitle>
+              <DialogDescription className="text-body-s text-ink-muted">
+                Paste the nsec you backed up. This replaces the identity on this
+                device and pulls your streak from the relays.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="py-2">
+              <label htmlFor="nsec-import" className="text-label uppercase text-ink-faint">
+                nsec
+              </label>
+              <input
+                id="nsec-import"
+                value={importNsec}
+                onChange={(e) => setImportNsec(e.target.value)}
+                placeholder="nsec1…"
+                autoComplete="off"
+                spellCheck={false}
+                className="mt-2 h-12 w-full rounded-md border border-border bg-surface-2 px-3 font-data text-data text-ink placeholder:text-ink-faint"
+              />
+            </div>
+
+            <DialogFooter className="gap-2">
+              <button
+                type="button"
+                onClick={() => setImportOpen(false)}
+                className="h-11 rounded-md border border-border text-label uppercase text-ink hover:bg-surface-2"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void runImport()}
+                disabled={!importNsec.trim() || loading}
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-ink px-5 text-label uppercase text-bg transition-opacity hover:opacity-90 disabled:opacity-40"
+              >
+                {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
+                Restore and sync
+              </button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </div>
+  );
 }

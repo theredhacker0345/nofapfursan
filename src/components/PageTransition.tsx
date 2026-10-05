@@ -1,30 +1,18 @@
-import { motion, AnimatePresence } from "framer-motion";
-import { useLocation } from "react-router-dom";
 import { ReactNode } from "react";
-import { FursanLogo } from "./FursanLogo";
 
 interface PageTransitionProps {
-    children: ReactNode;
+  children: ReactNode;
 }
 
+/**
+ * Route changes render instantly. The previous implementation ran a 400ms exit
+ * plus a 400ms enter in `mode="wait"` — roughly 800ms of blank screen per
+ * navigation, which reads as lag on every tap. A 120ms opacity fade keeps the
+ * continuity without the dead time, and it is disabled entirely under
+ * `prefers-reduced-motion`.
+ */
 export function PageTransition({ children }: PageTransitionProps) {
-    const location = useLocation();
-
-    return (
-        <AnimatePresence mode="wait">
-            <motion.div
-                key={location.pathname}
-                initial={{ opacity: 0, x: 10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -10 }}
-                transition={{
-                    duration: 0.4,
-                    ease: [0.4, 0, 0.2, 1] // Native Material easing
-                }}
-                className="relative min-h-screen flex flex-col"
-            >
-                {children}
-            </motion.div>
-        </AnimatePresence>
-    );
+  return (
+    <div className="relative flex min-h-dvh flex-col animate-fade-in">{children}</div>
+  );
 }

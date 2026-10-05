@@ -1,0 +1,54 @@
+name: CI
+
+# Gates every push and pull request. Before this existed nothing ran lint, the
+# type checker, or the browser smoke test — the only workflows built APKs, so a
+# broken build could sit on main indefinitely.
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Lint · typecheck · build · browser audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Lint
+        run: npm run lint -- --max-warnings=0
+
+      - name: Typecheck
+        run: npx tsc -b --force --pretty false
+
+      - name: Build
+        run: npm run build
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Browser audit (routes, a11y, leaks, offline)
+        run: node scripts/verify.mjs
+
+      - name: Upload build
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: dist
+          retention-days: 7

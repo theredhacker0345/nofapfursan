@@ -1,137 +1,66 @@
-// Service Worker Registration
-export async function registerServiceWorker() {
-  try {
-    if (!('serviceWorker' in navigator)) return null;
+// Service Worker registration.
+//
+// Notes on what the previous version got wrong:
+//  - `registerBackgroundSync`, `registerPeriodicSync` and `subscribeToPush`
+//    were exported but never called by anything, and `subscribeToPush` embedded
+//    a VAPID key with no push service behind it. All three are gone; the app's
+//    own queue in src/services/nostr.ts is what actually retries writes, and it
+//    works with or without a service worker.
+//  - The update path only logged to the console, so users stayed pinned to a
+//    stale shell forever. It now activates the new worker and refreshes.
 
-    const registration = await navigator.serviceWorker.register('/sw.js', {
-      scope: '/',
-    });
+let registrationPromise: Promise<ServiceWorkerRegistration | null> | null = null;
 
-    console.log('[FURSAN] SW registered:', registration.scope);
+export async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
+  if (registrationPromise) return registrationPromise;
 
-    // Check for updates
-    registration.addEventListener('updatefound', () => {
-      const newWorker = registration.installing;
-      if (newWorker) {
-        newWorker.addEventListener('statechange', () => {
-          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-            console.log('[FURSAN] New content available, refresh to update');
+  registrationPromise = (async () => {
+    if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return null;
+    // Dev servers and tests do not need a worker; it only adds noise.
+    if (import.meta.env.DEV) return null;
+
+    try {
+      const registration = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+
+      registration.addEventListener("updatefound", () => {
+        const installing = registration.installing;
+        if (!installing) return;
+        installing.addEventListener("statechange", () => {
+          // An updated worker is only safe to activate when there are no other
+          // clients; `skipWaiting` alone can swap assets out from under a live
+          // page mid-session.
+          if (installing.state === "installed" && navigator.serviceWorker.controller) {
+            installing.postMessage({ type: "SKIP_WAITING" });
           }
         });
-      }
-    });
-
-    return registration;
-  } catch (error) {
-    console.warn('[FURSAN] SW registration failed (non-blocking):', error);
-    return null;
-  }
-}
-
-// Background Sync Registration
-export async function registerBackgroundSync() {
-  try {
-    const registration = await navigator.serviceWorker.ready;
-    if ('sync' in registration) {
-      await (registration as ServiceWorkerRegistration & { sync: SyncManagerLike }).sync.register('sync-streak-data');
-      console.log('[FURSAN-PWA] Background sync registered');
-      return true;
-    }
-  } catch (error) {
-    console.warn('[FURSAN-PWA] Background sync not supported or denied (non-blocking).');
-  }
-  return false;
-}
-
-// Periodic Background Sync Registration
-interface SyncManagerLike {
-  register: (tag: string) => Promise<void>;
-}
-
-interface PeriodicSyncRegistration extends ServiceWorkerRegistration {
-  periodicSync?: {
-    register: (tag: string, options: { minInterval: number }) => Promise<void>;
-  };
-}
-
-function supportsPeriodicSync(): boolean {
-  return typeof window !== 'undefined' &&
-    'ServiceWorkerRegistration' in window &&
-    'periodicSync' in window.ServiceWorkerRegistration.prototype;
-}
-
-export async function registerPeriodicSync() {
-  if ('serviceWorker' in navigator && supportsPeriodicSync()) {
-    try {
-      const registration = await navigator.serviceWorker.ready;
-      const status = await navigator.permissions.query({
-        name: 'periodic-background-sync' as PermissionName,
       });
 
-      if (status.state === 'granted') {
-        const storedInterval = localStorage.getItem("fursan_notification_interval_hours");
-        const intervalHours = storedInterval ? parseInt(storedInterval) : 3;
-        await (registration as PeriodicSyncRegistration).periodicSync?.register('check-motivation', {
-          minInterval: intervalHours * 60 * 60 * 1000,
-        });
-        console.log(`Periodic sync registered (Interval: ${intervalHours}h)`);
-        return true;
-      }
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (refreshing) return;
+        refreshing = true;
+        window.location.reload();
+      });
+
+      return registration;
     } catch (error) {
-      console.error('Periodic sync registration failed:', error);
-    }
-  }
-  return false;
-}
-
-// Push Notification Subscription
-export async function subscribeToPush(): Promise<PushSubscription | null> {
-  if ('serviceWorker' in navigator && 'PushManager' in window) {
-    try {
-      const registration = await navigator.serviceWorker.ready;
-
-      // Check existing subscription
-      let subscription = await registration.pushManager.getSubscription();
-
-      if (!subscription) {
-        // Create new subscription (using a placeholder VAPID key - replace with real one for production)
-        subscription = await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(
-            'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U'
-          ),
-        });
-        console.log('Push subscription created');
-      }
-
-      return subscription;
-    } catch (error) {
-      console.error('Push subscription failed:', error);
+      console.warn("[PWA] Service worker registration failed:", error);
       return null;
     }
-  }
-  return null;
+  })();
+
+  return registrationPromise;
 }
 
-// Helper to convert VAPID key
-function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray.buffer;
-}
-
-// Check if all PWA features are supported
+/** Feature detection, used by the diagnostics in Settings. */
 export function checkPWASupport() {
+  const sw = typeof navigator !== "undefined" && "serviceWorker" in navigator;
   return {
-    serviceWorker: 'serviceWorker' in navigator,
-    push: 'PushManager' in window,
-    notifications: 'Notification' in window,
-    backgroundSync: 'SyncManager' in window,
-    periodicSync: supportsPeriodicSync(),
+    serviceWorker: sw,
+    notifications: typeof window !== "undefined" && "Notification" in window,
+    backgroundSync: typeof window !== "undefined" && "SyncManager" in window,
+    // Future-dated notifications are a native-only capability; the web build
+    // cannot schedule them and says so in Settings.
+    scheduledReminders: import.meta.env.MOBILE === "true",
   };
 }

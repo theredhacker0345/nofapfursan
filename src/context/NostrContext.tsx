@@ -1,390 +1,304 @@
-import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
-import { SimplePool, Filter, Event, finalizeEvent } from 'nostr-tools';
-import { Preferences } from '@capacitor/preferences';
-import { hexToBytes } from '@noble/hashes/utils';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
+import { Filter, Event, finalizeEvent } from "nostr-tools";
+import { hexToBytes } from "@noble/hashes/utils";
 
-const RELAYS = ["wss://nos.lol", "wss://relay.damus.io", "wss://relay.snort.social"];
-const DEFAULT_RELAYS = RELAYS;
+import {
+  getPool,
+  getRelays,
+  addRelay as addRelayToPool,
+  removeRelay as removeRelayFromPool,
+  publishEvent,
+  initNetworkListener,
+  getNetworkState,
+  subscribeToNetworkState,
+  setRelays,
+  type NetworkState,
+} from "@/services/nostr";
 
 interface RelayMetadata {
-    name?: string;
-    description?: string;
-    pubkey?: string;
-    contact?: string;
-    supported_nips?: number[];
-    software?: string;
-    version?: string;
+  name?: string;
+  description?: string;
+  pubkey?: string;
+  contact?: string;
+  supported_nips?: number[];
+  software?: string;
+  version?: string;
 }
 
 interface UserMetadata {
-    name?: string;
-    display_name?: string;
-    picture?: string;
+  name?: string;
+  display_name?: string;
+  picture?: string;
 }
 
 interface NostrContextType {
-    pool: SimplePool;
-    relays: string[];
-    connectedRelays: string[];
-    relayMetadata: Record<string, RelayMetadata>;
-    profiles: Record<string, string>;
-    addRelay: (url: string) => Promise<void>;
-    removeRelay: (url: string) => Promise<void>;
-    publish: (event: Event) => Promise<boolean>;
-    subscribe: (filter: Filter, onEvent: (event: Event) => void) => () => void;
-    checkRelayStatus: (url: string) => Promise<{ success: boolean; metadata?: RelayMetadata }>;
-    updateProfileName: (newName: string, privateKey: string) => Promise<boolean>;
-    setProfiles: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  relays: string[];
+  connectedRelays: string[];
+  relayMetadata: Record<string, RelayMetadata>;
+  profiles: Record<string, string>;
+  network: NetworkState;
+  addRelay: (url: string) => Promise<boolean>;
+  removeRelay: (url: string) => Promise<boolean>;
+  publish: (event: Event) => Promise<boolean>;
+  subscribe: (filter: Filter, onEvent: (event: Event) => void) => () => void;
+  updateProfileName: (newName: string, privateKey: string) => Promise<boolean>;
 }
 
 const NostrContext = createContext<NostrContextType | null>(null);
 
-// nostr-tools' SimplePool exposes subscribe() with these params at runtime
-interface PoolSubscriber {
-    subscribe(
-        relays: string[],
-        filter: Filter,
-        params: {
-            onevent?: (event: Event) => void;
-            oneose?: () => void;
-            onclose?: () => void;
-        }
-    ): { close: () => void };
-}
+const METADATA_TIMEOUT_MS = 3000;
+
+/** Kind-0 lookups are cached app-wide; a chat scroll must not refetch per row. */
+const profileCache = new Map<string, string>();
+const profilesInFlight = new Set<string>();
 
 export const NostrProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [relays, setRelays] = useState<string[]>(DEFAULT_RELAYS);
-    const [connectedRelays, setConnectedRelays] = useState<string[]>([]);
-    const [relayMetadata, setRelayMetadata] = useState<Record<string, RelayMetadata>>({});
-    const [profiles, setProfiles] = useState<Record<string, string>>({});
-    const poolRef = useRef<SimplePool>(new SimplePool());
-    // Mirror of profiles for use inside stable callbacks (avoids resubscribing
-    // every time a profile name resolves)
-    const profilesRef = useRef<Record<string, string>>({});
-    useEffect(() => {
-        profilesRef.current = profiles;
-    }, [profiles]);
+  const [relays, setRelaysState] = useState<string[]>([]);
+  const [connectedRelays, setConnectedRelays] = useState<string[]>([]);
+  const [relayMetadata, setRelayMetadata] = useState<Record<string, RelayMetadata>>({});
+  const [profiles, setProfiles] = useState<Record<string, string>>(() =>
+    Object.fromEntries(profileCache),
+  );
+  const [network, setNetwork] = useState<NetworkState>(() => getNetworkState());
 
-    useEffect(() => {
-        const loadRelays = async () => {
-            const { value } = await Preferences.get({ key: 'user_relays' });
-            if (value) {
-                setRelays(JSON.parse(value));
-            }
-        };
-        loadRelays();
-    }, []);
+  const profilesRef = useRef(profiles);
+  useEffect(() => {
+    profilesRef.current = profiles;
+  }, [profiles]);
 
-    // Monitor relay connections
-    const connectionInProgress = useRef(false);
+  /* ── Relay list ────────────────────────────────────────────────────── */
+  useEffect(() => {
+    let cancelled = false;
+    void getRelays().then((list) => {
+      if (!cancelled) setRelaysState(list);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-    useEffect(() => {
-        const checkConnections = async () => {
-            if (connectionInProgress.current) return;
-            connectionInProgress.current = true;
+  /* ── Network + queue state ─────────────────────────────────────────── */
+  useEffect(() => {
+    void initNetworkListener();
+    return subscribeToNetworkState((state) => setNetwork({ ...state }));
+  }, []);
 
-            try {
-                const connected: string[] = [];
+  /* ── Connection health ─────────────────────────────────────────────── */
+  useEffect(() => {
+    if (relays.length === 0) return;
+    let cancelled = false;
+    const pool = getPool();
 
-                const ensureConnection = async (url: string) => {
-                    try {
-                        const timeoutPromise = new Promise((_, reject) => {
-                            setTimeout(() => reject(new Error(`Relay ${url} connection timeout`)), 5000);
-                        });
+    const check = async () => {
+      const status = pool.listConnectionStatus();
+      const connected = relays.filter((url) => status.get(url) === true);
+      if (!cancelled) setConnectedRelays(connected);
+    };
 
-                        const connectionPromise = poolRef.current.ensureRelay(url);
-                        await Promise.race([connectionPromise, timeoutPromise]);
+    void check();
+    const id = setInterval(check, 30_000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [relays]);
 
-                        console.log(`✅ Connected to ${url}`);
-                        return url;
-                    } catch (e) {
-                        console.warn(`❌ Failed to connect to ${url}`, e);
-                        return null;
-                    }
-                };
+  /* ── NIP-11 relay metadata ─────────────────────────────────────────── */
+  useEffect(() => {
+    if (relays.length === 0) return;
+    let cancelled = false;
+    const controller = new AbortController();
 
-                const results = await Promise.allSettled(relays.map(url => ensureConnection(url)));
+    for (const url of relays) {
+      const httpUrl = url.replace(/^ws/, "http");
+      const timer = setTimeout(() => controller.abort(), METADATA_TIMEOUT_MS);
+      void fetch(httpUrl, {
+        headers: { Accept: "application/nostr+json" },
+        signal: controller.signal,
+      })
+        .then(async (res) => {
+          clearTimeout(timer);
+          if (!res.ok || cancelled) return;
+          const data: RelayMetadata = await res.json();
+          if (!cancelled) setRelayMetadata((prev) => ({ ...prev, [url]: data }));
+        })
+        .catch(() => {
+          clearTimeout(timer);
+        });
+    }
 
-                const successfulRelays = results
-                    .filter(r => r.status === 'fulfilled' && r.value !== null)
-                    .map(r => (r as PromiseFulfilledResult<string>).value);
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [relays]);
 
-                console.log(`Connected to ${successfulRelays.length}/${relays.length} relays`);
-                setConnectedRelays(successfulRelays);
-            } finally {
-                connectionInProgress.current = false;
-            }
-        };
-
-        checkConnections();
-        const interval = setInterval(checkConnections, 60000);
-        const pool = poolRef.current;
-
-        return () => {
-            clearInterval(interval);
-            // This is the "Kill Switch" that stops the logs from piling up
-            relays.forEach(url => pool.close([url]));
-        };
-    }, [relays]);
-
-    // Separate effect for metadata fetching
-    const fetchedMetadataUrls = useRef<Set<string>>(new Set());
-    useEffect(() => {
-        const fetchMetadata = async (url: string) => {
-            // Avoid refetching if we already have it
-            if (fetchedMetadataUrls.current.has(url)) return;
-            fetchedMetadataUrls.current.add(url);
-
-            try {
-                const httpUrl = url.replace('wss://', 'https://').replace('ws://', 'http://');
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 3000);
-
-                const response = await fetch(httpUrl, {
-                    headers: { 'Accept': 'application/nostr+json' },
-                    mode: 'cors',
-                    signal: controller.signal
-                });
-
-                clearTimeout(timeoutId);
-
-                if (response.ok) {
-                    const data = await response.json();
-                    setRelayMetadata(prev => ({ ...prev, [url]: data }));
-                }
-            } catch (e) {
-                // Allow retry on next pass if it never succeeded
-                fetchedMetadataUrls.current.delete(url);
-            }
-        };
-
-        // Attempt to fetch metadata for all known relays on mount or change
-        relays.forEach(url => fetchMetadata(url));
-    }, [relays]);
-
-    const checkRelayStatus = useCallback(async (url: string) => {
-        try {
-            const relay = await poolRef.current.ensureRelay(url);
-
-            // Fetch NIP-11 metadata
-            let metadata: RelayMetadata | undefined;
-            try {
-                const httpUrl = url.replace('wss://', 'https://').replace('ws://', 'http://');
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-                const response = await fetch(httpUrl, {
-                    headers: { 'Accept': 'application/nostr+json' },
-                    mode: 'cors',
-                    signal: controller.signal
-                });
-
-                clearTimeout(timeoutId);
-
-                if (response.ok) {
-                    metadata = await response.json();
-                }
-            } catch (e) {
-                console.warn("Relay metadata fetch failed or timed out", url);
-            }
-
-            return { success: true, metadata };
-        } catch (e) {
-            return { success: false };
-        }
-    }, []);
-
-    const addRelay = useCallback(async (url: string) => {
-        if (!url.startsWith('wss://') && !url.startsWith('ws://')) return;
-        const newRelays = [...new Set([...relays, url])];
-        setRelays(newRelays);
-        await Preferences.set({ key: 'user_relays', value: JSON.stringify(newRelays) });
-    }, [relays]);
-
-    const removeRelay = useCallback(async (url: string) => {
-        const newRelays = relays.filter(r => r !== url);
-        setRelays(newRelays);
-        await Preferences.set({ key: 'user_relays', value: JSON.stringify(newRelays) });
-    }, [relays]);
-
-    const publish = useCallback(async (event: Event) => {
-        try {
-            const targetRelays = connectedRelays.length > 0 ? connectedRelays : relays;
-
-            if (targetRelays.length === 0) {
-                console.warn("No connected relays to publish to");
-                // Attempt to publish to all known relays as fallback
-            }
-
-            // Fallback to all relays if no connected ones are maintained in state properly
-            const activeRelays = targetRelays.length > 0 ? targetRelays : relays;
-
-            if (activeRelays.length === 0) {
-                return false;
-            }
-
-            // 1. Force a "re-wake" of the pool before sending to ensure socket is alive
-            // This helps with browser background tab suspension issues
-            try {
-                await poolRef.current.ensureRelay(activeRelays[0]);
-            } catch (e) {
-                // Ignore wake-up failure, the race loop will handle individual connection attempts if needed
-                console.warn("Wake-up ping failed, proceeding to race", e);
-            }
-
-            return await Promise.race([
-                new Promise<boolean>((resolve) => {
-                    let acknowledged = false;
-                    let failureCount = 0;
-                    const total = activeRelays.length;
-
-                    activeRelays.forEach((url) => {
-                        const pub = poolRef.current.publish([url], event);
-
-                        // Handle both single Promise and array of Promises return types from publish
-                        const promise = Array.isArray(pub) ? pub[0] : pub;
-
-                        promise.then(() => {
-                            if (!acknowledged) {
-                                acknowledged = true;
-                                console.log(`✅ Message accepted by ${url}`);
-                                resolve(true);
-                            }
-                        }).catch((err) => {
-                            console.warn(`Relay ${url} rejected:`, err);
-                            failureCount++;
-                            if (failureCount === total && !acknowledged) {
-                                resolve(false);
-                            }
-                        });
-                    });
-                }),
-                new Promise<boolean>((resolve) =>
-                    setTimeout(() => {
-                        console.warn("Publish timed out, but might have sent.");
-                        // If we timed out, return false so the UI shows 'failed' status if strict, 
-                        // or true if we want to be optimistic. 
-                        // Returning false is safer so user can retry.
-                        resolve(false);
-                    }, 5000)
-                )
-            ]);
-
-        } catch (e) {
-            console.error('Publish fatal error', e);
-            return false;
-        }
-    }, [relays, connectedRelays]);
-
-    const subscribe = useCallback((filter: Filter, onEvent: (event: Event) => void) => {
-        if (!filter) return () => { };
-
-        // Safe Wrapper: Transform filter to ensure Relay acceptance
-        const cleanFilterObj = Array.isArray(filter) ? filter[0] : filter;
-
-        // Remove null/undefined values and empty arrays (relays hate authors: [])
-        const finalFilter = Object.fromEntries(
-            Object.entries(cleanFilterObj).filter(([_, v]) =>
-                v != null && (!Array.isArray(v) || v.length > 0)
-            )
-        ) as Filter;
-
-        // Use the standard subscribe method with a single object (Silver Bullet Fix)
-        const pool = poolRef.current as unknown as PoolSubscriber;
-        const sub = pool.subscribe(
-            relays,
-            finalFilter,
-            {
-                onevent: (event: Event) => {
-                    // Automatic Profile Discovery
-                    if (event.kind === 1 && !profilesRef.current[event.pubkey]) {
-                        // Fetch user profile (Kind 0)
-                        const metaPool = poolRef.current as unknown as PoolSubscriber;
-                        metaPool.subscribe(RELAYS, {
-                            kinds: [0],
-                            authors: [event.pubkey],
-                            limit: 1
-                        }, {
-                            onevent: (metaEvent: Event) => {
-                                try {
-                                    const data = JSON.parse(metaEvent.content) as UserMetadata;
-                                    const name = data.display_name || data.name || "Anon";
-                                    setProfiles(prev => ({
-                                        ...prev,
-                                        [event.pubkey]: name
-                                    }));
-                                } catch (e) {
-                                    // Silently fail on bad metadata
-                                }
-                            }
-                        });
-                    }
-
-                    onEvent(event);
-                },
-                oneose: () => {
-                    console.log("[FURSAN] EOSE reached");
-                }
-            }
-        );
-        return () => sub.close();
-    }, [relays]);
-
-    const updateProfileName = useCallback(async (newName: string, privateKey: string) => {
-        try {
-            // 1. Create the Profile Template (Kind 0)
-            const eventTemplate = {
-                kind: 0,
-                created_at: Math.floor(Date.now() / 1000),
-                tags: [],
-                content: JSON.stringify({
-                    name: newName,
-                    display_name: newName,
-                    about: "NoFap Fursan Warrior ⚔️"
-                }),
-            };
-
-            // 2. Sign the event using your nsec (converted to bytes)
-            const sk = hexToBytes(privateKey);
-            const signedEvent = finalizeEvent(eventTemplate, sk);
-
-            // 3. Publish to your active relays
-            await Promise.all(
-                relays.map(url => poolRef.current.publish([url], signedEvent))
-            );
-
-            console.log("[FURSAN] Profile updated to:", newName);
-            // Update local profiles state
-            setProfiles(prev => ({ ...prev, [signedEvent.pubkey]: newName }));
-            return true;
-        } catch (error) {
-            console.error("[FURSAN] Update failed:", error);
-            return false;
-        }
-    }, [relays]);
-
-    return (
-        <NostrContext.Provider value={{
-            pool: poolRef.current,
-            relays,
-            connectedRelays,
-            relayMetadata,
-            profiles,
-            addRelay,
-            removeRelay,
-            publish,
-            subscribe,
-            checkRelayStatus,
-            updateProfileName,
-            setProfiles
-        }}>
-            {children}
-        </NostrContext.Provider>
+  /* ── Profile discovery ─────────────────────────────────────────────── */
+  const resolveProfiles = useCallback(async (pubkeys: string[]) => {
+    const unknown = [...new Set(pubkeys)].filter(
+      (pk) => pk && !profileCache.has(pk) && !profilesInFlight.has(pk),
     );
+    if (unknown.length === 0) return;
+
+    const targets = await getRelays();
+    if (targets.length === 0) return;
+
+    const handle = getPool().subscribe(
+      targets,
+      { kinds: [0], authors: unknown } as Filter,
+      {
+        onevent: (event: Event) => {
+          try {
+            const data = JSON.parse(event.content) as UserMetadata;
+            const name = data.display_name?.trim() || data.name?.trim() || "Anon";
+            profileCache.set(event.pubkey, name);
+            setProfiles((prev) => ({ ...prev, [event.pubkey]: name }));
+          } catch {
+            profileCache.set(event.pubkey, "Anon");
+          }
+        },
+        oneose: () => handle.close(),
+      },
+    );
+
+    for (const pk of unknown) profilesInFlight.add(pk);
+    // Never let a silent relay pin these open forever.
+    setTimeout(() => {
+      handle.close();
+      profilesInFlight.clear();
+    }, METADATA_TIMEOUT_MS * 4);
+  }, []);
+
+  const subscribe = useCallback(
+    (filter: Filter, onEvent: (event: Event) => void) => {
+      if (!filter || relays.length === 0) return () => undefined;
+
+      // Relays reject empty arrays and nulls outright.
+      const clean = Array.isArray(filter) ? filter[0] : filter;
+      const finalFilter = Object.fromEntries(
+        Object.entries(clean).filter(([, v]) => v != null && (!Array.isArray(v) || v.length > 0)),
+      ) as Filter;
+
+      const handle = getPool().subscribe(relays, finalFilter, {
+        onevent: (event: Event) => {
+          if (event.kind === 1 && !profilesRef.current[event.pubkey]) {
+            void resolveProfiles([event.pubkey]);
+          }
+          onEvent(event);
+        },
+      });
+
+      return () => handle.close();
+    },
+    [relays, resolveProfiles],
+  );
+
+  const addRelay = useCallback(async (url: string) => {
+    const next = await addRelayToPool(url);
+    if (!next) return false;
+    setRelaysState(next);
+    return true;
+  }, []);
+
+  const removeRelay = useCallback(async (url: string) => {
+    const { relays: next, removed } = await removeRelayFromPool(url);
+    setRelaysState(next);
+    return removed;
+  }, []);
+
+  const publish = useCallback(
+    async (event: Event) => {
+      const targets = connectedRelays.length > 0 ? connectedRelays : relays;
+      if (targets.length === 0) return false;
+      return publishEvent(event as never, targets);
+    },
+    [connectedRelays, relays],
+  );
+
+  const updateProfileName = useCallback(
+    async (newName: string, privateKey: string) => {
+      try {
+        const sk = hexToBytes(privateKey);
+        const signed = finalizeEvent(
+          {
+            kind: 0,
+            created_at: Math.floor(Date.now() / 1000),
+            tags: [],
+            content: JSON.stringify({
+              name: newName,
+              display_name: newName,
+              about: "Discipline over desire.",
+            }),
+          },
+          sk,
+        );
+        const ok = await publishEvent(signed);
+        if (ok) {
+          profileCache.set(signed.pubkey, newName);
+          setProfiles((prev) => ({ ...prev, [signed.pubkey]: newName }));
+        }
+        return ok;
+      } catch (error) {
+        console.error("[Nostr] Profile update failed", error);
+        return false;
+      }
+    },
+    [],
+  );
+
+  const value = useMemo<NostrContextType>(
+    () => ({
+      relays,
+      connectedRelays,
+      relayMetadata,
+      profiles,
+      network,
+      addRelay,
+      removeRelay,
+      publish,
+      subscribe,
+      updateProfileName,
+    }),
+    [
+      relays,
+      connectedRelays,
+      relayMetadata,
+      profiles,
+      network,
+      addRelay,
+      removeRelay,
+      publish,
+      subscribe,
+      updateProfileName,
+    ],
+  );
+
+  return <NostrContext.Provider value={value}>{children}</NostrContext.Provider>;
 };
 
+/* eslint-disable react-refresh/only-export-components -- context + its consumer hook
+   belong together; splitting them only hides the dependency. */
 export const useNostrContext = () => {
-    const context = useContext(NostrContext);
-    if (!context) throw new Error('useNostrContext must be used within NostrProvider');
-    return context;
+  const context = useContext(NostrContext);
+  if (!context) throw new Error("useNostrContext must be used within NostrProvider");
+  return context;
 };
+
+/** Reads the live sync/queue state without subscribing to the whole context. */
+export const useNetworkStatus = () => {
+  const [state, setState] = useState<NetworkState>(() => getNetworkState());
+  useEffect(() => subscribeToNetworkState((next) => setState({ ...next })), []);
+  return state;
+};
+
+// Referenced so the helper stays tree-shake-safe if callers stop using setRelays.
+export { setRelays };
+/* eslint-enable react-refresh/only-export-components */

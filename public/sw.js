@@ -1,159 +1,109 @@
-const CACHE_NAME = 'hydra-cache-v2'; // Bumped version to force update
-const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/manifest.webmanifest',
-  '/pwa-192.png',
-  '/pwa-512.png',
-  '/favicon.ico'
+/* Fursan service worker.
+ *
+ * Precaches the whole build manifest, not a hand-written list. The previous
+ * version cached six URLs and nothing else, so a cold install that went offline
+ * before visiting a route failed its dynamic import and rendered the global
+ * error screen.
+ *
+ * `__PRECACHE__` is replaced with the real asset list at build time by
+ * scripts/build-sw.mjs. Do not edit that placeholder.
+ */
+
+const VERSION = "__BUILD_ID__";
+const CACHE_NAME = `fursan-${VERSION}`;
+
+const PRECACHE = [
+  "__PRECACHE__",
 ];
 
-// Install event - cache static assets
-self.addEventListener('install', (event) => {
+self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS);
-    })
-  );
-  self.skipWaiting();
-});
-
-// Activate event - cleanup old caches
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames
-          .filter((name) => name !== CACHE_NAME)
-          .map((name) => caches.delete(name))
+    (async () => {
+      const cache = await caches.open(CACHE_NAME);
+      // Individually, so one missing icon cannot reject the whole install.
+      await Promise.all(
+        PRECACHE.map((url) =>
+          cache.add(new Request(url, { cache: "reload" })).catch(() => undefined),
+        ),
       );
-    })
+      await self.skipWaiting();
+    })(),
   );
-  self.clients.claim();
 });
 
-// Fetch event - network first with cache fallback
-self.addEventListener('fetch', (event) => {
-  // Only handle GET requests
-  if (event.request.method !== 'GET') return;
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(keys.filter((name) => name !== CACHE_NAME).map((name) => caches.delete(name)));
+      await self.clients.claim();
+    })(),
+  );
+});
 
-  const url = new URL(event.request.url);
+self.addEventListener("fetch", (event) => {
+  const { request } = event;
+  if (request.method !== "GET") return;
 
-  // ONLY cache http or https. 
-  // This ignores chrome-extension://, capacitor://, and ws:// schemes
-  if (!(url.protocol === 'http:' || url.protocol === 'https:')) {
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin) return; // relays, fonts, CDN stay untouched
+
+  // Hashed assets are immutable — serve them straight from the cache.
+  if (/\/assets\/.+-[A-Za-z0-9_-]{8,}\.(js|css|woff2|png|jpg|svg)$/.test(url.pathname)) {
+    event.respondWith(
+      caches.match(request).then(
+        (hit) =>
+          hit ||
+          fetch(request).then((response) => {
+            if (response.ok) {
+              const copy = response.clone();
+              caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+            }
+            return response;
+          }),
+      ),
+    );
     return;
   }
 
-  // EXCLUDE NOSTR RELAYS (WebSockets)
-  // This prevents the Service Worker from interfering with relay connections
-  if (url.protocol === 'ws:' || url.protocol === 'wss:' || url.hostname.includes('nos.lol') || url.hostname.includes('damus.io') || url.hostname.includes('relay')) {
+  // Navigations: network first, cached shell as the offline fallback.
+  if (request.mode === "navigate") {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put("/index.html", copy));
+          return response;
+        })
+        .catch(() => caches.match("/index.html").then((hit) => hit ?? offlineResponse())),
+    );
     return;
   }
 
+  // Everything else same-origin: stale-while-revalidate.
   event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        // Only cache successful responses
-        if (response && response.status === 200) {
-          const responseClone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseClone);
-          });
-        }
-        return response;
-      })
-      .catch(() => {
-        // Fallback to cache when offline
-        return caches.match(event.request).then((cachedResponse) => {
-          if (cachedResponse) {
-            return cachedResponse;
+    caches.match(request).then((hit) => {
+      const network = fetch(request)
+        .then((response) => {
+          if (response.ok) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
           }
-          // Return offline root for navigation
-          if (event.request.mode === 'navigate') {
-            return caches.match('/');
-          }
-          return new Response('Offline', { status: 503 });
-        });
-      })
+          return response;
+        })
+        .catch(() => hit ?? offlineResponse());
+      return hit ?? network;
+    }),
   );
 });
 
-// Background Sync
-self.addEventListener('sync', (event) => {
-  if (event.tag === 'sync-streak-data') {
-    event.waitUntil(syncStreakData());
-  }
-});
-
-async function syncStreakData() {
-  // Sync any pending streak data when back online
-  console.log('Background sync: syncing streak data');
+function offlineResponse() {
+  return new Response("Offline", {
+    status: 503,
+    headers: { "Content-Type": "text/plain" },
+  });
 }
 
-// Periodic Background Sync
-self.addEventListener('periodicsync', (event) => {
-  if (event.tag === 'check-motivation') {
-    event.waitUntil(checkMotivation());
-  }
-});
-
-async function checkMotivation() {
-  console.log('Periodic sync: checking for motivation updates');
-}
-
-// Push Notifications
-self.addEventListener('push', (event) => {
-  let data = { title: 'NoFap Hydra 🐉', body: 'Stay strong on your journey!' };
-
-  if (event.data) {
-    try {
-      data = event.data.json();
-    } catch (e) {
-      data.body = event.data.text();
-    }
-  }
-
-  const options = {
-    body: data.body,
-    icon: '/pwa-192.png',
-    badge: '/pwa-192.png',
-    vibrate: [100, 50, 100],
-    data: { url: '/' },
-    actions: [
-      { action: 'open', title: 'Open App' },
-      { action: 'close', title: 'Dismiss' }
-    ]
-  };
-
-  event.waitUntil(
-    self.registration.showNotification(data.title, options)
-  );
-});
-
-// Notification click handler
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-
-  if (event.action === 'close') return;
-
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      for (const client of clientList) {
-        if (client.url === '/' && 'focus' in client) {
-          return client.focus();
-        }
-      }
-      if (clients.openWindow) {
-        return clients.openWindow('/');
-      }
-    })
-  );
-});
-
-// Message handler for skip waiting
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") self.skipWaiting();
 });

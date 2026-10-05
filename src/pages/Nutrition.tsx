@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
-import { Plus, Trash2, Edit, Utensils, Flame, WheatOff, Droplets, Activity, ChevronLeft, ChevronRight, Calendar } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Header } from "@/components/Header";
-import { BottomNav } from "@/components/BottomNav";
-import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight, Plus, Trash2, Pencil, X } from "lucide-react";
+import { toast } from "sonner";
+
+import { Screen, SectionHead } from "@/components/Screen";
+import { EmptyState } from "@/components/EmptyState";
+
+type MealType = "breakfast" | "lunch" | "dinner" | "snack";
 
 interface NutritionItem {
   id: string;
@@ -14,455 +14,397 @@ interface NutritionItem {
   protein: number;
   carbs: number;
   fat: number;
-  serving: string;
-  mealType: "breakfast" | "lunch" | "dinner" | "snack";
+  serving?: string;
+  mealType: MealType;
   date: string;
 }
 
-const MEAL_TYPES = [
-  { id: "breakfast", label: "Breakfast", color: "bg-warning/10 text-warning border-warning/30" },
-  { id: "lunch", label: "Lunch", color: "bg-accent/10 text-accent border-accent/30" },
-  { id: "dinner", label: "Dinner", color: "bg-danger/10 text-danger border-danger/30" },
-  { id: "snack", label: "Snack", color: "bg-success/10 text-success border-success/30" },
+const STORAGE_KEY = "fursan_nutrition";
+
+const MEALS: { id: MealType; label: string }[] = [
+  { id: "breakfast", label: "Breakfast" },
+  { id: "lunch", label: "Lunch" },
+  { id: "dinner", label: "Dinner" },
+  { id: "snack", label: "Snack" },
 ];
 
-const SAMPLE_FOODS = [
-  { name: "Oatmeal with berries", calories: 350, protein: 12, carbs: 58, fat: 7, serving: "1 bowl" },
-  { name: "Greek yogurt with honey", calories: 180, protein: 20, carbs: 15, fat: 3, serving: "1 cup" },
-  { name: "Scrambled eggs (2) + toast", calories: 320, protein: 18, carbs: 25, fat: 18, serving: "2 eggs + 1 slice" },
-  { name: "Chicken breast (150g)", calories: 240, protein: 46, carbs: 0, fat: 5, serving: "150g" },
-  { name: "Brown rice (1 cup cooked)", calories: 215, protein: 5, carbs: 45, fat: 2, serving: "1 cup" },
-  { name: "Broccoli (1 cup)", calories: 55, protein: 4, carbs: 11, fat: 1, serving: "1 cup" },
-  { name: "Salmon (150g)", calories: 280, protein: 39, carbs: 0, fat: 14, serving: "150g" },
-  { name: "Sweet potato (medium)", calories: 112, protein: 2, carbs: 26, fat: 0, serving: "1 medium" },
-  { name: "Apple with peanut butter", calories: 200, protein: 4, carbs: 25, fat: 10, serving: "1 apple + 1 tbsp" },
-  { name: "Almonds (28g)", calories: 165, protein: 6, carbs: 6, fat: 14, serving: "28g" },
-  { name: "Protein shake", calories: 120, protein: 25, carbs: 3, fat: 1, serving: "1 scoop" },
-  { name: "Banana", calories: 105, protein: 1, carbs: 27, fat: 0, serving: "1 medium" },
+const GOALS = { calories: 2200, protein: 160, carbs: 250, fat: 70 };
+
+const QUICK_ADD: Omit<NutritionItem, "id" | "date">[] = [
+  { name: "Chicken breast (150g)", calories: 248, protein: 46, carbs: 0, fat: 5, serving: "150g", mealType: "lunch" },
+  { name: "Greek yogurt", calories: 130, protein: 17, carbs: 8, fat: 4, serving: "200g", mealType: "snack" },
+  { name: "Eggs (2 large)", calories: 155, protein: 13, carbs: 1, fat: 11, serving: "2 eggs", mealType: "breakfast" },
+  { name: "Brown rice (cooked)", calories: 216, protein: 5, carbs: 45, fat: 2, serving: "1 cup", mealType: "lunch" },
+  { name: "Protein shake", calories: 120, protein: 25, carbs: 3, fat: 1, serving: "1 scoop", mealType: "snack" },
+  { name: "Banana", calories: 105, protein: 1, carbs: 27, fat: 0, serving: "1 medium", mealType: "snack" },
 ];
 
-const NUTRITION_GOALS = {
-  calories: 2200,
-  protein: 160,
-  carbs: 250,
-  fat: 70,
+/* ── Local date helpers ────────────────────────────────────────────────────
+   `new Date("yyyy-MM-dd")` parses as UTC midnight, then `.setDate()` mutates it
+   in local time. Round-tripping that way shifted every label by a day outside
+   UTC and could get the forward stepper permanently stuck. Everything below
+   works on a plain "yyyy-MM-dd" string and constructs local dates explicitly. */
+
+const toKey = (d: Date): string =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+const fromKey = (key: string): Date => {
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(y, (m ?? 1) - 1, d ?? 1);
 };
 
-const Nutrition = () => {
-  const [selectedDate, setSelectedDate] = useState(() => format(new Date(), "yyyy-MM-dd"));
-  const [items, setItems] = useState<NutritionItem[]>(() => {
-    const stored = localStorage.getItem("fursan_nutrition");
-    if (stored) {
-      try { return JSON.parse(stored); } catch { return []; }
-    }
+const shiftKey = (key: string, days: number): string => {
+  const date = fromKey(key);
+  date.setDate(date.getDate() + days);
+  return toKey(date);
+};
+
+const prettyDate = (key: string): string =>
+  fromKey(key).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+
+const newId = () =>
+  typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
+const readStore = (): NutritionItem[] => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as NutritionItem[]) : [];
+  } catch {
     return [];
-  });
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [editingItem, setEditingItem] = useState<NutritionItem | null>(null);
-  const [newFood, setNewFood] = useState({
-    name: "",
-    calories: 0,
-    protein: 0,
-    carbs: 0,
-    fat: 0,
-    serving: "",
-    mealType: "breakfast" as NutritionItem["mealType"],
-  });
+  }
+};
+
+const num = (v: string) => {
+  const n = Number.parseFloat(v);
+  return Number.isFinite(n) && n >= 0 ? Math.round(n) : 0;
+};
+
+const EMPTY_FORM = {
+  name: "",
+  calories: "",
+  protein: "",
+  carbs: "",
+  fat: "",
+  serving: "",
+  mealType: "breakfast" as MealType,
+};
+
+export default function Nutrition() {
+  const [date, setDate] = useState(() => toKey(new Date()));
+  const [items, setItems] = useState<NutritionItem[]>(readStore);
+  const [composing, setComposing] = useState<{ meal: MealType; editing?: NutritionItem } | null>(
+    null,
+  );
+  const [form, setForm] = useState(EMPTY_FORM);
 
   useEffect(() => {
-    localStorage.setItem("fursan_nutrition", JSON.stringify(items));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    } catch (error) {
+      console.error("[Nutrition] Persist failed", error);
+      toast.error("Device storage is full — changes may not survive a restart");
+    }
   }, [items]);
 
-  const getTodaysItems = () => items.filter(item => item.date === selectedDate);
+  const dayItems = useMemo(() => items.filter((i) => i.date === date), [items, date]);
 
-  const getTodaysTotals = () => {
-    const todaysItems = getTodaysItems();
-    return todaysItems.reduce(
-      (acc, item) => ({
-        calories: acc.calories + item.calories,
-        protein: acc.protein + item.protein,
-        carbs: acc.carbs + item.carbs,
-        fat: acc.fat + item.fat,
-      }),
-      { calories: 0, protein: 0, carbs: 0, fat: 0 }
+  const totals = useMemo(
+    () =>
+      dayItems.reduce(
+        (acc, item) => ({
+          calories: acc.calories + item.calories,
+          protein: acc.protein + item.protein,
+          carbs: acc.carbs + item.carbs,
+          fat: acc.fat + item.fat,
+        }),
+        { calories: 0, protein: 0, carbs: 0, fat: 0 },
+      ),
+    [dayItems],
+  );
+
+  const openComposer = useCallback((meal: MealType, editing?: NutritionItem) => {
+    setComposing({ meal, editing });
+    setForm(
+      editing
+        ? {
+            name: editing.name,
+            calories: String(editing.calories),
+            protein: String(editing.protein),
+            carbs: String(editing.carbs),
+            fat: String(editing.fat),
+            serving: editing.serving ?? "",
+            mealType: editing.mealType,
+          }
+        : { ...EMPTY_FORM, mealType: meal },
     );
+  }, []);
+
+  const closeComposer = () => {
+    setComposing(null);
+    setForm(EMPTY_FORM);
   };
 
-  const getMealItems = (mealType: string) =>
-    getTodaysItems().filter(item => item.mealType === mealType);
+  const submit = () => {
+    if (!composing) return;
+    const name = form.name.trim();
+    if (!name) {
+      toast.error("Give the entry a name");
+      return;
+    }
 
-  const addFood = () => {
-    if (!newFood.name || newFood.calories <= 0) return;
-    const newItem: NutritionItem = {
-      id: crypto.randomUUID(),
-      ...newFood,
-      date: selectedDate,
+    const payload = {
+      name,
+      calories: num(form.calories),
+      protein: num(form.protein),
+      carbs: num(form.carbs),
+      fat: num(form.fat),
+      serving: form.serving.trim() || undefined,
+      mealType: form.mealType,
     };
-    setItems(prev => [...prev, newItem]);
-    resetForm();
-  };
 
-  const updateFood = () => {
-    if (!editingItem) return;
-    setItems(prev =>
-      prev.map(item => (item.id === editingItem.id ? { ...editingItem, ...newFood } : item))
+    setItems((prev) =>
+      composing.editing
+        ? prev.map((item) => (item.id === composing.editing?.id ? { ...item, ...payload } : item))
+        : [...prev, { id: newId(), date, ...payload }],
     );
-    resetForm();
+    closeComposer();
   };
 
-  const deleteFood = (id: string) => {
-    setItems(prev => prev.filter(item => item.id !== id));
-  };
+  const remove = (id: string) => setItems((prev) => prev.filter((i) => i.id !== id));
 
-  const editFood = (item: NutritionItem) => {
-    setEditingItem(item);
-    setNewFood({
-      name: item.name,
-      calories: item.calories,
-      protein: item.protein,
-      carbs: item.carbs,
-      fat: item.fat,
-      serving: item.serving,
-      mealType: item.mealType,
-    });
-    setShowAddModal(true);
-  };
+  const quickAdd = (preset: Omit<NutritionItem, "id" | "date">) =>
+    setItems((prev) => [...prev, { id: newId(), date, ...preset }]);
 
-  const openAddModal = (mealType: string = "breakfast") => {
-    setNewFood({
-      name: "",
-      calories: 0,
-      protein: 0,
-      carbs: 0,
-      fat: 0,
-      serving: "",
-      mealType: mealType as NutritionItem["mealType"],
-    });
-    setEditingItem(null);
-    setShowAddModal(true);
-  };
-
-  const resetForm = () => {
-    setNewFood({ name: "", calories: 0, protein: 0, carbs: 0, fat: 0, serving: "", mealType: "breakfast" });
-    setShowAddModal(false);
-    setEditingItem(null);
-  };
-
-  const changeDate = (days: number) => {
-    const newDate = new Date(selectedDate);
-    newDate.setDate(newDate.getDate() + days);
-    setSelectedDate(format(newDate, "yyyy-MM-dd"));
-  };
-
-  const totals = getTodaysTotals();
+  const isToday = date === toKey(new Date());
   const macros = [
-    { label: "Calories", current: totals.calories, goal: NUTRITION_GOALS.calories, unit: "kcal" },
-    { label: "Protein", current: totals.protein, goal: NUTRITION_GOALS.protein, unit: "g" },
-    { label: "Carbs", current: totals.carbs, goal: NUTRITION_GOALS.carbs, unit: "g" },
-    { label: "Fat", current: totals.fat, goal: NUTRITION_GOALS.fat, unit: "g" },
+    { label: "Calories", current: totals.calories, goal: GOALS.calories, unit: "kcal" },
+    { label: "Protein", current: totals.protein, goal: GOALS.protein, unit: "g" },
+    { label: "Carbs", current: totals.carbs, goal: GOALS.carbs, unit: "g" },
+    { label: "Fat", current: totals.fat, goal: GOALS.fat, unit: "g" },
   ];
 
   return (
-    <div className="min-h-screen bg-bg pb-20">
-      <Header syncState="synced" />
-      <div className="mx-auto max-w-screen-sm px-4 pt-2">
-
-        {/* Date picker */}
-        <header className="flex items-center justify-between py-4 animate-fade-in">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => changeDate(-1)}
-            className="text-ink"
-            aria-label="Previous day"
+    <Screen title="Nutrition" subtitle={prettyDate(date)} back>
+      <div className="flex items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={() => setDate((d) => shiftKey(d, -1))}
+          aria-label="Previous day"
+          className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-border text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink"
+        >
+          <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+        </button>
+        {!isToday && (
+          <button
+            type="button"
+            onClick={() => setDate(toKey(new Date()))}
+            className="h-11 rounded-md border border-border px-4 text-label uppercase text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink"
           >
-            <ChevronLeft className="w-4 h-4" />
-          </Button>
-          <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-ink-muted" />
-            <span className="text-sm font-semibold text-ink">
-              {format(new Date(selectedDate), "EEE, MMM d")}
-            </span>
+            Today
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => setDate((d) => shiftKey(d, 1))}
+          aria-label="Next day"
+          className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-border text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink"
+        >
+          <ChevronRight className="h-4 w-4" aria-hidden="true" />
+        </button>
+      </div>
+
+      <div className="surface-group mt-4 grid grid-cols-2 divide-x divide-y divide-border sm:grid-cols-4 sm:divide-y-0">
+        {macros.map((macro) => (
+          <div key={macro.label} className="px-4 py-3">
+            <p className="text-label uppercase text-ink-faint">{macro.label}</p>
+            <p className="mt-0.5 font-data text-data-lg text-ink">
+              {macro.current}
+              <span className="text-ink-faint">/{macro.goal}</span>
+            </p>
+            <p className="font-data text-meta text-ink-muted">{macro.unit}</p>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => changeDate(1)}
-            className="text-ink"
-            aria-label="Next day"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </Button>
-        </header>
+        ))}
+      </div>
 
-        {/* Macro Summary */}
-        <section className="mb-6 animate-fade-in">
-          <div className="grid grid-cols-4 gap-2">
-            {macros.map((macro) => {
-              const percentage = Math.min((macro.current / macro.goal) * 100, 100);
-              return (
-                <div key={macro.label} className="card p-3 text-center">
-                  <div className="relative w-14 h-14 mx-auto mb-2">
-                    <svg width="56" height="56" className="transform -rotate-90 absolute top-0 left-0">
-                      <circle cx="28" cy="28" r="22" fill="none" stroke="hsl(var(--border))" strokeWidth="4" />
-                      <circle
-                        cx="28" cy="28" r="22"
-                        fill="none"
-                        stroke="hsl(var(--accent))"
-                        strokeWidth="4"
-                        strokeLinecap="round"
-                        strokeDasharray={`${(percentage / 100) * 138.23} 138.23`}
-                        style={{ strokeDashoffset: 138.23 }}
-                        className="transition-all duration-500"
-                      />
-                    </svg>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <p className="text-xs font-bold text-ink tabular">{macro.current}</p>
-                    </div>
-                  </div>
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-ink-muted">
-                    {macro.label}
-                  </p>
-                  <p className="text-[9px] text-ink-faint">
-                    {macro.current}/{macro.goal}
-                    {macro.unit}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        </section>
+      <SectionHead>Meals</SectionHead>
 
-        {/* Quick Add */}
-        <section className="mb-6 animate-fade-in" style={{ animationDelay: "0.1s" }}>
-          <h3 className="text-sm font-semibold text-ink mb-3">Quick Add</h3>
-          <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto">
-            {SAMPLE_FOODS.map((food) => (
-              <button
-                key={food.name}
-                onClick={() => {
-                  setNewFood({
-                    name: food.name,
-                    calories: food.calories,
-                    protein: food.protein,
-                    carbs: food.carbs,
-                    fat: food.fat,
-                    serving: food.serving,
-                    mealType: "lunch",
-                  });
-                  setShowAddModal(true);
-                }}
-                className="card p-3 text-left hover:border-accent/50 transition-colors"
-              >
-                <p className="text-sm font-medium text-ink truncate">{food.name}</p>
-                <p className="text-[11px] text-ink-muted">
-                  {food.calories} kcal • P{food.protein}g C{food.carbs}g F{food.fat}g
-                </p>
-              </button>
-            ))}
-          </div>
-        </section>
-
-        {/* Meals */}
-        <section className="space-y-4 animate-fade-in" style={{ animationDelay: "0.2s" }}>
-          {MEAL_TYPES.map((meal) => {
-            const mealItems = getMealItems(meal.id);
-            const mealCalories = mealItems.reduce((sum, item) => sum + item.calories, 0);
-
+      {dayItems.length === 0 ? (
+        <EmptyState
+          title="Nothing logged"
+          description={`Add what you ate on ${prettyDate(date)} — or use a quick add below.`}
+        />
+      ) : (
+        <div className="space-y-4">
+          {MEALS.map((meal) => {
+            const mealItems = dayItems.filter((i) => i.mealType === meal.id);
+            if (mealItems.length === 0) return null;
+            const kcal = mealItems.reduce((sum, i) => sum + i.calories, 0);
             return (
-              <div key={meal.id} className="card">
-                <div className="px-4 py-3 flex items-center justify-between border-b border-border">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center border ${meal.color}`}>
-                      <Utensils className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-ink">{meal.label}</p>
-                      <p className="text-[11px] text-ink-muted">
-                        {mealItems.length} item{mealItems.length !== 1 ? "s" : ""} • {mealCalories} kcal
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => openAddModal(meal.id)}
-                    className="text-ink-muted hover:text-accent"
-                    aria-label={`Add to ${meal.label}`}
-                  >
-                    <Plus className="w-4 h-4" />
-                  </Button>
+              <section key={meal.id}>
+                <div className="flex items-baseline justify-between pb-1.5">
+                  <h3 className="text-label uppercase text-ink-faint">{meal.label}</h3>
+                  <span className="font-data text-meta text-ink-muted">{kcal} kcal</span>
                 </div>
-                {mealItems.length === 0 ? (
-                  <div className="px-4 py-6 text-center text-ink-muted">
-                    <p className="text-sm">No items yet. Tap + to add.</p>
-                  </div>
-                ) : (
-                  <div className="px-4 pb-4 space-y-2">
-                    {mealItems.map((item) => (
-                      <div
-                        key={item.id}
-                        className="flex items-center justify-between p-3 rounded-xl bg-surface-2 hover:bg-surface transition-colors"
+                <ul className="surface-group">
+                  {mealItems.map((item) => (
+                    <li key={item.id} className="row">
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-body-s font-medium text-ink">{item.name}</span>
+                        <span className="mt-0.5 block font-data text-meta text-ink-muted">
+                          {item.serving ? `${item.serving} · ` : ""}
+                          {item.calories} kcal · P {item.protein} · C {item.carbs} · F {item.fat}
+                        </span>
+                      </span>
+                      <button
+                        type="button"
+                        aria-label={`Edit ${item.name}`}
+                        onClick={() => openComposer(meal.id, item)}
+                        className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-ink-faint transition-colors hover:bg-surface-2 hover:text-ink"
                       >
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-ink truncate">{item.name}</p>
-                          <p className="text-[11px] text-ink-muted">
-                            {item.serving} • {item.calories} kcal • P{item.protein}g C{item.carbs}g F{item.fat}g
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => editFood(item)}
-                            className="text-ink-muted hover:text-accent h-8 w-8"
-                            aria-label="Edit"
-                          >
-                            <Edit className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => deleteFood(item.id)}
-                            className="text-ink-muted hover:text-danger h-8 w-8"
-                            aria-label="Delete"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+                        <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`Remove ${item.name}`}
+                        onClick={() => remove(item.id)}
+                        className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-ink-faint transition-colors hover:bg-danger/5 hover:text-danger"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </section>
             );
           })}
-        </section>
+        </div>
+      )}
 
-        {/* Add/Edit Food Modal */}
-        {showAddModal && (
-          <div
-            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in"
-            onClick={resetForm}
+      <SectionHead>Add</SectionHead>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        <button
+          type="button"
+          onClick={() => openComposer("breakfast")}
+          className="inline-flex h-11 items-center justify-center gap-1.5 rounded-md bg-ink text-label uppercase text-bg transition-opacity hover:opacity-90"
+        >
+          <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+          Custom
+        </button>
+        {QUICK_ADD.map((preset) => (
+          <button
+            key={preset.name}
+            type="button"
+            onClick={() => quickAdd(preset)}
+            className="inline-flex h-11 items-center justify-center rounded-md border border-border px-3 text-meta text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink"
           >
-            <div
-              className="w-full sm:max-w-md bg-surface border-t sm:border border-border sm:rounded-2xl rounded-t-2xl p-6 max-h-[90vh] overflow-y-auto"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h2 className="text-lg font-semibold text-center text-ink mb-1">
-                {editingItem ? "Edit Food" : "Add Food"}
-              </h2>
-              <p className="text-center text-sm text-ink-muted mb-4">Track your nutrition</p>
+            {preset.name}
+          </button>
+        ))}
+      </div>
 
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium text-ink">Food Name</label>
-                  <Input
-                    value={newFood.name}
-                    onChange={(e) => setNewFood({ ...newFood, name: e.target.value })}
-                    placeholder="e.g., Chicken breast"
-                    className="mt-1"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-sm font-medium text-ink">Calories (kcal)</label>
-                    <Input
-                      type="number"
-                      min="0"
-                      value={newFood.calories}
-                      onChange={(e) => setNewFood({ ...newFood, calories: parseInt(e.target.value) || 0 })}
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-ink">Protein (g)</label>
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.1"
-                      value={newFood.protein}
-                      onChange={(e) => setNewFood({ ...newFood, protein: parseFloat(e.target.value) || 0 })}
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-ink">Carbs (g)</label>
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.1"
-                      value={newFood.carbs}
-                      onChange={(e) => setNewFood({ ...newFood, carbs: parseFloat(e.target.value) || 0 })}
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-ink">Fat (g)</label>
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.1"
-                      value={newFood.fat}
-                      onChange={(e) => setNewFood({ ...newFood, fat: parseFloat(e.target.value) || 0 })}
-                      className="mt-1"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-ink">Serving Size</label>
-                  <Input
-                    value={newFood.serving}
-                    onChange={(e) => setNewFood({ ...newFood, serving: e.target.value })}
-                    placeholder="e.g., 100g, 1 cup"
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-ink">Meal</label>
-                  <div className="flex gap-2 mt-2">
-                    {MEAL_TYPES.map((meal) => (
-                      <button
-                        key={meal.id}
-                        type="button"
-                        onClick={() => setNewFood({ ...newFood, mealType: meal.id as NutritionItem["mealType"] })}
-                        className={cn(
-                          "flex-1 px-3 py-2 rounded-xl text-sm font-medium transition-colors",
-                          newFood.mealType === meal.id
-                            ? "bg-ink text-bg"
-                            : "bg-surface-2 text-ink-muted hover:bg-surface-2"
-                        )}
-                      >
-                        {meal.label}
-                      </button>
-                    ))}
-                  </div>
+      {composing && (
+        <div
+          className="fixed inset-0 z-[60] flex items-end justify-center bg-bg/80 p-4 backdrop-blur-sm sm:items-center"
+          role="dialog"
+          aria-modal="true"
+          aria-label={composing.editing ? "Edit entry" : "Add entry"}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeComposer();
+          }}
+        >
+          <div className="w-full max-w-content rounded-lg border border-border bg-surface p-5">
+            <div className="flex items-center justify-between">
+              <h2 className="text-section font-semibold text-ink">
+                {composing.editing ? "Edit entry" : `Add to ${composing.meal}`}
+              </h2>
+              <button
+                type="button"
+                onClick={closeComposer}
+                aria-label="Close"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-md text-ink-faint hover:bg-surface-2 hover:text-ink"
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              <div>
+                <label htmlFor="food-name" className="text-label uppercase text-ink-faint">
+                  Name
+                </label>
+                <input
+                  id="food-name"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  placeholder="e.g. Lentil soup"
+                  className="mt-1.5 h-11 w-full rounded-md border border-border bg-surface-2 px-3 text-body text-ink placeholder:text-ink-faint"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="food-meal" className="text-label uppercase text-ink-faint">
+                  Meal
+                </label>
+                <div id="food-meal" className="mt-1.5 flex gap-2">
+                  {MEALS.map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => setForm({ ...form, mealType: m.id })}
+                      aria-pressed={form.mealType === m.id}
+                      className={`inline-flex h-11 flex-1 items-center justify-center rounded-md border text-meta font-medium transition-colors ${
+                        form.mealType === m.id
+                          ? "border-ink bg-ink text-bg"
+                          : "border-border text-ink-muted"
+                      }`}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              <div className="flex gap-3 mt-6">
-                <Button
-                  variant="outline"
-                  className="flex-1 h-11 rounded-full"
-                  onClick={resetForm}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  className="flex-1 h-11 rounded-full"
-                  onClick={editingItem ? updateFood : addFood}
-                  disabled={!newFood.name || newFood.calories <= 0}
-                >
-                  {editingItem ? "Save" : "Add"}
-                </Button>
+              <div className="grid grid-cols-2 gap-3">
+                {(
+                  [
+                    ["serving", "Serving", "1 cup", false],
+                    ["calories", "Calories", "0", true],
+                    ["protein", "Protein (g)", "0", true],
+                    ["carbs", "Carbs (g)", "0", true],
+                    ["fat", "Fat (g)", "0", true],
+                  ] as const
+                ).map(([key, label, placeholder, numeric]) => (
+                  <div key={key} className={key === "serving" ? "col-span-2" : undefined}>
+                    <label htmlFor={`food-${key}`} className="text-label uppercase text-ink-faint">
+                      {label}
+                    </label>
+                    <input
+                      id={`food-${key}`}
+                      inputMode={numeric ? "numeric" : undefined}
+                      value={form[key]}
+                      placeholder={placeholder}
+                      onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+                      className="mt-1.5 h-11 w-full rounded-md border border-border bg-surface-2 px-3 text-body text-ink placeholder:text-ink-faint"
+                    />
+                  </div>
+                ))}
               </div>
             </div>
-          </div>
-        )}
-      </div>
-      <BottomNav />
-    </div>
-  );
-};
 
-export default Nutrition;
+            <button
+              type="button"
+              onClick={submit}
+              className="mt-5 h-12 w-full rounded-md bg-ink text-label uppercase text-bg transition-opacity hover:opacity-90"
+            >
+              {composing.editing ? "Save changes" : "Add entry"}
+            </button>
+          </div>
+        </div>
+      )}
+    </Screen>
+  );
+}

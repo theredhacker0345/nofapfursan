@@ -41,3 +41,12 @@ scripts/shots
 android/build_log*.txt
 android/build_error.txt
 android/verify_result.txt
+
+# Third-party design skill downloaded for UI/UX review (reproducible, not source)
+.kilo/skills/
+
+# Verification artefacts
+scripts/shots/
+
+# TypeScript incremental build state
+*.tsbuildinfo

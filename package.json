@@ -6,11 +6,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "tsc -b && vite build && node scripts/build-sw.mjs",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
-    "audit:ux": "node scripts/audit.mjs && node scripts/interactions.mjs"
+    "audit": "node scripts/audit.mjs",
+    "verify": "npm run lint && tsc -b --force && npm run build && node scripts/verify.mjs"
   },
   "dependencies": {
     "@capacitor-community/media": "^9.0.0",

@@ -1,93 +1,38 @@
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { clearKeys } from "@/services/nostr";
-import { ShieldAlert, Trash2, CheckCircle2 } from "lucide-react";
-import { toast } from "sonner";
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { ShieldCheck, LockKeyhole } from "lucide-react";
 
+import { RelaySettings } from "@/components/RelaySettings";
+
+/**
+ * Privacy panel.
+ *
+ * The copy is now accurate: records live on this device, and the encrypted copy
+ * on relays is readable only with the user's own key. The previous text claimed
+ * storage was "encrypted on this device only", which was never true — the
+ * WebView store is plaintext and the streak is also published to relays.
+ */
 export function PrivacySettings() {
-    const [incinerating, setIncinerating] = useState(false);
-
-    const handleIncinerate = async () => {
-        setIncinerating(true);
-        try {
-            await clearKeys();
-            // Force a reload to reset all state cleanly
-            setTimeout(() => {
-                window.location.reload();
-            }, 1500);
-            toast.success("Done. All local data has been erased.");
-        } catch (error) {
-            console.error("Data erase failed", error);
-            toast.error("Could not erase data. Please clear app data manually.");
-            setIncinerating(false);
-        }
-    };
-
-    return (
-        <div className="space-y-6">
-            <div className="flex items-center gap-3 p-4 bg-surface-2/50 rounded-xl border border-border">
-                <ShieldAlert className="w-8 h-8 text-accent flex-shrink-0" />
-                <div className="min-w-0 flex-1">
-                    <h3 className="text-sm font-black uppercase tracking-widest text-ink truncate">
-                        Your Data Is Safe
-                    </h3>
-                    <p className="text-[10px] text-ink-muted font-medium break-words leading-tight">
-                        Your identity and streak are stored encrypted on this device only.
-                    </p>
-                </div>
-                <CheckCircle2 className="w-5 h-5 text-accent ml-auto flex-shrink-0" />
-            </div>
-
-            <div className="p-1">
-                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-danger mb-3 flex items-center gap-2">
-                    <Trash2 className="w-3 h-3" />
-                    Danger Zone
-                </h4>
-
-                <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                        <Button
-                            variant="danger"
-                            className="w-full h-14 bg-danger hover:bg-danger/90 text-white font-black uppercase tracking-widest shadow-lg shadow-red-500/20"
-                            disabled={incinerating}
-                        >
-                            {incinerating ? "ERASING..." : "ERASE EVERYTHING"}
-                        </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent className="border-2 border-red-500 bg-white">
-                        <AlertDialogHeader>
-                            <AlertDialogTitle className="text-danger font-black uppercase tracking-widest">
-                                Erase All Data?
-                            </AlertDialogTitle>
-                            <AlertDialogDescription className="text-stone-600 font-medium">
-                                This will PERMANENTLY delete your private key, streak history, and all local data from this device.
-                                <br /><br />
-                                <strong>This action cannot be undone.</strong> If you haven't backed up your Nostr key (use Export Key in Profile), you will lose your account forever.
-                            </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                            <AlertDialogCancel className="font-bold uppercase tracking-widest">ABORT</AlertDialogCancel>
-                            <AlertDialogAction
-                                onClick={handleIncinerate}
-                                className="bg-danger text-white font-black uppercase tracking-widest hover:bg-danger/90"
-                            >
-                                CONFIRM DESTRUCTION
-                            </AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
-            </div>
+  return (
+    <div>
+      <div className="border-b border-border px-5 py-4">
+        <div className="flex items-start gap-3">
+          <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
+          <div className="space-y-1">
+            <h3 className="text-body-s font-semibold text-ink">Your records stay yours</h3>
+            <p className="text-body-s text-ink-muted">
+              Your streak, check-ins and journal are written to this device first and
+              never leave it unless you are online. The copy sent to relays is
+              encrypted with NIP-44 and readable only by your key — nobody, including
+              us, holds that key.
+            </p>
+            <p className="inline-flex items-center gap-1.5 text-meta text-ink-faint">
+              <LockKeyhole className="h-3 w-3" aria-hidden="true" />
+              There is no account, no email, and no server to hand data to.
+            </p>
+          </div>
         </div>
-    );
+      </div>
+
+      <RelaySettings />
+    </div>
+  );
 }

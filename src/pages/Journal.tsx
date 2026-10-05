@@ -1,214 +1,259 @@
-import { useState, useEffect } from "react";
-import { Header } from "@/components/Header";
-import { BottomNav } from "@/components/BottomNav";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Slider } from "@/components/ui/slider";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Plus, Loader2, PenLine, Trash2, ScrollText } from "lucide-react";
 import { toast } from "sonner";
-import { saveJournalEntry, fetchJournalEntries, JournalEntry } from "@/services/nostr";
-import { Loader2, Plus, PenLine, Battery, Smile, Scroll, Swords, X } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-import { format } from "date-fns";
-import { logActivity } from "@/lib/activityLog";
+
+import { Screen, SectionHead } from "@/components/Screen";
+import { EmptyState } from "@/components/EmptyState";
+import { Slider } from "@/components/ui/slider";
+import { saveJournalEntry, fetchJournalEntries, type JournalEntry } from "@/services/nostr";
+import { deleteLocalJournalEntry, logActivity } from "@/services/localStore";
+
+const MAX_LENGTH = 4000;
+
+const formatStamp = (timestamp: number): string =>
+  new Date(timestamp).toLocaleString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
 export default function Journal() {
-    const [entries, setEntries] = useState<JournalEntry[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [content, setContent] = useState("");
-    const [mood, setMood] = useState([5]);
-    const [energy, setEnergy] = useState([5]);
-    const [saving, setSaving] = useState(false);
-    const [showForm, setShowForm] = useState(false);
+  const [entries, setEntries] = useState<JournalEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [composing, setComposing] = useState(false);
+  const [content, setContent] = useState("");
+  const [mood, setMood] = useState(5);
+  const [energy, setEnergy] = useState(5);
+  const [saving, setSaving] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const mounted = useRef(true);
 
-    useEffect(() => {
-        loadEntries();
-    }, []);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
-    const loadEntries = async () => {
-        try {
-            setLoading(true);
-            const data = await fetchJournalEntries();
-            setEntries(data || []);
-        } catch (e) {
-            console.error("Failed to load journal", e);
-            toast.error("Relay connection timed out.");
-        } finally {
-            setLoading(false);
-        }
+  const load = useCallback(async () => {
+    try {
+      const data = await fetchJournalEntries();
+      if (mounted.current) setEntries(data);
+    } catch (error) {
+      console.error("[Journal] Load failed", error);
+      toast.error("Could not read your journal");
+    } finally {
+      if (mounted.current) setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const openComposer = () => {
+    setComposing(true);
+    requestAnimationFrame(() => textareaRef.current?.focus());
+  };
+
+  const handleSave = async () => {
+    const text = content.trim();
+    if (!text) {
+      toast.error("Write something first");
+      return;
+    }
+
+    setSaving(true);
+    const entry: JournalEntry = {
+      content: text,
+      mood,
+      energy,
+      timestamp: Date.now(),
     };
 
-    const handleSave = async () => {
-        if (!content.trim()) {
-            toast.error("Entry content required.");
-            return;
-        }
+    // Optimistic: the record is already durable locally, so show it immediately
+    // instead of waiting on the relay round-trip.
+    setEntries((prev) => [entry, ...prev]);
+    const ok = await saveJournalEntry(entry);
+    if (!mounted.current) return;
 
-        setSaving(true);
-        const entry: JournalEntry = {
-            content,
-            mood: mood[0],
-            energy: energy[0],
-            timestamp: Date.now(),
-        };
+    setSaving(false);
+    if (ok) {
+      logActivity("journal_save", `Journal entry · mood ${mood}/10, energy ${energy}/10`);
+      setContent("");
+      setMood(5);
+      setEnergy(5);
+      setComposing(false);
+      toast.success("Saved to this device");
+    } else {
+      toast.error("Device storage is full — the entry could not be saved");
+      void load();
+    }
+  };
 
-        const success = await saveJournalEntry(entry);
-        if (success) {
-            toast.success("Log Encrypted & Archived! 📜");
-            logActivity('journal_save', `Journal entry saved (Mood: ${mood[0]}/10, Energy: ${energy[0]}/10)`);
-            setContent("");
-            setMood([5]);
-            setEnergy([5]);
-            setShowForm(false);
-            setEntries([entry, ...entries]);
-        } else {
-            toast.error("Transmission Failure.");
-        }
-        setSaving(false);
-    };
+  const remove = (entry: JournalEntry) => {
+    const ok = window.confirm("Delete this entry permanently?");
+    if (!ok) return;
+    deleteLocalJournalEntry(entry.timestamp);
+    setEntries((prev) => prev.filter((e) => e.timestamp !== entry.timestamp));
+  };
 
-    return (
-        <div className="min-h-screen bg-bg">
-            <div className="container max-w-4xl mx-auto px-4 pb-24">
-                <Header />
+  return (
+    <Screen title="Journal" subtitle="Private · stored on this device">
+      {!composing && (
+        <button
+          type="button"
+          onClick={openComposer}
+          className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-ink text-label uppercase text-bg transition-opacity hover:opacity-90"
+        >
+          <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+          New entry
+        </button>
+      )}
 
-                <div className="flex items-center justify-between mb-8 animate-fade-in" style={{ animationDelay: "0.1s" }}>
-                    <div>
-                        <h1 className="text-3xl font-display text-ink tracking-tight">My Journal</h1>
-                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-ink-muted">Your Private Notes</p>
-                    </div>
-                    <Button
-                        onClick={() => setShowForm(!showForm)}
-                        className={`rounded-xl px-6 font-black uppercase text-[10px] tracking-widest h-12 transition-all shadow-lg ${showForm
-                            ? "bg-danger text-white hover:bg-danger shadow-sm"
-                            : "bg-ink text-white shadow-sm"
-                            }`}
-                    >
-                        {showForm ? <><X className="w-4 h-4 mr-2" /> DISCARD</> : <><Plus className="w-4 h-4 mr-2" /> NEW LOG</>}
-                    </Button>
+      {composing && (
+        <div className="card p-5">
+          <div className="flex items-center justify-between">
+            <h2 className="text-section font-semibold text-ink">New entry</h2>
+            <button
+              type="button"
+              onClick={() => {
+                setComposing(false);
+                setContent("");
+              }}
+              className="h-11 rounded-md px-3 text-label uppercase text-ink-faint hover:bg-surface-2 hover:text-ink"
+            >
+              Cancel
+            </button>
+          </div>
+
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            {(
+              [
+                { id: "mood", label: "Mood", value: mood, set: setMood, low: "storm", high: "calm" },
+                { id: "energy", label: "Energy", value: energy, set: setEnergy, low: "depleted", high: "radiant" },
+              ] as const
+            ).map((field) => (
+              <div key={field.id}>
+                <div className="flex items-center justify-between">
+                  <label htmlFor={`journal-${field.id}`} className="text-label uppercase text-ink-faint">
+                    {field.label}
+                  </label>
+                  <span className="font-data text-data text-ink">
+                    {field.value}
+                    <span className="text-ink-faint">/10</span>
+                  </span>
                 </div>
-
-                <AnimatePresence>
-                    {showForm && (
-                        <motion.div
-                            initial={{ opacity: 0, height: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, height: "auto", scale: 1 }}
-                            exit={{ opacity: 0, height: 0, scale: 0.95 }}
-                            className="overflow-hidden mb-8"
-                        >
-                            <div className="card p-8 space-y-8">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                                    <div className="space-y-4">
-                                        <Label className="flex justify-between items-center text-[11px] uppercase font-black tracking-widest text-ink">
-                                            <span>Mood Matrix</span>
-                                            <span className="text-ink">{mood[0]}/10</span>
-                                        </Label>
-                                        <div className="px-2">
-                                            <Slider value={mood} onValueChange={setMood} min={1} max={10} step={1} className="py-2" />
-                                        </div>
-                                        <div className="flex justify-between text-[10px] text-ink-muted font-bold px-1">
-                                            <span>STORM</span>
-                                            <span>CALM</span>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-4">
-                                        <Label className="flex justify-between items-center text-[11px] uppercase font-black tracking-widest text-ink">
-                                            <span>Energy Core</span>
-                                            <span className="text-ink">{energy[0]}/10</span>
-                                        </Label>
-                                        <div className="px-2">
-                                            <Slider value={energy} onValueChange={setEnergy} min={1} max={10} step={1} className="py-2" />
-                                        </div>
-                                        <div className="flex justify-between text-[10px] text-ink-muted font-bold px-1">
-                                            <span>DEPLETED</span>
-                                            <span>RADIANT</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-3">
-                                    <Label className="text-[11px] uppercase font-black tracking-widest text-ink">Cognitive Reflection</Label>
-                                    <Textarea
-                                        placeholder="Document your battle today..."
-                                        value={content}
-                                        onChange={(e) => setContent(e.target.value)}
-                                        className="min-h-[200px] bg-surface-2/40 border-border rounded-xl font-sans text-base focus-visible:ring-primary placeholder:text-ink-muted transition-all"
-                                    />
-                                </div>
-
-                                <Button
-                                    onClick={handleSave}
-                                    disabled={saving}
-                                    className="w-full h-16 bg-ink text-white rounded-xl uppercase text-sm font-black tracking-widest shadow-xl shadow-sm transition-all hover:scale-[1.01] active:scale-95 disabled:opacity-50"
-                                >
-                                    {saving ? <Loader2 className="w-5 h-5 mr-3 animate-spin" /> : <PenLine className="w-5 h-5 mr-3" />}
-                                    {saving ? "ENCRYPTING SIGNAL..." : "ARCHIVE LOG"}
-                                </Button>
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-
-                <div className="space-y-6">
-                    {loading ? (
-                        <div className="flex flex-col items-center justify-center py-32 gap-6 bg-white/30 rounded-3xl border-2 border-dashed border-border">
-                            <div className="relative">
-                                <div className="absolute inset-0 bg-ink/10 blur-2xl rounded-full scale-150 animate-pulse" />
-                                <Loader2 className="w-12 h-12 animate-spin text-ink relative z-10" strokeWidth={3} />
-                            </div>
-                            <p className="text-[11px] font-black uppercase tracking-[0.4em] text-ink-muted animate-pulse">Fetching Encrypted Records</p>
-                        </div>
-                    ) : entries?.length === 0 ? (
-                        <div className="text-center py-24 rounded-3xl border-2 border-dashed border-border bg-white/20">
-                            <Scroll className="w-16 h-16 mx-auto mb-4 text-ink-muted/50" />
-                            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-ink">The Archives are Silent</p>
-                            <p className="text-sm font-medium text-ink/40 mt-1">Start documenting your path to legend.</p>
-                        </div>
-                    ) : (
-                        entries?.map((entry, i) => (
-                            <motion.div
-                                key={entry.id || i}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: i * 0.05 }}
-                                className="card p-8 space-y-6 group hover:border-ink/40 transition-all"
-                            >
-                                {(() => {
-                                    let dateStr = "Archive Date Unknown";
-                                    try {
-                                        dateStr = format(entry.timestamp, "MMMM d, yyyy • h:mm a");
-                                    } catch (e) {
-                                        console.warn("Invalid timestamp for entry:", entry.id);
-                                    }
-                                    return (
-                                        <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest border-b border-border pb-4">
-                                            <span className="text-ink/40">{dateStr}</span>
-                                            <div className="flex gap-6">
-                                                <span className="flex items-center gap-2 text-ink-muted">
-                                                    <Smile className="w-4 h-4 opacity-50" />
-                                                    <span className="text-ink">{entry.mood}</span>
-                                                </span>
-                                                <span className="flex items-center gap-2 text-ink-muted">
-                                                    <Battery className="w-4 h-4 opacity-50" />
-                                                    <span className="text-ink">{entry.energy}</span>
-                                                </span>
-                                            </div>
-                                        </div>
-                                    );
-                                })()}
-                                <p className="whitespace-pre-wrap text-base leading-relaxed text-ink font-medium">
-                                    {entry.content}
-                                </p>
-                                <div className="pt-2 flex justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <Swords className="w-4 h-4 text-ink-muted/50" />
-                                </div>
-                            </motion.div>
-                        ))
-                    )}
+                <Slider
+                  id={`journal-${field.id}`}
+                  value={[field.value]}
+                  onValueChange={([v]) => field.set(v ?? 5)}
+                  min={1}
+                  max={10}
+                  step={1}
+                  className="mt-2"
+                  aria-label={`${field.label} from 1 to 10`}
+                />
+                <div className="mt-1 flex justify-between text-meta text-ink-faint">
+                  <span>{field.low}</span>
+                  <span>{field.high}</span>
                 </div>
+              </div>
+            ))}
+          </div>
 
-            </div>
-            <BottomNav />
+          <div className="mt-5">
+            <label htmlFor="journal-body" className="text-label uppercase text-ink-faint">
+              Reflection
+            </label>
+            <textarea
+              id="journal-body"
+              ref={textareaRef}
+              value={content}
+              maxLength={MAX_LENGTH}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="What happened today, and what did you do about it?"
+              className="mt-2 min-h-[160px] w-full resize-y rounded-md border border-border bg-surface-2 px-3 py-3 text-body text-ink placeholder:text-ink-faint"
+            />
+            <p className="mt-1 text-right font-data text-meta text-ink-faint">
+              {content.length}/{MAX_LENGTH}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => void handleSave()}
+            disabled={saving || !content.trim()}
+            className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-ink text-label uppercase text-bg transition-opacity hover:opacity-90 disabled:opacity-40"
+          >
+            {saving ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+            ) : (
+              <PenLine className="h-3.5 w-3.5" aria-hidden="true" />
+            )}
+            {saving ? "Saving" : "Save entry"}
+          </button>
         </div>
-    );
+      )}
+
+      <SectionHead>{entries.length > 0 ? `${entries.length} entries` : undefined}</SectionHead>
+
+      {loading ? (
+        <div className="space-y-3" aria-hidden="true">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="h-24 animate-pulse rounded-lg border border-border bg-surface-2" />
+          ))}
+        </div>
+      ) : entries.length === 0 ? (
+        <EmptyState
+          icon={<ScrollText className="h-8 w-8" aria-hidden="true" />}
+          title="No entries yet"
+          description="Write down what you did today and how it felt. Even one line is worth keeping."
+          action={
+            <button
+              type="button"
+              onClick={openComposer}
+              className="h-11 rounded-md border border-border px-5 text-label uppercase text-ink hover:bg-surface-2"
+            >
+              Write the first one
+            </button>
+          }
+        />
+      ) : (
+        <ul className="space-y-3">
+          {entries.map((entry) => (
+            <li key={entry.id ?? entry.timestamp} className="card p-5">
+              <div className="flex items-center justify-between gap-3 border-b border-border pb-3">
+                <time
+                  dateTime={new Date(entry.timestamp).toISOString()}
+                  className="font-data text-meta text-ink-muted"
+                >
+                  {formatStamp(entry.timestamp)}
+                </time>
+                <button
+                  type="button"
+                  onClick={() => remove(entry)}
+                  aria-label="Delete this entry"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-md text-ink-faint transition-colors hover:bg-danger/5 hover:text-danger"
+                >
+                  <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+              </div>
+
+              <p className="mt-3 whitespace-pre-wrap text-body leading-relaxed text-ink">
+                {entry.content}
+              </p>
+
+              <p className="mt-3 flex gap-4 font-data text-meta text-ink-muted">
+                <span>MOOD {entry.mood}/10</span>
+                <span>ENERGY {entry.energy}/10</span>
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Screen>
+  );
 }

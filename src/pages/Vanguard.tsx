@@ -1,413 +1,383 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { Header } from "@/components/Header";
-import { BottomNav } from "@/components/BottomNav";
-import { LoadingScreen } from "@/components/LoadingScreen";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Send, Loader2, RefreshCw, AlertCircle, Radio, Shield, Users, MessageSquare, AlertTriangle, Scroll, Sparkles } from "lucide-react";
-import { useNostr } from "@/hooks/useNostr";
-import { RELAYS, fetchHealthChecks } from "@/services/nostr";
-import { generateOrLoadKeys, NostrKeys } from "@/services/nostr";
-import { finalizeEvent, Event, Filter } from "nostr-tools";
-import { formatDistanceToNow } from "date-fns";
-import { hasAuraBonus, calculateStreak, getStreakData } from "@/lib/streakUtils";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Send,
+  Loader2,
+  RefreshCw,
+  AlertCircle,
+  Radio,
+  MessageSquare,
+  TriangleAlert,
+  ScrollText,
+  Eye,
+  type LucideIcon,
+} from "lucide-react";
+import { finalizeEvent, type Event } from "nostr-tools";
 
-// nostr-tools' SimplePool exposes subscribe() with these params at runtime
-interface PoolSubscriber {
-    subscribe(
-        relays: string[],
-        filter: Filter,
-        params: { onevent?: (event: Event) => void; oneose?: () => void; onclose?: () => void }
-    ): { close: () => void };
-}
+import { Screen } from "@/components/Screen";
+import { EmptyState } from "@/components/EmptyState";
+import { useNostr } from "@/hooks/useNostr";
+import { useNostrContext } from "@/context/NostrContext";
+import { generateOrLoadKeys, fetchHealthChecks, type NostrKeys } from "@/services/nostr";
+import { getLocalHealthChecks } from "@/services/localStore";
+import { hasAuraBonus, calculateStreak, getStreakData } from "@/lib/streakUtils";
+import { cn } from "@/lib/utils";
 
 interface Message {
-    id: string;
-    content: string;
-    pubkey: string;
-    created_at: number;
-    status?: 'sending' | 'sent' | 'received' | 'failed';
-    streak?: number;
-    bonus?: string;
+  id: string;
+  content: string;
+  pubkey: string;
+  created_at: number;
+  status: "sending" | "sent" | "received" | "failed";
+  streak?: number;
+  bonus?: string;
 }
 
-const BROADCAST_TIMEOUT = 5000;
-const GLOBAL_ROOM_ID = "0000000000000000000000000000000000000000000000000000000000000001";
+const BROADCAST_TIMEOUT = 8000;
+const ROOM_ID = "0000000000000000000000000000000000000000000000000000000000000001";
 
-const CHANNELS = [
-    { id: 'fursan_general', label: 'General', icon: MessageSquare, desc: 'Public Chat' },
-    { id: 'fursan_sos', label: 'SOS', icon: AlertTriangle, desc: 'Help Needed' },
-    { id: 'fursan_motivation', label: 'Motivation', icon: Sparkles, desc: 'Be Inspired' },
-    { id: 'fursan_fiqh', label: 'Learn', icon: Scroll, desc: 'Questions & Answers' },
+const CHANNELS: { id: string; label: string; Icon: LucideIcon; blurb: string }[] = [
+  { id: "fursan_general", label: "General", Icon: MessageSquare, blurb: "Strategy and everything else" },
+  { id: "fursan_sos", label: "SOS", Icon: TriangleAlert, blurb: "Struggling right now" },
+  { id: "fursan_motivation", label: "Motivation", Icon: Radio, blurb: "Share what worked" },
+  { id: "fursan_fiqh", label: "Learn", Icon: ScrollText, blurb: "Questions and references" },
 ];
 
+const shortId = (pubkey: string) => `${pubkey.slice(0, 4)}…${pubkey.slice(-4)}`;
+
+const clockTime = (seconds: number) =>
+  new Date(seconds * 1000).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+
+/**
+ * One chat, one name, one scroll container.
+ *
+ * Previously this screen was titled "Community" while living at `/vanguard` and
+ * being labelled "Chat" in the nav, sat next to a second full chat app at
+ * `/community`, and rendered message bylines at 8px. Its kind-0 profile lookup
+ * was subscribed inside an effect keyed on `[messages, profiles]`, so every
+ * arriving message tore down the in-flight request and profiles never resolved.
+ * Profile resolution now lives once in NostrContext with an app-wide cache.
+ */
 export default function Vanguard() {
-    const [messages, setMessages] = useState<Message[]>([]);
-    const [newMessage, setNewMessage] = useState("");
-    const [activeChannel, setActiveChannel] = useState("fursan_general");
-    const [identity, setIdentity] = useState<NostrKeys | null>(null);
-    const [loading, setLoading] = useState(true);
-    const { events, subscribe, publish, profiles, setProfiles, pool, connectedRelays } = useNostr();
-    const messagesEndRef = useRef<HTMLDivElement>(null);
-    const timeoutRefs = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const { events, subscribe, publish, profiles } = useNostr();
+  const { connectedRelays } = useNostrContext();
 
-    const getShortId = (pubkey: string) => `${pubkey.slice(0, 4)}...${pubkey.slice(-4)}`;
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [draft, setDraft] = useState("");
+  const [channel, setChannel] = useState(CHANNELS[0].id);
+  const [identity, setIdentity] = useState<NostrKeys | null>(null);
+  const [ready, setReady] = useState(false);
+  const timeouts = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const listRef = useRef<HTMLDivElement>(null);
 
-    useEffect(() => {
-        generateOrLoadKeys().then(id => {
-            setIdentity(id);
-            setLoading(false);
-        });
-    }, []);
-
-    useEffect(() => {
-        if (!identity) return;
-        setMessages([]);
-        const unsub = subscribe({
-            kinds: [42],
-            '#e': [GLOBAL_ROOM_ID],
-            '#t': [activeChannel],
-            limit: 50
-        });
-        return () => unsub && unsub();
-    }, [identity, subscribe, activeChannel]);
-
-    useEffect(() => {
-        const incomingMessages = events
-            .filter(event => {
-                const isKind42 = event.kind === 42;
-                const matchesRoom = event.tags.some(t => t[0] === 'e' && t[1] === GLOBAL_ROOM_ID);
-                const matchesChannel = event.tags.some(t => t[0] === 't' && t[1] === activeChannel);
-                return isKind42 && matchesRoom && matchesChannel;
-            })
-            .map(event => {
-                const streakTag = event.tags.find(t => t[0] === 'streak');
-                const bonusTag = event.tags.find(t => t[0] === 'bonus');
-                return {
-                    id: event.id!,
-                    content: event.content,
-                    pubkey: event.pubkey,
-                    created_at: event.created_at,
-                    status: 'received' as const,
-                    streak: streakTag ? parseInt(streakTag[1]) : undefined,
-                    bonus: bonusTag ? bonusTag[1] : undefined
-                };
-            });
-
-        setMessages(prev => {
-            const existingIds = new Set(prev.map(m => m.id));
-            const newFromRelay = incomingMessages.filter(m => !existingIds.has(m.id));
-
-            const filteredPrev = prev.filter(p => {
-                if (p.status === 'sending' || p.status === 'failed') {
-                    const hasConfirmation = incomingMessages.some(m => m.content === p.content && m.pubkey === p.pubkey);
-                    if (hasConfirmation) {
-                        const timeout = timeoutRefs.current.get(p.id);
-                        if (timeout) {
-                            clearTimeout(timeout);
-                            timeoutRefs.current.delete(p.id);
-                        }
-                        return false;
-                    }
-                }
-                return true;
-            });
-
-            return [...filteredPrev, ...newFromRelay].sort((a, b) => a.created_at - b.created_at);
-        });
-    }, [events, activeChannel]);
-
-    // Track pubkeys we've already requested profiles for to avoid re-subscribing
-    // on every incoming message
-    const requestedProfilesRef = useRef<Set<string>>(new Set());
-    useEffect(() => {
-        const unknownPubkeys = messages
-            .filter(m => !profiles[m.pubkey] && !requestedProfilesRef.current.has(m.pubkey))
-            .map(m => m.pubkey);
-
-        if (unknownPubkeys.length > 0 && pool) {
-            unknownPubkeys.forEach(pk => requestedProfilesRef.current.add(pk));
-            const sub = (pool as unknown as PoolSubscriber).subscribe(RELAYS,
-                { kinds: [0], authors: unknownPubkeys },
-                {
-                    onevent: (event: Event) => {
-                        try {
-                            const data = JSON.parse(event.content);
-                            setProfiles(prev => ({
-                                ...prev,
-                                [event.pubkey]: data.display_name || data.name || "Warrior"
-                            }));
-                        } catch (e) {
-                            console.error("Failed to parse profile metadata", e);
-                        }
-                    }
-                }
-            );
-            return () => sub.close();
-        }
-    }, [messages, profiles, pool, setProfiles]);
-
-    useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [messages]);
-
-    useEffect(() => {
-        const refs = timeoutRefs.current;
-        return () => {
-            refs.forEach(timeout => clearTimeout(timeout));
-        };
-    }, []);
-
-    const sendMessage = useCallback(async (content: string, tempId: string, streakDays: number, aura: boolean) => {
-        if (!identity?.privateKey) return;
-
-        try {
-            const tags = [
-                ['e', GLOBAL_ROOM_ID, '', 'root'],
-                ['t', activeChannel],
-                ['t', 'nofapfursan'],
-                ['streak', streakDays.toString()]
-            ];
-
-            if (aura) {
-                tags.push(['bonus', 'aura']);
-            }
-
-            const eventTemplate = {
-                kind: 42,
-                created_at: Math.floor(Date.now() / 1000),
-                tags,
-                content,
-            };
-
-            const signedEvent = finalizeEvent(eventTemplate, identity.privateKey);
-
-            const timeout = setTimeout(() => {
-                setMessages(prev => prev.map(m =>
-                    m.id === tempId && m.status === 'sending'
-                        ? { ...m, status: 'failed' as const }
-                        : m
-                ));
-                timeoutRefs.current.delete(tempId);
-            }, BROADCAST_TIMEOUT);
-
-            timeoutRefs.current.set(tempId, timeout);
-
-            const success = await publish(signedEvent as Event);
-
-            if (!success) {
-                clearTimeout(timeout);
-                timeoutRefs.current.delete(tempId);
-                setMessages(prev => prev.map(m =>
-                    m.id === tempId ? { ...m, status: 'failed' as const } : m
-                ));
-            }
-        } catch (error) {
-            console.error("Failed to send message:", error);
-            setMessages(prev => prev.map(m =>
-                m.id === tempId ? { ...m, status: 'failed' as const } : m
-            ));
-        }
-    }, [identity, publish, activeChannel]);
-
-    const handleSend = async (e: React.FormEvent) => {
-        e.preventDefault();
-        const content = newMessage.trim();
-        if (!content || !identity || !identity.privateKey) return;
-
-        const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        const streakData = await getStreakData();
-        const currentStreak = calculateStreak(streakData.startDate);
-        const healthHistory = await fetchHealthChecks();
-        const hasAura = hasAuraBonus(healthHistory);
-
-        const optimisticMsg: Message = {
-            id: tempId,
-            content,
-            pubkey: identity.publicKey,
-            created_at: Math.floor(Date.now() / 1000),
-            status: 'sending',
-            streak: currentStreak.days,
-            bonus: hasAura ? 'aura' : undefined
-        };
-
-        setMessages(prev => [...prev, optimisticMsg]);
-        setNewMessage("");
-
-        await sendMessage(content, tempId, currentStreak.days, hasAura);
+  useEffect(() => {
+    let cancelled = false;
+    generateOrLoadKeys()
+      .then((id) => {
+        if (cancelled) return;
+        setIdentity(id);
+        setReady(true);
+      })
+      .catch((error) => {
+        console.error("[Vanguard] Identity unavailable", error);
+        if (!cancelled) setReady(true);
+      });
+    return () => {
+      cancelled = true;
     };
+  }, []);
 
-    const handleRetry = async (message: Message) => {
-        setMessages(prev => prev.map(m =>
-            m.id === message.id ? { ...m, status: 'sending' as const } : m
-        ));
-        await sendMessage(message.content, message.id, message.streak ?? 0, message.bonus === 'aura');
+  useEffect(() => subscribe({ kinds: [42], "#e": [ROOM_ID], "#t": [channel], limit: 50 }), [
+    subscribe,
+    channel,
+  ]);
+
+  /* Relay events → message list, reconciling optimistic sends. */
+  useEffect(() => {
+    const incoming: Message[] = events
+      .filter((event) => event.kind === 42)
+      .map((event) => {
+        const streakTag = event.tags.find((t) => t[0] === "streak");
+        const bonusTag = event.tags.find((t) => t[0] === "bonus");
+        return {
+          id: event.id,
+          content: event.content,
+          pubkey: event.pubkey,
+          created_at: event.created_at,
+          status: "received" as const,
+          streak: streakTag ? Number.parseInt(streakTag[1], 10) : undefined,
+          bonus: bonusTag?.[1],
+        };
+      });
+
+    setMessages((prev) => {
+      const incomingIds = new Set(incoming.map((m) => m.id));
+      const confirmed = incoming.map((m) => `${m.pubkey}|${m.content}`);
+
+      const kept = prev.filter((p) => {
+        if (incomingIds.has(p.id)) return false;
+        if (p.status === "sending" || p.status === "failed") {
+          if (confirmed.includes(`${p.pubkey}|${p.content}`)) {
+            const timer = timeouts.current.get(p.id);
+            if (timer) {
+              clearTimeout(timer);
+              timeouts.current.delete(p.id);
+            }
+            return false;
+          }
+        }
+        return true;
+      });
+
+      const fresh = incoming.filter((m) => !kept.some((k) => k.id === m.id));
+      return [...kept, ...fresh].sort((a, b) => a.created_at - b.created_at).slice(-200);
+    });
+  }, [events]);
+
+  useEffect(() => {
+    const map = timeouts.current;
+    return () => {
+      map.forEach((t) => clearTimeout(t));
+      map.clear();
     };
+  }, []);
 
-    if (loading) {
-        return <LoadingScreen message="Joining the chat..." subMessage="Loading messages..." />;
+  useEffect(() => {
+    const node = listRef.current;
+    if (node) node.scrollTop = node.scrollHeight;
+  }, [messages.length]);
+
+  const participants = useMemo(() => new Set(messages.map((m) => m.pubkey)).size, [messages]);
+
+  const send = useCallback(
+    async (content: string, tempId: string, streakDays: number, aura: boolean) => {
+      if (!identity) return;
+      const tags: string[][] = [
+        ["e", ROOM_ID, "", "root"],
+        ["t", channel],
+        ["t", "nofapfursan"],
+        ["streak", String(streakDays)],
+      ];
+      if (aura) tags.push(["bonus", "aura"]);
+
+      const signed = finalizeEvent(
+        { kind: 42, created_at: Math.floor(Date.now() / 1000), tags, content },
+        identity.privateKey,
+      );
+
+      const markFailed = () =>
+        setMessages((prev) =>
+          prev.map((m) => (m.id === tempId ? { ...m, status: "failed" as const } : m)),
+        );
+
+      const timer = setTimeout(markFailed, BROADCAST_TIMEOUT);
+      timeouts.current.set(tempId, timer);
+
+      const ok = await publish(signed as unknown as Event);
+      if (ok) {
+        clearTimeout(timer);
+        timeouts.current.delete(tempId);
+        setMessages((prev) =>
+          prev.map((m) => (m.id === tempId ? { ...m, status: "sent" as const } : m)),
+        );
+      }
+    },
+    [identity, publish, channel],
+  );
+
+  const handleSend = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const content = draft.trim();
+    if (!content) return;
+    if (!identity) {
+      return;
     }
 
-    return (
-        <div className="min-h-screen bg-bg pb-24">
-            <div className="container max-w-lg mx-auto px-4">
-                <Header />
+    const tempId = `local-${Date.now()}`;
+    // Local-only reads — no relay round-trip before the message appears.
+    const streak = calculateStreak((await getStreakData()).startDate).days;
+    const aura = hasAuraBonus(getLocalHealthChecks());
+    void fetchHealthChecks(); // warm the relay copy in the background
 
-                {/* Vanguard Header */}
-                <header className="mb-4 mt-4 animate-fade-in" style={{ animationDelay: "0.1s" }}>
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-full bg-ink flex items-center justify-center shadow-lg shadow-sm">
-                                <Radio className="w-6 h-6 text-white" />
-                            </div>
-                            <div>
-                                <h1 className="text-3xl font-display text-ink tracking-tight">Community</h1>
-                                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-ink-muted">Chat with everyone</p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-2 bg-surface-2 px-3 py-1.5 rounded-full border border-border">
-                            <div className={`w-2 h-2 rounded-full ${connectedRelays.length > 0 ? 'bg-surface-2 animate-pulse' : 'bg-danger/50 animate-ping'}`} />
-                            <span className="text-[9px] font-black uppercase tracking-widest text-ink">
-                                {connectedRelays.length > 0 ? `${connectedRelays.length} ONLINE` : 'CONNECTING...'}
-                            </span>
-                        </div>
-                    </div>
-                </header>
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: tempId,
+        content,
+        pubkey: identity.publicKey,
+        created_at: Math.floor(Date.now() / 1000),
+        status: "sending",
+        streak,
+        bonus: aura ? "aura" : undefined,
+      },
+    ]);
+    setDraft("");
+    void send(content, tempId, streak, aura);
+  };
 
-                {/* Chat Container */}
-                <div className="animate-fade-in" style={{ animationDelay: "0.15s" }}>
-                    <div className="card overflow-hidden">
-                        {/* Channel Header */}
-                        <div className="bg-surface-2/60 px-4 py-3 border-b border-border">
-                            <div className="flex items-center justify-between mb-3">
-                                <div className="flex items-center gap-2">
-                                    <Shield className="w-4 h-4 text-ink" />
-                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-ink">
-                                        Chat Command
-                                    </span>
-                                </div>
-                                <div className="flex items-center gap-1.5 text-ink-muted">
-                                    <Users className="w-3 h-3" />
-                                    <span className="text-[9px] font-bold uppercase">{messages.length > 0 ? `${new Set(messages.map(m => m.pubkey)).size} Online` : 'Scanning...'}</span>
-                                </div>
-                            </div>
-
-                            {/* Channel Selector */}
-                            <div className="flex gap-2 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden">
-                                {CHANNELS.map(channel => {
-                                    const isActive = activeChannel === channel.id;
-                                    return (
-                                        <button
-                                            key={channel.id}
-                                            onClick={() => setActiveChannel(channel.id)}
-                                            aria-label={`Switch to ${channel.label} channel (${channel.desc})`}
-                                            aria-pressed={isActive}
-                                            className={`
-                                                flex items-center gap-1.5 px-4 py-2.5 min-h-[40px] rounded-lg border text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-all
-                                                ${isActive
-                                                    ? 'bg-ink text-bg border-ink shadow-sm'
-                                                    : 'bg-surface text-ink-muted border-border hover:border-ink/50'}
-                                            `}
-                                        >
-                                            <channel.icon className="w-3 h-3" />
-                                            {channel.label}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
-
-                        {/* Messages Area */}
-                        {/* Messages Area */}
-                        <div className="h-[420px] overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-primary/20 scrollbar-track-transparent bg-bg/50">
-                            {messages.length === 0 && (
-                                <div className="h-full flex flex-col items-center justify-center opacity-40 space-y-3">
-                                    <Radio className="w-10 h-10 text-ink animate-pulse" />
-                                    <p className="text-[10px] uppercase font-black tracking-[0.3em] text-ink-muted text-center">
-                                        Chat is quiet<br />No new messages
-                                    </p>
-                                </div>
-                            )}
-                            {messages.map((message) => {
-                                const isOwn = identity && message.pubkey === identity.publicKey;
-                                const isSending = message.status === 'sending';
-                                const isFailed = message.status === 'failed';
-
-                                return (
-                                    <div key={message.id} className={`flex ${isOwn ? "justify-end" : "justify-start"} animate-in slide-in-from-bottom-1 duration-300`}>
-                                        <div className={`max-w-[85%] space-y-1 ${isOwn ? "text-right" : "text-left"}`}>
-                                            <div className={`px-4 py-3 rounded-xl ${isOwn
-                                                ? "bg-ink text-bg border border-ink/50"
-                                                : "bg-surface text-ink border border-border"
-                                                } ${isSending ? "opacity-50" : ""} ${isFailed ? "border-red-400 opacity-60" : ""}`}>
-                                                <p className={`text-[8px] font-black uppercase tracking-widest mb-1.5 ${isOwn ? 'text-bg/70' : 'text-ink-muted'
-                                                    } ${message.bonus === 'aura' ? '' : ''}`}>
-                                                    {profiles[message.pubkey] || getShortId(message.pubkey)}
-                                                    {message.streak !== undefined && (
-                                                        <span className="ml-1.5 text-[7px] text-orange-400">
-                                                            • {message.streak}D 🔥
-                                                        </span>
-                                                    )}
-                                                </p>
-                                                <p className="text-sm font-medium leading-relaxed break-words">{message.content}</p>
-                                            </div>
-                                            <div className={`flex items-center gap-2 ${isOwn ? "justify-end" : "justify-start"} px-1`}>
-                                                {isSending ? (
-                                                    <div className="flex items-center gap-1 text-ink-muted">
-                                                        <Loader2 className="w-2.5 h-2.5 animate-spin" />
-                                                        <span className="text-[8px] uppercase font-black tracking-tight">Sending...</span>
-                                                    </div>
-                                                ) : isFailed ? (
-                                                    <button
-                                                        onClick={() => handleRetry(message)}
-                                                        className="flex items-center gap-1 text-red-400 hover:text-red-300 transition-colors cursor-pointer"
-                                                    >
-                                                        <AlertCircle className="w-2.5 h-2.5" />
-                                                        <span className="text-[8px] uppercase font-black tracking-tight">Failed</span>
-                                                        <RefreshCw className="w-2.5 h-2.5 ml-1" />
-                                                        <span className="text-[8px] uppercase font-black tracking-tight">Retry</span>
-                                                    </button>
-                                                ) : (
-                                                    <p className="text-[8px] uppercase font-bold tracking-tight text-ink-muted/60">
-                                                        {formatDistanceToNow(new Date(message.created_at * 1000), { addSuffix: true })}
-                                                    </p>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                            <div ref={messagesEndRef} />
-                        </div>
-
-                        {/* Input Area */}
-                        <div className="p-4 border-t border-border bg-gradient-to-r from-secondary/50 to-background/50">
-                            <form onSubmit={handleSend} className="flex gap-3">
-                                <Input
-                                    value={newMessage}
-                                    onChange={(e) => setNewMessage(e.target.value)}
-                                    placeholder="TYPE A MESSAGE..."
-                                    className="flex-1 bg-surface border-border rounded-xl h-12 text-ink text-xs font-bold uppercase tracking-wider px-4 focus-visible:ring-primary/50 focus-visible:ring-1 focus-visible:border-ink placeholder:text-ink-muted/50"
-                                />
-                                <Button
-                                    type="submit"
-                                    disabled={!newMessage.trim() || !identity}
-                                    aria-label="Send message"
-                                    className="bg-ink hover:bg-ink/90 text-bg font-black rounded-xl h-12 w-12 flex items-center justify-center p-0 transition-all active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed shadow-lg shadow-primary/20"
-                                >
-                                    <Send className="w-5 h-5" aria-hidden="true" />
-                                </Button>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-
-                <footer className="mt-8 text-center">
-                    <p className="font-black uppercase tracking-[0.4em] text-[8px] text-ink-muted/30">Community Chat // Stay strong. ⚔️</p>
-                </footer>
-            </div>
-
-            <BottomNav />
-        </div>
+  const retry = (message: Message) => {
+    setMessages((prev) =>
+      prev.map((m) => (m.id === message.id ? { ...m, status: "sending" as const } : m)),
     );
+    void send(message.content, message.id, message.streak ?? 0, message.bonus === "aura");
+  };
+
+  const online = connectedRelays.length;
+
+  return (
+    <Screen title="Vanguard" subtitle="Public relay chat" bare>
+      <div className="flex min-h-0 flex-1 flex-col px-5 pb-[calc(env(safe-area-inset-bottom,0px)+12px)]">
+        <div className="flex items-center gap-2 py-3">
+          <span
+            className={cn(
+              "h-2 w-2 shrink-0 rounded-full",
+              online > 0 ? "bg-success" : "bg-danger",
+            )}
+            aria-hidden="true"
+          />
+          <p className="text-meta text-ink-muted">
+            {online > 0
+              ? `${online} relay${online === 1 ? "" : "s"} live`
+              : "No relay connection — messages will fail to send"}
+          </p>
+          {participants > 0 && (
+            <p className="ml-auto font-data text-meta text-ink-faint">{participants} here</p>
+          )}
+        </div>
+
+        <div
+          className="no-scrollbar -mx-5 flex gap-2 overflow-x-auto px-5 pb-3"
+          role="tablist"
+          aria-label="Channels"
+        >
+          {CHANNELS.map(({ id, label, Icon, blurb }) => (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={channel === id}
+              onClick={() => setChannel(id)}
+              title={blurb}
+              className={cn(
+                "inline-flex h-11 shrink-0 items-center gap-1.5 rounded-md border px-3.5 text-meta font-medium transition-colors duration-fast",
+                channel === id
+                  ? "border-ink bg-ink text-bg"
+                  : "border-border text-ink-muted hover:border-ink-faint hover:text-ink",
+              )}
+            >
+              <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <div
+          ref={listRef}
+          className="min-h-[40vh] flex-1 space-y-3 overflow-y-auto rounded-lg border border-border bg-surface px-4 py-4"
+        >
+          {messages.length === 0 ? (
+            <EmptyState
+              icon={<Radio className="h-7 w-7" aria-hidden="true" />}
+              title="Quiet in here"
+              description="Nothing has been said in this channel recently."
+              className="border-0 bg-transparent py-10"
+            />
+          ) : (
+            messages.map((message) => {
+              const mine = identity?.publicKey === message.pubkey;
+              const name = profiles[message.pubkey] ?? shortId(message.pubkey);
+              return (
+                <div key={message.id} className={cn("flex", mine ? "justify-end" : "justify-start")}>
+                  <div className={cn("max-w-[85%]", mine ? "text-right" : "text-left")}>
+                    <div
+                      className={cn(
+                        "rounded-lg border px-4 py-3 text-left",
+                        mine
+                          ? "border-ink bg-ink text-bg"
+                          : "border-border bg-surface-2 text-ink",
+                        message.status === "sending" && "opacity-60",
+                        message.status === "failed" && "border-danger",
+                      )}
+                    >
+                      <p
+                        className={cn(
+                          "mb-1 flex items-center gap-2 font-data text-meta",
+                          mine ? "text-bg/70" : "text-ink-muted",
+                        )}
+                      >
+                        {name}
+                        {message.streak !== undefined && (
+                          <span className={cn(mine ? "text-bg/70" : "text-ink-faint")}>
+                            {message.streak}d
+                          </span>
+                        )}
+                        {message.bonus === "aura" && (
+                          <span className="text-accent" title="5+ day check-in streak">
+                            aura
+                          </span>
+                        )}
+                      </p>
+                      <p className="whitespace-pre-wrap break-words text-body leading-relaxed">
+                        {message.content}
+                      </p>
+                    </div>
+
+                    <p className="mt-1 px-1 font-data text-meta text-ink-faint">
+                      {message.status === "sending" ? (
+                        <span className="inline-flex items-center gap-1">
+                          <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                          sending
+                        </span>
+                      ) : message.status === "failed" ? (
+                        <button
+                          type="button"
+                          onClick={() => retry(message)}
+                          className="inline-flex items-center gap-1 text-danger hover:underline"
+                        >
+                          <AlertCircle className="h-3 w-3" aria-hidden="true" />
+                          not sent
+                          <RefreshCw className="h-3 w-3" aria-hidden="true" />
+                          retry
+                        </button>
+                      ) : (
+                        clockTime(message.created_at)
+                      )}
+                    </p>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        <form onSubmit={handleSend} className="mt-3 flex gap-2">
+          <label htmlFor="vanguard-composer" className="sr-only">
+            Message
+          </label>
+          <input
+            id="vanguard-composer"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="Write a message…"
+            maxLength={1000}
+            autoComplete="off"
+            className="h-12 min-w-0 flex-1 rounded-md border border-border bg-surface-2 px-4 text-body text-ink placeholder:text-ink-faint"
+          />
+          <button
+            type="submit"
+            disabled={!draft.trim() || !identity}
+            aria-label="Send message"
+            className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-ink text-bg transition-opacity hover:opacity-90 disabled:opacity-40"
+          >
+            <Send className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </form>
+
+        <p className="mt-3 inline-flex items-start gap-1.5 text-meta text-ink-faint">
+          <Eye className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+          Messages are public, signed Nostr events on relays. Never post anything you
+          would not sign your name to.
+        </p>
+      </div>
+    </Screen>
+  );
 }

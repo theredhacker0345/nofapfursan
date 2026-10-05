@@ -1,92 +1,88 @@
+import { Lock, Check, Eye } from "lucide-react";
+import { toast } from "sonner";
+
 import { THEMES } from "@/data/themes";
 import { useTheme } from "@/context/ThemeContext";
-import { Lock, Check, Eye } from "lucide-react";
-import { Button } from "./ui/button";
-import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
+/**
+ * Flat list rows inside one surface group. Previously each theme was its own
+ * nested card and the row wrapped a `<Button>` inside a `<button>` — invalid
+ * interactive nesting that also broke keyboard activation.
+ */
 export function ThemeSelector() {
-    const { currentTheme, setTheme, previewTheme, unlockedThemes } = useTheme();
+  const { currentTheme, setTheme, previewTheme, unlockedThemes } = useTheme();
 
-    const handleSetTheme = (themeId: string, isUnlocked: boolean) => {
-        if (!isUnlocked) {
-            toast.error("Theme Locked", {
-                description: "Build a longer streak to unlock this theme."
-            });
-            return;
-        }
-        setTheme(themeId);
-        toast.success("Theme Updated", {
-            description: `Switched to ${THEMES.find(t => t.id === themeId)?.name}.`
-        });
-    };
+  const select = (id: string, unlocked: boolean) => {
+    if (!unlocked) {
+      toast.error("Theme locked", {
+        description: `Reach day ${THEMES.find((t) => t.id === id)?.minDays ?? "?"} to unlock it.`,
+      });
+      return;
+    }
+    void setTheme(id);
+  };
 
-    return (
-        <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-3">
-                {THEMES.map((theme) => {
-                    const isUnlocked = unlockedThemes.includes(theme.id);
-                    const isSelected = currentTheme.id === theme.id;
+  return (
+    <ul>
+      {THEMES.map((theme) => {
+        const unlocked = unlockedThemes.includes(theme.id);
+        const selected = currentTheme.id === theme.id;
 
-                    return (
-                        <button
-                            key={theme.id}
-                            onClick={() => handleSetTheme(theme.id, isUnlocked)}
-                            disabled={!isUnlocked}
-                            aria-pressed={isSelected}
-                            aria-label={`${isSelected ? 'Current theme' : 'Switch to'} ${theme.name}${!isUnlocked ? ` (unlocks at day ${theme.minDays})` : ''}`}
-                            className={cn(
-                                "relative w-full text-left p-4 rounded-xl border transition-colors flex items-center gap-4",
-                                isSelected
-                                    ? 'border-ink bg-surface-2/50'
-                                    : 'border-border bg-bg hover:bg-surface-2/40',
-                                !isUnlocked && 'opacity-60 cursor-not-allowed'
-                            )}
-                        >
-                            <div
-                                className="w-9 h-9 rounded-lg border border-border flex-shrink-0"
-                                style={{ backgroundColor: theme.preview }}
-                                aria-hidden="true"
-                            />
+        return (
+          <li key={theme.id} className="row">
+            <span
+              className="h-8 w-8 shrink-0 rounded-full border border-border"
+              style={{ backgroundColor: theme.preview }}
+              aria-hidden="true"
+            />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-body-s font-medium text-ink">
+                {theme.name}
+                {selected && <span className="sr-only"> (current)</span>}
+              </span>
+              <span className="block truncate text-meta text-ink-muted">
+                {unlocked ? theme.description : `Unlocks at day ${theme.minDays}`}
+              </span>
+            </span>
 
-                            <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-ink flex items-center gap-2">
-                                    {theme.name}
-                                    {isSelected && (
-                                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-ink">
-                                            <Check className="w-3 h-3" /> Active
-                                        </span>
-                                    )}
-                                </p>
-                                <p className="text-xs text-ink-muted mt-0.5 truncate">
-                                    {isUnlocked ? theme.description : `Unlocks at day ${theme.minDays}`}
-                                </p>
-                            </div>
+            {unlocked ? (
+              <button
+                type="button"
+                onClick={() => {
+                  previewTheme(theme.id);
+                  toast("Previewing for 3 seconds");
+                }}
+                aria-label={`Preview the ${theme.name} theme`}
+                title="Preview for 3 seconds"
+                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-ink-faint transition-colors hover:bg-surface-2 hover:text-ink"
+              >
+                <Eye className="h-4 w-4" aria-hidden="true" />
+              </button>
+            ) : (
+              <Lock className="h-4 w-4 shrink-0 text-ink-faint" aria-hidden="true" />
+            )}
 
-                            {!isUnlocked ? (
-                                <Lock className="w-4 h-4 text-ink-muted flex-shrink-0" />
-                            ) : !isSelected && (
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-9 px-3 text-xs font-medium rounded-lg border-border"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        previewTheme(theme.id);
-                                        toast.info("Previewing theme", {
-                                            description: `${theme.name} for 3 seconds.`,
-                                            duration: 3000
-                                        });
-                                    }}
-                                >
-                                    <Eye className="w-3.5 h-3.5 mr-1.5" />
-                                    Preview
-                                </Button>
-                            )}
-                        </button>
-                    );
-                })}
-            </div>
-        </div>
-    );
+            <button
+              type="button"
+              disabled={!unlocked || selected}
+              onClick={() => select(theme.id, unlocked)}
+              aria-pressed={selected}
+              aria-label={`Use the ${theme.name} theme`}
+              className={cn(
+                "inline-flex h-11 w-[72px] shrink-0 items-center justify-center rounded-md text-label uppercase transition-colors",
+                selected
+                  ? "cursor-default text-accent"
+                  : "bg-ink text-bg hover:opacity-90",
+                // A locked theme must not read as an actionable button.
+                !unlocked && "cursor-not-allowed opacity-30 hover:opacity-30",
+              )}
+            >
+              {selected ? <Check className="h-4 w-4" aria-hidden="true" /> : "Use"}
+            </button>
+          </li>
+        );
+      })}
+    </ul>
+  );
 }

@@ -1,83 +1,96 @@
-import { getStreakData, calculateStreak, getAvatarLevel } from "@/lib/streakUtils";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { Link } from "react-router-dom";
+import { CloudOff, Cloud, Loader2, Check } from "lucide-react";
 import { Logo } from "@/components/Logo";
-import { Avatar } from "@/components/Avatar";
-import { generateOrLoadKeys } from "@/services/nostr";
+import { MilestoneBadge } from "@/components/MilestoneBadge";
+import { daysSinceStart, getStreakData } from "@/lib/streakUtils";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
+import { cn } from "@/lib/utils";
 
 interface HeaderProps {
-  syncState?: "syncing" | "synced" | "offline";
+  /** Rendered on the trailing edge (settings, avatar, …). */
+  action?: ReactNode;
 }
 
-export function Header({ syncState = "synced" }: HeaderProps) {
-  const [level, setLevel] = useState<{ name: string; emoji: string } | null>(null);
-  const [userName, setUserName] = useState<string>("");
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+/**
+ * Honest sync state. The previous header hard-coded `syncState="synced"` on every
+ * route and rendered a permanent green dot, so a user with three dead relays and
+ * a full offline queue was told everything was fine.
+ */
+function SyncStatus() {
+  const { isOnline, isSyncing, pendingCount, droppedCount } = useNetworkStatus();
 
-  useEffect(() => {
-    const load = async () => {
-      const data = await getStreakData();
-      if (data.startDate) {
-        const { days } = calculateStreak(data.startDate);
-        setLevel(getAvatarLevel(days));
-      } else {
-        setLevel(null);
-      }
-      
-      // Load user identity
-      try {
-        const identity = await generateOrLoadKeys();
-        if (identity?.publicKey) {
-          const storedName = localStorage.getItem(`nostr_username_${identity.publicKey}`);
-          const storedAvatar = localStorage.getItem(`nostr_avatar_${identity.publicKey}`);
-          setUserName(storedName || "");
-          setAvatarUrl(storedAvatar || null);
-        }
-      } catch (e) {
-        console.error("Failed to load identity", e);
-      }
-    };
-    load();
-    window.addEventListener("fursan_streak_updated", load);
-    return () => window.removeEventListener("fursan_streak_updated", load);
-  }, []);
+  const tone = !isOnline ? "text-warning" : isSyncing || pendingCount > 0 ? "text-ink-muted" : "text-success";
+  const Icon = !isOnline ? CloudOff : isSyncing ? Loader2 : pendingCount > 0 ? Cloud : Check;
 
-  const statusLabel =
-    syncState === "syncing"
+  const label = !isOnline
+    ? pendingCount > 0
+      ? `Offline — ${pendingCount} waiting`
+      : "Offline — records stay on this device"
+    : isSyncing
       ? "Syncing"
-      : syncState === "offline"
-      ? "Offline"
-      : "Synced";
+      : pendingCount > 0
+        ? `${pendingCount} waiting to sync`
+        : droppedCount > 0
+          ? "Synced"
+          : "Synced";
 
   return (
-    <header className="flex items-center justify-between py-4">
-      <Logo size={28} />
+    <span
+      className={cn("inline-flex items-center gap-1.5 text-meta", tone)}
+      role="status"
+      aria-live="polite"
+      title={label}
+    >
+      <Icon
+        className={cn("h-3.5 w-3.5 shrink-0", isSyncing && "animate-spin")}
+        strokeWidth={2}
+        aria-hidden="true"
+      />
+      {/* The dot is always visible; the words only when there is room for them. */}
+      <span className="hidden text-ink-muted sm:inline">{label}</span>
+      <span className="sr-only">{label}</span>
+    </span>
+  );
+}
 
-      <div className="flex items-center gap-3 text-[12px] text-ink-muted">
-        <span
-          className={`inline-block h-1.5 w-1.5 rounded-full ${
-            syncState === "syncing"
-              ? "bg-warning animate-pulse"
-              : syncState === "offline"
-              ? "bg-danger"
-              : "bg-success"
-          }`}
-          aria-hidden="true"
-        />
-        <span className="font-medium">{statusLabel}</span>
-        {level && (
-          <>
-            <span className="text-ink-faint">·</span>
-            <span className="font-medium">
-              {level.emoji} {level.name}
-            </span>
-          </>
-        )}
-        {userName && (
-          <div className="flex items-center gap-2 pl-2 border-l border-border">
-            <Avatar src={avatarUrl} name={userName} size="sm" />
-            <span className="text-[11px] font-medium text-ink truncate max-w-[80px]">{userName}</span>
-          </div>
-        )}
+export function Header({ action }: HeaderProps) {
+  const [days, setDays] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    const read = () => {
+      void getStreakData().then((data) => {
+        if (!cancelled) setDays(daysSinceStart(data.startDate));
+      });
+    };
+    read();
+    window.addEventListener("fursan_streak_updated", read);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("fursan_streak_updated", read);
+    };
+  }, []);
+
+  return (
+    <header className="sticky top-0 z-40 border-b border-border bg-bg/92 backdrop-blur-md">
+      <div className="mx-auto flex w-full max-w-content items-center gap-3 px-5 pb-3 pt-[calc(env(safe-area-inset-top,0px)+12px)]">
+        <Link
+          to="/"
+          aria-label="Fursan — today"
+          className="-ml-2 flex h-11 min-w-0 items-center gap-2 rounded-md px-2 transition-colors hover:bg-surface-2"
+        >
+          <Logo size={22} showWordmark={false} />
+          <span className="text-body-s font-semibold uppercase tracking-[0.18em] text-ink">
+            Fursan
+          </span>
+        </Link>
+
+        <div className="ml-auto flex min-w-0 items-center gap-3">
+          <MilestoneBadge days={days} withName={false} className="hidden sm:inline-flex" />
+          <SyncStatus />
+          {action}
+        </div>
       </div>
     </header>
   );

@@ -1,9 +1,13 @@
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { saveHealthCheck, fetchHealthChecks, HealthCheck } from "@/services/nostr";
-import { Sun, Cloud, CloudLightning, Shield, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Play, RotateCcw, Sun, Cloud, CloudLightning, CheckCircle2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
-import { logActivity } from "@/lib/activityLog";
+
+import { saveHealthCheck, fetchHealthChecks, type HealthCheck } from "@/services/nostr";
+import { logActivity } from "@/services/localStore";
+import { luxuryClickVibrate } from "@/lib/vibrationUtils";
+import { cn } from "@/lib/utils";
+import { LoadingBlock } from "@/components/LoadingScreen";
 import {
   Dialog,
   DialogContent,
@@ -12,240 +16,256 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { luxuryClickVibrate } from "@/lib/vibrationUtils";
-import { cn } from "@/lib/utils";
-import { Avatar } from "@/components/Avatar";
-import { generateOrLoadKeys } from "@/services/nostr";
+
+type Mindset = "sharp" | "foggy" | "stormy";
+
+const MINDSETS: { value: Mindset; label: string; Icon: typeof Sun; active: string }[] = [
+  { value: "sharp", label: "Sharp", Icon: Sun, active: "bg-ink text-bg border-ink" },
+  { value: "foggy", label: "Foggy", Icon: Cloud, active: "bg-surface-3 text-ink border-ink" },
+  { value: "stormy", label: "Stormy", Icon: CloudLightning, active: "bg-danger text-on-accent border-danger" },
+];
+
+const STORMY_KEY = "fursan_stormy_resolved";
+const UNLOCK_SECONDS = 5;
 
 interface DailyCheckinCardProps {
   onUpdate?: () => void;
   days?: number;
 }
 
-type Mindset = "sharp" | "foggy" | "stormy";
-
-const MINDSETS: { value: Mindset; label: string; Icon: typeof Sun }[] = [
-  { value: "sharp", label: "Sharp", Icon: Sun },
-  { value: "foggy", label: "Foggy", Icon: Cloud },
-  { value: "stormy", label: "Stormy", Icon: CloudLightning },
-];
-
 /**
- * One card, two rows. Mind check-in (segmented) and body check-in
- * (Yes / No) both render in the same surface — no more two-stacked
- * cards with redundant headers.
+ * One card, two rows: mind and body in a single surface.
+ *
+ * Behavioural fixes: the card no longer renders `null` while the relay query is
+ * in flight (it used to disappear for up to ten seconds, or forever with an
+ * empty relay list), list updates use a functional `setState` so an in-flight
+ * fetch cannot overwrite a just-saved entry, and the emergency overlay is built
+ * from theme tokens instead of a hard-coded black panel.
  */
-export function DailyCheckinCard({ onUpdate, days = 0 }: DailyCheckinCardProps) {
+export function DailyCheckinCard({ onUpdate }: DailyCheckinCardProps) {
   const [history, setHistory] = useState<HealthCheck[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showMedicalAlert, setShowMedicalAlert] = useState(false);
   const [isEmergencyLocked, setIsEmergencyLocked] = useState(false);
   const [isCompletionConfirmed, setIsCompletionConfirmed] = useState(false);
-  const [unlockTimer, setUnlockTimer] = useState(5);
+  const [unlockTimer, setUnlockTimer] = useState(UNLOCK_SECONDS);
   const [todayEntry, setTodayEntry] = useState<HealthCheck | null>(null);
 
-  // Local working state (not yet persisted)
   const [workingMindset, setWorkingMindset] = useState<Mindset | null>(null);
   const [workingNpt, setWorkingNpt] = useState<boolean | null>(null);
 
-  const [userName, setUserName] = useState<string>("");
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-
+  const mounted = useRef(true);
   useEffect(() => {
-    const load = async () => {
-      const identity = await generateOrLoadKeys();
-      if (identity?.publicKey) {
-        const storedName = localStorage.getItem(`nostr_username_${identity.publicKey}`);
-        const storedAvatar = localStorage.getItem(`nostr_avatar_${identity.publicKey}`);
-        setUserName(storedName || "");
-        setAvatarUrl(storedAvatar || null);
-      }
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
     };
-    load();
   }, []);
 
   useEffect(() => {
-    loadHealthData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [days]);
+    let cancelled = false;
 
-  // Lock-screen countdown
+    void (async () => {
+      try {
+        const data = await fetchHealthChecks();
+        if (cancelled || !mounted.current) return;
+        setHistory(data);
+
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const todayRec = data.find((e) => e.timestamp >= todayStart.getTime()) ?? null;
+
+        setTodayEntry(todayRec);
+        setWorkingMindset(todayRec?.mindset ?? null);
+        setWorkingNpt(todayRec?.npt ?? null);
+
+        // Stormy yesterday and not yet acknowledged → offer the interrupt.
+        let resolved = false;
+        try {
+          resolved = localStorage.getItem(STORMY_KEY) === "true";
+        } catch {
+          resolved = false;
+        }
+        if (!resolved && todayRec?.mindset === "stormy") {
+          setIsEmergencyLocked(true);
+          setUnlockTimer(UNLOCK_SECONDS);
+        }
+
+        if (data.length >= 14) {
+          const recent = data.slice(0, 14);
+          if (recent.every((e) => !e.npt)) setShowMedicalAlert(true);
+        }
+      } catch (error) {
+        console.error("[Checkin] Failed to load history", error);
+      } finally {
+        if (!cancelled && mounted.current) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   useEffect(() => {
     if (!isEmergencyLocked || unlockTimer <= 0) return;
-    const t = setInterval(() => setUnlockTimer((p) => Math.max(0, p - 1)), 1000);
-    return () => clearInterval(t);
+    const id = setInterval(() => setUnlockTimer((p) => Math.max(0, p - 1)), 1000);
+    return () => clearInterval(id);
   }, [isEmergencyLocked, unlockTimer]);
 
-  const loadHealthData = async () => {
-    try {
-      setLoading(true);
-      const data = await fetchHealthChecks();
-      setHistory(data);
+  const persist = useCallback(
+    async (mindset: Mindset, npt: boolean) => {
+      setSaving(true);
+      const entry: HealthCheck = { npt, mindset, timestamp: Date.now() };
+      const success = await saveHealthCheck(entry);
+      if (!mounted.current) return;
 
-      const today = new Date().toDateString();
-      const todayRec = data.find((e) => new Date(e.timestamp).toDateString() === today) ?? null;
-      setTodayEntry(todayRec);
-      setWorkingMindset(todayRec?.mindset ?? null);
-      setWorkingNpt(todayRec?.npt ?? null);
+      if (success) {
+        await luxuryClickVibrate();
+        // Functional update: an in-flight fetch must never drop this entry.
+        setHistory((prev) => [entry, ...prev.filter((e) => e.timestamp !== entry.timestamp)]);
+        setTodayEntry(entry);
+        logActivity("health_check", `Check-in · ${mindset}`);
+        onUpdate?.();
 
-      // Lock screen if last check was stormy and not resolved today
-      const lastStormy =
-        todayRec?.mindset === "stormy" ||
-        (data[0] && data[0].mindset === "stormy" && !localStorage.getItem("fursan_stormy_resolved"));
-      if (lastStormy && !localStorage.getItem("fursan_stormy_resolved")) {
-        setIsEmergencyLocked(true);
-      }
-
-      // Medical alert: 14 consecutive recent days with NPT = false
-      if (days >= 4) {
-        const fourteenDaysAgo = Date.now() - 14 * 24 * 60 * 60 * 1000;
-        const last14 = data.filter((e) => e.timestamp >= fourteenDaysAgo).slice(0, 14);
-        if (last14.length >= 14 && last14.every((e) => !e.npt)) {
-          setShowMedicalAlert(true);
+        if (mindset === "stormy") {
+          try {
+            localStorage.removeItem(STORMY_KEY);
+          } catch {
+            /* ignore */
+          }
+          setIsCompletionConfirmed(false);
+          setUnlockTimer(UNLOCK_SECONDS);
+          setIsEmergencyLocked(true);
         }
+      } else {
+        toast.error("Could not save. Check your device storage.");
       }
-    } catch (e) {
-      console.error("Failed to load health data", e);
-    } finally {
-      setLoading(false);
-    }
-  };
+      setSaving(false);
+    },
+    [onUpdate],
+  );
 
-  const persist = async (mindset: Mindset, npt: boolean) => {
-    setSaving(true);
-    const entry: HealthCheck = {
-      npt,
-      mindset,
-      timestamp: Date.now(),
-    };
-    const success = await saveHealthCheck(entry);
-    if (success) {
-      await luxuryClickVibrate();
-      toast.success("Saved");
-      logActivity("health_check", `Daily Check: mindset=${mindset}, npt=${npt}`);
-      setTodayEntry(entry);
-      setHistory([entry, ...history]);
-      if (mindset === "stormy") {
-        localStorage.removeItem("fursan_stormy_resolved");
-        setIsEmergencyLocked(true);
-        setUnlockTimer(5);
-        setIsCompletionConfirmed(false);
-      }
-      if (onUpdate) onUpdate();
-    } else {
-      toast.error("Could not save. Try again.");
-    }
-    setSaving(false);
-  };
-
-  // Auto-save when both selections are made (today's first check-in)
+  // Auto-save once both answers exist and nothing is stored for today yet.
+  const autoSaved = useRef(false);
   useEffect(() => {
-    if (loading || saving) return;
-    if (todayEntry) return; // already saved for today
+    if (loading || saving || todayEntry || autoSaved.current) return;
     if (workingMindset && workingNpt !== null) {
-      persist(workingMindset, workingNpt);
+      autoSaved.current = true;
+      void persist(workingMindset, workingNpt);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workingMindset, workingNpt, loading, todayEntry]);
+  }, [workingMindset, workingNpt, loading, saving, todayEntry, persist]);
 
   const resolveEmergency = async () => {
     if (!isCompletionConfirmed) return;
     setIsEmergencyLocked(false);
-    localStorage.setItem("fursan_stormy_resolved", "true");
-    toast.success("Back to it.");
+    try {
+      localStorage.setItem(STORMY_KEY, "true");
+    } catch {
+      /* ignore */
+    }
     await luxuryClickVibrate();
   };
 
-  if (loading) return null;
+  const bothAnswered =
+    (!!todayEntry || workingMindset !== null) && (!!todayEntry || workingNpt !== null);
+  const awaitingSave = bothAnswered && !todayEntry;
 
-  /* ── Emergency lock overlay ─────────────────────────────── */
+  if (loading) return <LoadingBlock label="Loading today's check-in" />;
+
   if (isEmergencyLocked) {
+    if (typeof document === "undefined") return null;
     return createPortal(
-      <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/95 p-6 backdrop-blur-md">
-        <div className="w-full max-w-md space-y-6 rounded-2xl border border-danger/40 bg-black p-8 text-center">
-          <CloudLightning className="mx-auto h-14 w-14 text-danger animate-pulse" />
-          <div className="space-y-2">
-            <h2 className="text-3xl font-extrabold tracking-tight text-white">Pause. Reset.</h2>
-            <p className="text-sm text-white/60">A hard moment — that's the signal to act.</p>
-          </div>
-          <div className="rounded-xl border border-danger/30 bg-danger/10 p-4 text-left">
-            <p className="text-sm font-medium text-white/90">
-              Do <span className="font-semibold text-white">20 push-ups</span> or take a{" "}
-              <span className="font-semibold text-white">cold shower</span> right now.
+      <div
+        className="fixed inset-0 z-[99999] flex items-center justify-center bg-bg px-6"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="interrupt-title"
+      >
+        <div className="w-full max-w-content space-y-6 rounded-lg border border-border bg-surface p-6">
+          <div className="space-y-2 text-center">
+            <p className="text-label uppercase text-danger">Interrupt</p>
+            <h2 id="interrupt-title" className="text-display-l font-semibold text-ink">
+              Pause. Reset.
+            </h2>
+            <p className="text-body-s text-ink-muted">
+              A hard moment is the signal to move. Do the next physical thing.
             </p>
           </div>
-          <label className="flex items-center justify-center gap-2 text-xs text-white/70">
+
+          <ul className="space-y-2 rounded-md border border-border bg-surface-2 p-4 text-body-s text-ink">
+            <li>20 push-ups, or a cold shower, right now.</li>
+            <li>Stand up and leave the room for two minutes.</li>
+            <li>Name the urge out loud. It fades faster than you expect.</li>
+          </ul>
+
+          <label className="flex items-start gap-3 rounded-md border border-border px-4 py-3">
             <input
               type="checkbox"
               checked={isCompletionConfirmed}
               onChange={(e) => {
-                luxuryClickVibrate();
+                void luxuryClickVibrate();
                 setIsCompletionConfirmed(e.target.checked);
               }}
-              className="h-4 w-4 rounded border-danger/40 bg-black accent-danger"
+              className="mt-0.5 h-5 w-5 shrink-0 accent-[hsl(var(--accent))]"
             />
-            Done — I'm back.
+            <span className="text-body-s text-ink">Done — I&apos;m back.</span>
           </label>
-          <Button
+
+          <button
+            type="button"
             disabled={!isCompletionConfirmed || unlockTimer > 0}
             onClick={resolveEmergency}
-            className="h-12 w-full rounded-xl bg-danger text-white hover:bg-danger/90 disabled:opacity-30"
+            className="h-12 w-full rounded-md bg-ink text-label uppercase text-bg transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-30"
           >
-            {unlockTimer > 0 ? `${unlockTimer}s` : "Continue"}
-          </Button>
+            {unlockTimer > 0 ? `Continue in ${unlockTimer}s` : "Continue"}
+          </button>
         </div>
       </div>,
       document.body,
     );
   }
 
-  const mindDone = !!todayEntry || workingMindset !== null;
-  const bodyDone = !!todayEntry || workingNpt !== null;
-
   return (
     <>
       <div className="card overflow-hidden">
-        <div className="px-5 py-3 border-b border-border flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Avatar src={avatarUrl} name={userName} size="sm" />
-            <div>
-              <p className="text-[13px] font-semibold tracking-tight text-ink">Daily check-in</p>
-              <p className="text-[10px] font-medium text-ink-muted">Mind & body</p>
-            </div>
+        <div className="flex items-center justify-between border-b border-border px-5 py-3">
+          <div>
+            <h2 className="text-body-s font-semibold text-ink">Daily check-in</h2>
+            <p className="text-meta text-ink-muted">Private · stored on this device</p>
           </div>
           {todayEntry && (
-            <p className="text-[11px] font-medium text-ink-muted flex items-center gap-1">
-              <CheckCircle2 className="h-3.5 w-3.5 text-success" />
+            <span className="inline-flex items-center gap-1.5 text-meta text-success">
+              <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
               Done
-            </p>
+            </span>
           )}
         </div>
 
-        {/* Mind row */}
-        <div className="px-5 py-4 border-b border-border">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-faint">How's your mind?</p>
-          <div className="mt-3 grid grid-cols-3 gap-2">
-            {MINDSETS.map(({ value, label, Icon }) => {
-              const active = workingMindset === value;
+        <div className="border-b border-border px-5 py-4">
+          <p className="text-label uppercase text-ink-faint">Mind</p>
+          <div className="mt-3 grid grid-cols-3 gap-2" role="group" aria-label="How is your mind?">
+            {MINDSETS.map(({ value, label, Icon, active }) => {
+              const isActive = workingMindset === value;
               return (
                 <button
                   key={value}
+                  type="button"
                   disabled={saving}
-                  onClick={() => setWorkingMindset(value)}
-                  aria-pressed={active}
-                  aria-label={`Feeling ${label}`}
+                  onClick={() => {
+                    void luxuryClickVibrate();
+                    setWorkingMindset(value);
+                  }}
+                  aria-pressed={isActive}
                   className={cn(
-                    "flex items-center justify-center gap-1.5 h-11 rounded-full text-[13px] font-medium transition-colors",
-                    active
-                      ? value === "stormy"
-                        ? "bg-danger text-white"
-                        : "bg-ink text-bg"
-                      : "border border-border text-ink-muted hover:border-ink-faint hover:text-ink",
+                    "flex h-11 items-center justify-center gap-1.5 rounded-md border text-body-s font-medium transition-colors duration-fast",
+                    isActive
+                      ? active
+                      : "border-border text-ink-muted hover:border-ink-faint hover:text-ink",
                   )}
                 >
-                  <Icon className="h-4 w-4" />
+                  <Icon className="h-4 w-4" aria-hidden="true" />
                   {label}
                 </button>
               );
@@ -253,65 +273,73 @@ export function DailyCheckinCard({ onUpdate, days = 0 }: DailyCheckinCardProps) 
           </div>
         </div>
 
-        {/* Body row */}
         <div className="px-5 py-4">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-faint">Body signal this morning?</p>
-          <div className="mt-3 grid grid-cols-2 gap-2">
+          <p className="text-label uppercase text-ink-faint">Body — morning signal</p>
+          <div className="mt-3 grid grid-cols-2 gap-2" role="group" aria-label="Morning signal">
             <button
+              type="button"
               disabled={saving}
-              onClick={() => setWorkingNpt(true)}
+              onClick={() => {
+                void luxuryClickVibrate();
+                setWorkingNpt(true);
+              }}
               aria-pressed={workingNpt === true}
               className={cn(
-                "h-11 rounded-full text-[14px] font-semibold transition-colors",
+                "h-11 rounded-md border text-body-s font-semibold transition-colors duration-fast",
                 workingNpt === true
-                  ? "bg-ink text-bg"
-                  : "border border-border text-ink-muted hover:border-ink-faint hover:text-ink",
+                  ? "border-ink bg-ink text-bg"
+                  : "border-border text-ink-muted hover:border-ink-faint hover:text-ink",
               )}
             >
-              Yes
+              Present
             </button>
             <button
+              type="button"
               disabled={saving}
-              onClick={() => setWorkingNpt(false)}
+              onClick={() => {
+                void luxuryClickVibrate();
+                setWorkingNpt(false);
+              }}
               aria-pressed={workingNpt === false}
               className={cn(
-                "h-11 rounded-full text-[14px] font-semibold transition-colors",
+                "h-11 rounded-md border text-body-s font-semibold transition-colors duration-fast",
                 workingNpt === false
-                  ? "bg-danger text-white"
-                  : "border border-border text-ink-muted hover:border-ink-faint hover:text-ink",
+                  ? "border-danger bg-danger text-on-accent"
+                  : "border-border text-ink-muted hover:border-ink-faint hover:text-ink",
               )}
             >
-              No
+              Absent
             </button>
           </div>
+          {awaitingSave && (
+            <p className="mt-3 text-meta text-ink-muted" role="status" aria-live="polite">
+              Saving…
+            </p>
+          )}
         </div>
-
-        {/* Saving indicator */}
-        {(mindDone && bodyDone && !todayEntry) && (
-          <div className="px-5 py-2.5 border-t border-border text-[11px] text-ink-muted">
-            Saving…
-          </div>
-        )}
       </div>
 
       <Dialog open={showMedicalAlert} onOpenChange={setShowMedicalAlert}>
-        <DialogContent className="max-w-md rounded-2xl border border-border bg-bg p-6">
+        <DialogContent className="max-w-content rounded-lg border border-border bg-surface p-6">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-ink">
-              <AlertCircle className="h-5 w-5 text-warning" /> A health note
+            <DialogTitle className="flex items-center gap-2 text-section text-ink">
+              <AlertCircle className="h-4 w-4 text-warning" aria-hidden="true" />
+              A note on your health
             </DialogTitle>
-            <DialogDescription className="text-ink-muted">
-              We noticed two weeks with no body signal. This can be a useful
-              indicator of cardiovascular health — consider a check-up with a doctor.
+            <DialogDescription className="text-body-s text-ink-muted">
+              Two weeks with no morning signal can be a meaningful cardiovascular
+              indicator. It is not a diagnosis — it is worth mentioning to a
+              doctor at your next visit.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-2">
-            <Button
+            <button
+              type="button"
               onClick={() => setShowMedicalAlert(false)}
-              className="h-11 w-full rounded-xl bg-ink text-bg hover:bg-ink/90"
+              className="h-11 w-full rounded-md bg-ink text-label uppercase text-bg transition-opacity hover:opacity-90"
             >
               Understood
-            </Button>
+            </button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
