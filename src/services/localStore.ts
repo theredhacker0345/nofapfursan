@@ -252,7 +252,8 @@ export async function restoreFromSecureStorage(): Promise<void> {
   for (const [key, validate] of pairs) {
     let hasLocal = false;
     try {
-      hasLocal = localStorage.getItem(key) !== null;
+      const raw = localStorage.getItem(key);
+      hasLocal = raw !== null && validate(JSON.parse(raw)).length > 0;
     } catch {
       hasLocal = false;
     }

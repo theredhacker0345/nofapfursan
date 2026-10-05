@@ -14,7 +14,7 @@ interface ScreenProps {
   /** Renders the standard app header. Disable for full-bleed screens. */
   withHeader?: boolean;
   withNav?: boolean;
-  /** Adds a back affordance (defaults to "go back in history"). */
+  /** Renders a back affordance that links to home ("/"). */
   back?: boolean;
   /** Bare layout without the screen padding (e.g. chat). */
   bare?: boolean;

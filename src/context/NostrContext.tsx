@@ -21,6 +21,7 @@ import {
   subscribeToNetworkState,
   warmRelays,
   getConnectedRelays,
+  shutdownNetwork,
   type NetworkState,
 } from "@/services/nostr";
 
@@ -93,7 +94,11 @@ export const NostrProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   /* ── Network + queue state ─────────────────────────────────────────── */
   useEffect(() => {
     void initNetworkListener();
-    return subscribeToNetworkState((state) => setNetwork({ ...state }));
+    const unsubscribe = subscribeToNetworkState((state) => setNetwork({ ...state }));
+    return () => {
+      unsubscribe();
+      void shutdownNetwork();
+    };
   }, []);
 
   /* ── Connection health ─────────────────────────────────────────────── */
@@ -131,10 +136,15 @@ export const NostrProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (relays.length === 0) return;
     let cancelled = false;
 
+    const controllers: AbortController[] = [];
+    const timers: ReturnType<typeof setTimeout>[] = [];
+
     const fetchers = relays.map((url) => {
       const httpUrl = url.replace(/^ws/, "http");
       const controller = new AbortController();
+      controllers.push(controller);
       const timer = setTimeout(() => controller.abort(), METADATA_TIMEOUT_MS);
+      timers.push(timer);
       return fetch(httpUrl, {
         headers: { Accept: "application/nostr+json" },
         signal: controller.signal,
@@ -152,6 +162,8 @@ export const NostrProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     return () => {
       cancelled = true;
+      for (const c of controllers) c.abort();
+      for (const t of timers) clearTimeout(t);
     };
   }, [relays]);
 
@@ -184,11 +196,15 @@ export const NostrProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     );
 
     for (const pk of unknown) profilesInFlight.add(pk);
-    // Never let a silent relay pin these open forever.
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       handle.close();
-      profilesInFlight.clear();
+      for (const pk of unknown) profilesInFlight.delete(pk);
     }, METADATA_TIMEOUT_MS * 4);
+    return () => {
+      clearTimeout(timer);
+      handle.close();
+      for (const pk of unknown) profilesInFlight.delete(pk);
+    };
   }, []);
 
   const subscribe = useCallback(

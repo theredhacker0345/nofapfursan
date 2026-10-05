@@ -391,6 +391,10 @@ export async function manualFlush(): Promise<void> {
     console.info("[Nostr] Offline — nothing to flush");
     return;
   }
+  if (document.hidden) {
+    console.info("[Nostr] Backgrounded — deferring flush until visible");
+    return;
+  }
   await flushQueue();
 }
 
@@ -840,7 +844,7 @@ export async function syncStreak(localStreak: StreakPayload): Promise<StreakPayl
 
   return {
     days: Math.max(localStreak.days, remoteStreak.days),
-    startDate: remoteAt > localAt ? remoteStreak.startDate : localStreak.startDate,
+    startDate: localAt >= remoteAt ? localStreak.startDate : remoteStreak.startDate,
     longestStreak: Math.max(localStreak.longestStreak, remoteStreak.longestStreak),
     totalRelapses: Math.max(localStreak.totalRelapses, remoteStreak.totalRelapses),
     updatedAt: Math.max(localAt, remoteAt),
@@ -856,7 +860,6 @@ const HEALTH_TAG = "nofapfursan-health";
 export type { HealthCheck };
 
 export async function saveHealthCheck(entry: HealthCheck): Promise<boolean> {
-  // Device first — this is the write that must never fail silently.
   if (!saveLocalHealthCheck(entry)) {
     toastFailure();
     return false;
@@ -874,11 +877,15 @@ export async function saveHealthCheck(entry: HealthCheck): Promise<boolean> {
       },
       keys.privateKey,
     );
-    await publishOrQueue(event, "health");
+    const queued = await publishOrQueue(event, "health");
+    if (!queued) {
+      toastFailure();
+      return false;
+    }
     return true;
   } catch (error) {
     console.error("[Nostr] saveHealthCheck relay step failed", error);
-    return true; // the local record is already durable
+    return true;
   }
 }
 
@@ -939,11 +946,15 @@ export async function saveJournalEntry(entry: JournalEntry): Promise<boolean> {
       },
       keys.privateKey,
     );
-    await publishOrQueue(event, "journal");
+    const queued = await publishOrQueue(event, "journal");
+    if (!queued) {
+      toastFailure();
+      return false;
+    }
     return true;
   } catch (error) {
     console.error("[Nostr] saveJournalEntry relay step failed", error);
-    return true; // the local record is already durable
+    return true;
   }
 }
 

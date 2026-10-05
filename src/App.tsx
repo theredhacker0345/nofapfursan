@@ -12,6 +12,7 @@ import { LoadingScreen } from "@/components/LoadingScreen";
 import { restoreFromSecureStorage } from "@/services/localStore";
 
 import Index from "./pages/Index";
+import NotFound from "./pages/NotFound";
 
 const Auth = lazy(() => import("./pages/Auth"));
 const Journal = lazy(() => import("./pages/Journal"));
@@ -23,7 +24,6 @@ const Profile = lazy(() => import("./pages/Profile"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Library = lazy(() => import("./pages/Library"));
 const Nutrition = lazy(() => import("./pages/Nutrition"));
-const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -39,7 +39,9 @@ const queryClient = new QueryClient({
 export default function App() {
   useEffect(() => {
     document.title = "Fursan";
-    void restoreFromSecureStorage();
+    void restoreFromSecureStorage().catch((error) => {
+      console.error("[App] Secure storage recovery failed", error);
+    });
   }, []);
 
   return (
@@ -56,26 +58,20 @@ export default function App() {
                     <Suspense
                       fallback={<LoadingScreen message="Loading" subMessage="Fetching this screen" />}
                     >
-                      {/* A per-route boundary means one failed lazy chunk (no
-                          network, cleared cache) shows a retry button instead of
-                          the global "catastrophic failure" screen. */}
-                      <ErrorBoundary variant="inline" title="This screen could not open">
-                        <Routes>
-                          <Route path="/" element={<Index />} />
-                          <Route path="/auth" element={<Auth />} />
-                          <Route path="/journal" element={<Journal />} />
-                          <Route path="/vitals" element={<Vitals />} />
-                          <Route path="/archives" element={<Archives />} />
-                          <Route path="/vanguard" element={<Vanguard />} />
-                          <Route path="/community" element={<Vanguard />} />
-                          <Route path="/profile" element={<Profile />} />
-                          <Route path="/settings" element={<Settings />} />
-                          <Route path="/library" element={<Library />} />
-                          <Route path="/nutrition" element={<Nutrition />} />
-                          <Route path="/join" element={<Join />} />
-                          <Route path="*" element={<NotFound />} />
-                        </Routes>
-                      </ErrorBoundary>
+                      <Routes>
+                        <Route path="/" element={<Index />} />
+                        <Route path="/auth" element={<Auth />} />
+                        <Route path="/journal" element={<Journal />} />
+                        <Route path="/vitals" element={<Vitals />} />
+                        <Route path="/archives" element={<Archives />} />
+                        <Route path="/vanguard" element={<Vanguard />} />
+                        <Route path="/profile" element={<Profile />} />
+                        <Route path="/settings" element={<Settings />} />
+                        <Route path="/library" element={<Library />} />
+                        <Route path="/nutrition" element={<Nutrition />} />
+                        <Route path="/join" element={<Join />} />
+                        <Route path="*" element={<NotFound />} />
+                      </Routes>
                     </Suspense>
                   </PageTransition>
                 </HashRouter>

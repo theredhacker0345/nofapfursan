@@ -116,9 +116,14 @@ export default function Profile() {
   };
 
   const clearIdentity = async () => {
-    await resetIdentity();
-    toast.success("Identity removed from this device");
-    setTimeout(() => window.location.reload(), 700);
+    try {
+      await resetIdentity();
+      toast.success("Identity removed from this device");
+      setTimeout(() => window.location.reload(), 700);
+    } catch (error) {
+      console.error("[Profile] Identity clear failed", error);
+      toast.error("Could not clear the identity. Try again.");
+    }
   };
 
   if (loading) return <LoadingScreen message="Loading" subMessage="Verifying identity" />;
