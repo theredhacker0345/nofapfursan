@@ -16,8 +16,9 @@
     "chat": "node scripts/chat.mjs",
     "a11y": "node scripts/a11y.mjs",
     "soak": "node scripts/soak.mjs",
-    "verify:browser": "node scripts/verify.mjs && node scripts/flows.mjs && node scripts/offline.mjs && node scripts/chat.mjs && node scripts/a11y.mjs && node scripts/soak.mjs && node scripts/data.mjs",
-    "data": "node scripts/data.mjs"
+    "verify:browser": "node scripts/verify.mjs && node scripts/flows.mjs && node scripts/offline.mjs && node scripts/chat.mjs && node scripts/a11y.mjs && node scripts/soak.mjs && node scripts/data.mjs && node scripts/android-check.mjs",
+    "data": "node scripts/data.mjs",
+    "android:check": "node scripts/android-check.mjs"
   },
   "dependencies": {
     "@capacitor-community/media": "^9.0.0",

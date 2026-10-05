@@ -23,6 +23,7 @@
     "noImplicitAny": false,
     "noFallthroughCasesInSwitch": false,
     "baseUrl": ".",
+    "types": ["vite/client"],
     "paths": {
       "@/*": [
         "./src/*"

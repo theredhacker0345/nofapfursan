@@ -8,6 +8,17 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
 }
 
+// Version comes from package.json so the APK, the web build and the in-app
+// "Fursan 2.5.0" label can never disagree. They were three hard-coded copies.
+def pkg = new groovy.json.JsonSlurper().parseText(
+    rootProject.file("../package.json").getText("UTF-8")
+)
+def pkgVersion = pkg.version as String
+def [pkgMajor, pkgMinor, pkgPatch] = pkgVersion.split("[-.]").collect { it as Integer }
+// Android requires a monotonically increasing integer code; patch releases that
+// do not need a new APK keep the previous code.
+def pkgVersionCode = (pkgMajor * 10000) + (pkgMinor * 100) + pkgPatch
+
 android {
     namespace = "com.nofapfursan.app"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -15,8 +26,8 @@ android {
         applicationId "com.nofapfursan.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 250
-        versionName "2.5.0"
+        versionCode pkgVersionCode
+        versionName pkgVersion
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -29,10 +40,20 @@ android {
     signingConfigs {
         release {
             if (keystorePropertiesFile.exists()) {
-                storeFile file("app/${keystoreProperties['storeFile']}")
+                // `file()` resolves against this module's directory (android/app),
+                // so the "app/" prefix here resolved to android/app/app/... while
+                // CI writes the keystore to android/app/release-keystore.jks.
+                // The signed release build failed at this line.
+                storeFile file(keystoreProperties['storeFile'] as String)
                 storePassword keystoreProperties['storePassword']
                 keyAlias keystoreProperties['keyAlias']
                 keyPassword keystoreProperties['keyPassword']
+            } else {
+                throw new GradleException(
+                    "android/keystore.properties is missing. Release signing cannot " +
+                    "be configured; copy the four keys from your CI secrets. " +
+                    "Refusing to produce an unsigned APK that looks signed."
+                )
             }
         }
     }

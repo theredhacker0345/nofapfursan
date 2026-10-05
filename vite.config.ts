@@ -1,6 +1,9 @@
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
+import { createRequire } from "node:module";
+
+const pkg = createRequire(import.meta.url)("./package.json") as { version: string };
 
 /**
  * Production builds used `esbuild.drop: ["console"]`, which deleted every
@@ -28,6 +31,12 @@ export default defineConfig(({ mode }) => ({
     port: 8080,
   },
   plugins: [react(), dropVerboseConsole()],
+  define: {
+    // One version, from package.json. The APK reads the same field via
+    // build.gradle, so the web build, the in-app label and the installer can
+    // never report different numbers.
+    __APP_VERSION__: JSON.stringify(pkg.version),
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
