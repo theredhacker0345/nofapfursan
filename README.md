@@ -100,12 +100,12 @@ npm run preview    # serve dist on :4173
 ### Verification
 
 ```bash
-npm run verify     # lint + typecheck + build + all four browser suites
+npm run verify     # lint + typecheck + build + all six browser suites
 npm run flows      # state-transition tests only
 npm run offline    # service-worker / offline tests only
 ```
 
-Four suites run against the real production bundle:
+Six suites run against the real production bundle:
 
 | Suite | Covers |
 | --- | --- |
@@ -113,6 +113,8 @@ Four suites run against the real production bundle:
 | `scripts/flows.mjs` | 32 state-transition cases (see below) |
 | `scripts/offline.mjs` | Cold install precaches the whole build manifest, then every route renders offline — including routes never visited — plus offline writes, queue bounds and persisted retry counters |
 | `scripts/chat.mjs` | Vanguard against a local in-process Nostr relay: publish, relay ack, optimistic reconciliation, incoming events from another author, profile resolution, channel isolation, unreachable relay, and retry |
+| `scripts/a11y.mjs` | A focus ring on every tab stop across 8 routes, skip link, dialog focus containment and Escape handling, and that `prefers-reduced-motion` genuinely stops animations |
+| `scripts/soak.mjs` | 60 navigations of heap/timer/socket/DOM growth, offline→online recovery with queue delivery, rapid theme switching, and a save interrupted by navigation |
 
 `scripts/verify.mjs` serves the real production bundle to Chromium and fails on
 anything a user would notice:

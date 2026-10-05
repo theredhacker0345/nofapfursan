@@ -285,6 +285,8 @@ const PENDING_KEY = "pending_sync";
 const MAX_QUEUE = 200;
 /** After this many failed attempts the event is dead-lettered, not retried forever. */
 const MAX_RETRIES = 12;
+/** Delay before re-attempting a still-unsent batch. */
+const RETRY_BACKOFF_MS = 6_000;
 
 async function readQueue(): Promise<PendingEvent[]> {
   try {
@@ -365,6 +367,18 @@ async function flushQueue(): Promise<void> {
     // Always persists — the retry counters must survive the session.
     await writeQueue(remaining);
     updateNetworkState({ isSyncing: false });
+
+    // If anything is still waiting, come back for it quickly rather than waiting
+    // for the idle 45s sweep: a relay that was still reconnecting at this point
+    // will normally accept the retry within a few seconds.
+    if (remaining.length > 0 && networkState.isOnline && !document.hidden) {
+      setTimeout(() => {
+        void (async () => {
+          await warmRelays();
+          await flushQueue();
+        })();
+      }, RETRY_BACKOFF_MS);
+    }
   })().finally(() => {
     flushInFlight = null;
   });
@@ -455,7 +469,15 @@ export async function initNetworkListener(): Promise<void> {
   networkListenerHandle = await Network.addListener("networkStatusChange", (status: ConnectionStatus) => {
     const wasOffline = !networkState.isOnline;
     updateNetworkState({ isOnline: status.connected });
-    if (wasOffline && status.connected) void flushQueue();
+    if (!wasOffline || !status.connected) return;
+    // Re-open the sockets *before* draining the queue. Flushing straight into a
+    // socket the OS had just killed failed, and the next attempt was the 45s
+    // tick away, so a write made offline could sit undelivered for a minute
+    // after the network came back.
+    void (async () => {
+      await warmRelays();
+      await flushQueue();
+    })();
   });
 
   // Connect immediately. Nothing called `ensureRelay` on the happy path before,
@@ -469,12 +491,18 @@ export async function initNetworkListener(): Promise<void> {
 
   // Keeps the queue moving and re-establishes sockets that dropped while the
   // app was backgrounded. `enableReconnect` alone does not recover a socket
-  // that was killed by the OS.
+  // that was killed by the OS. The cadence shortens while a backlog exists so a
+  // user does not wait a minute for a record queued a second ago.
   if (healthTimer) clearInterval(healthTimer);
   healthTimer = setInterval(() => {
-    if (!document.hidden && networkState.isOnline) {
-      if (networkState.pendingCount > 0) void flushQueue();
-      else void warmRelays();
+    if (document.hidden || !networkState.isOnline) return;
+    if (networkState.pendingCount > 0) {
+      void (async () => {
+        await warmRelays();
+        await flushQueue();
+      })();
+    } else {
+      void warmRelays();
     }
   }, 45_000);
 
