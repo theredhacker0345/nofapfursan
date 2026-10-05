@@ -250,10 +250,17 @@ export default function Vanguard() {
           )}
         </div>
 
+        {/* The four channels do not fit a 390px viewport, so the row scrolls.
+            Without an edge cue the last one just looks clipped. */}
         <div
-          className="no-scrollbar -mx-5 flex gap-2 overflow-x-auto px-5 pb-3"
+          className="no-scrollbar relative -mx-5 flex gap-2 overflow-x-auto px-5 pb-3"
           role="tablist"
           aria-label="Channels"
+          style={{
+            maskImage: "linear-gradient(to right, #000 0, #000 calc(100% - 24px), transparent 100%)",
+            WebkitMaskImage:
+              "linear-gradient(to right, #000 0, #000 calc(100% - 24px), transparent 100%)",
+          }}
         >
           {CHANNELS.map(({ id, label, Icon, blurb }) => (
             <button
@@ -278,14 +285,17 @@ export default function Vanguard() {
 
         <div
           ref={listRef}
-          className="min-h-[40vh] flex-1 space-y-3 overflow-y-auto rounded-lg border border-border bg-surface px-4 py-4"
+          className={cn(
+            "h-[52vh] min-h-[320px] space-y-3 overflow-y-auto rounded-lg border border-border bg-surface px-4 py-4",
+            messages.length === 0 && "flex flex-col justify-center",
+          )}
         >
           {messages.length === 0 ? (
             <EmptyState
               icon={<Radio className="h-7 w-7" aria-hidden="true" />}
               title="Quiet in here"
               description="Nothing has been said in this channel recently."
-              className="border-0 bg-transparent py-10"
+              className="my-auto border-0 bg-transparent py-10"
             />
           ) : (
             messages.map((message) => {
@@ -372,7 +382,12 @@ export default function Vanguard() {
             type="submit"
             disabled={!draft.trim() || !identity}
             aria-label="Send message"
-            className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-ink text-bg transition-opacity hover:opacity-90 disabled:opacity-40"
+            className={cn(
+              "inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-md transition-colors duration-fast",
+              draft.trim() && identity
+                ? "bg-ink text-bg hover:opacity-90"
+                : "border border-border bg-surface-2 text-ink-faint",
+            )}
           >
             <Send className="h-4 w-4" aria-hidden="true" />
           </button>

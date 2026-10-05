@@ -43,8 +43,12 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Browser audit (routes, a11y, leaks, offline)
-        run: node scripts/verify.mjs
+      # Six browser suites against the real bundle: rendering and a11y and
+      # contrast, state transitions, service-worker offline, the Nostr chat path
+      # against a local relay, keyboard and reduced motion, and a long session
+      # with network flapping. Every one of them has caught a shipped defect.
+      - name: Browser suites
+        run: npm run verify:browser
 
       - name: Upload build
         uses: actions/upload-artifact@v4

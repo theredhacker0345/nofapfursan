@@ -10,12 +10,13 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
-    "verify": "npm run lint -- --max-warnings=0 && tsc -b --force && npm run build && node scripts/verify.mjs && node scripts/flows.mjs && node scripts/offline.mjs && node scripts/chat.mjs && node scripts/a11y.mjs && node scripts/soak.mjs",
+    "verify": "npm run lint -- --max-warnings=0 && tsc -b --force && npm run build && npm run verify:browser",
     "flows": "node scripts/flows.mjs",
     "offline": "node scripts/offline.mjs",
     "chat": "node scripts/chat.mjs",
     "a11y": "node scripts/a11y.mjs",
-    "soak": "node scripts/soak.mjs"
+    "soak": "node scripts/soak.mjs",
+    "verify:browser": "node scripts/verify.mjs && node scripts/flows.mjs && node scripts/offline.mjs && node scripts/chat.mjs && node scripts/a11y.mjs && node scripts/soak.mjs"
   },
   "dependencies": {
     "@capacitor-community/media": "^9.0.0",
