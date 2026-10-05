@@ -10,9 +10,10 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
-    "verify": "npm run lint -- --max-warnings=0 && tsc -b --force && npm run build && node scripts/verify.mjs && node scripts/flows.mjs && node scripts/offline.mjs",
+    "verify": "npm run lint -- --max-warnings=0 && tsc -b --force && npm run build && node scripts/verify.mjs && node scripts/flows.mjs && node scripts/offline.mjs && node scripts/chat.mjs",
     "flows": "node scripts/flows.mjs",
-    "offline": "node scripts/offline.mjs"
+    "offline": "node scripts/offline.mjs",
+    "chat": "node scripts/chat.mjs"
   },
   "dependencies": {
     "@capacitor-community/media": "^9.0.0",

@@ -86,10 +86,16 @@ export default function Vanguard() {
     };
   }, []);
 
-  useEffect(() => subscribe({ kinds: [42], "#e": [ROOM_ID], "#t": [channel], limit: 50 }), [
-    subscribe,
-    channel,
-  ]);
+  /**
+   * A channel switch starts a new conversation. Only the event buffer was being
+   * cleared, so the reconcile effect below kept every non-optimistic message and
+   * each channel opened showing the previous channel's entire history.
+   */
+  useEffect(() => {
+    setMessages([]);
+    const close = subscribe({ kinds: [42], "#e": [ROOM_ID], "#t": [channel], limit: 50 });
+    return close;
+  }, [subscribe, channel]);
 
   /* Relay events → message list, reconciling optimistic sends. */
   useEffect(() => {

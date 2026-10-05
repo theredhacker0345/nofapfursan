@@ -19,7 +19,8 @@ import {
   initNetworkListener,
   getNetworkState,
   subscribeToNetworkState,
-  setRelays,
+  warmRelays,
+  getConnectedRelays,
   type NetworkState,
 } from "@/services/nostr";
 
@@ -74,11 +75,15 @@ export const NostrProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     profilesRef.current = profiles;
   }, [profiles]);
 
-  /* ── Relay list ────────────────────────────────────────────────────── */
+  /* ── Relay list, and an eager connection attempt ───────────────────── */
   useEffect(() => {
     let cancelled = false;
     void getRelays().then((list) => {
-      if (!cancelled) setRelaysState(list);
+      if (cancelled) return;
+      setRelaysState(list);
+      // Connect as soon as we know the list, rather than waiting for the
+      // service's next 45s warm tick.
+      void warmRelays();
     });
     return () => {
       cancelled = true;
@@ -95,19 +100,29 @@ export const NostrProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     if (relays.length === 0) return;
     let cancelled = false;
-    const pool = getPool();
 
     const check = async () => {
-      const status = pool.listConnectionStatus();
-      const connected = relays.filter((url) => status.get(url) === true);
-      if (!cancelled) setConnectedRelays(connected);
+      const connected = getConnectedRelays(relays);
+      if (cancelled) return;
+      setConnectedRelays(connected);
+      // Poll fast while nothing is connected, slowly once we are: the previous
+      // fixed 30s interval meant the live indicator stayed wrong for half a
+      // minute after a successful connect.
+      delay = connected.length > 0 ? 30_000 : 2_500;
     };
 
-    void check();
-    const id = setInterval(check, 30_000);
+    let delay = 2_500;
+    let timer: ReturnType<typeof setTimeout>;
+
+    const tick = async () => {
+      await check();
+      if (!cancelled) timer = setTimeout(tick, delay);
+    };
+
+    void tick();
     return () => {
       cancelled = true;
-      clearInterval(id);
+      clearTimeout(timer);
     };
   }, [relays]);
 
@@ -189,7 +204,10 @@ export const NostrProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       const handle = getPool().subscribe(relays, finalFilter, {
         onevent: (event: Event) => {
-          if (event.kind === 1 && !profilesRef.current[event.pubkey]) {
+          // Any event from an author we cannot name is worth resolving — the
+          // check was pinned to kind 1, so chat bylines (kind 42) always showed
+          // a truncated pubkey and no name was ever requested.
+          if (!profilesRef.current[event.pubkey]) {
             void resolveProfiles([event.pubkey]);
           }
           onEvent(event);
@@ -298,7 +316,4 @@ export const useNetworkStatus = () => {
   useEffect(() => subscribeToNetworkState((next) => setState({ ...next })), []);
   return state;
 };
-
-// Referenced so the helper stays tree-shake-safe if callers stop using setRelays.
-export { setRelays };
 /* eslint-enable react-refresh/only-export-components */

@@ -57,6 +57,33 @@ const RELAY_KEY = "user_relays";
 const isRelayUrl = (value: unknown): value is string =>
   typeof value === "string" && /^wss?:\/\/[^\s]+$/i.test(value.trim());
 
+/**
+ * Canonical form used to match our relay list against nostr-tools' connection
+ * map.
+ *
+ * nostr-tools keys that map with the URL *normalised*, which keeps a trailing
+ * slash (`wss://nos.lol/`), while our persisted list strips it. Comparing the
+ * raw strings therefore never matched, `connectedRelays` stayed empty for every
+ * user, and the UI claimed "No relay connection" while messages were in fact
+ * flowing. Both sides are reduced to the same canonical key here.
+ */
+export const relayKey = (url: string): string => {
+  try {
+    const parsed = new URL(url);
+    const protocol = parsed.protocol === "https:" ? "wss:" : parsed.protocol === "http:" ? "ws:" : parsed.protocol;
+    const path = parsed.pathname.replace(/\/+/g, "/").replace(/\/$/, "");
+    const port =
+      (protocol === "ws:" && parsed.port === "80") || (protocol === "wss:" && parsed.port === "443")
+        ? ""
+        : parsed.port
+          ? `:${parsed.port}`
+          : "";
+    return `${protocol}//${parsed.hostname.toLowerCase()}${port}${path}${parsed.search}`;
+  } catch {
+    return url.replace(/\/+$/, "").toLowerCase();
+  }
+};
+
 const normaliseRelays = (value: unknown): string[] => {
   if (!Array.isArray(value)) return [];
   const seen = new Set<string>();
@@ -208,6 +235,8 @@ export interface NetworkState {
   isSyncing: boolean;
   pendingCount: number;
   droppedCount: number;
+  /** Relays with an open socket right now. */
+  connectedCount: number;
 }
 
 let networkState: NetworkState = {
@@ -215,6 +244,7 @@ let networkState: NetworkState = {
   isSyncing: false,
   pendingCount: 0,
   droppedCount: 0,
+  connectedCount: 0,
 };
 
 type NetworkStateListener = (state: NetworkState) => void;
@@ -428,6 +458,11 @@ export async function initNetworkListener(): Promise<void> {
     if (wasOffline && status.connected) void flushQueue();
   });
 
+  // Connect immediately. Nothing called `ensureRelay` on the happy path before,
+  // so a fresh install sat disconnected — and every relay-dependent read fell
+  // back to the local store — until the first 45s tick.
+  if (networkState.isOnline) void warmRelays();
+
   const queue = await readQueue();
   updateNetworkState({ pendingCount: queue.length });
   if (networkState.isOnline && queue.length > 0) void flushQueue();
@@ -452,19 +487,39 @@ function onVisible() {
   if (networkState.pendingCount > 0) void flushQueue();
 }
 
-async function warmRelays() {
-  const relays = await getRelays();
+/**
+ * Which of our relays currently hold an open socket.
+ *
+ * Exported because the connection indicator needs exactly this comparison, and
+ * getting it wrong is invisible until you notice the app claiming it is offline
+ * while messages are arriving.
+ */
+export function getConnectedRelays(relays: string[]): string[] {
   const status = pool.listConnectionStatus();
+  const live = new Set<string>();
+  for (const [url, isConnected] of status) {
+    if (isConnected === true) live.add(relayKey(url));
+  }
+  return relays.filter((url) => live.has(relayKey(url)));
+}
+
+/** Opens a socket to any relay that is not already connected. */
+export async function warmRelays(): Promise<void> {
+  const relays = await getRelays();
+  const already = new Set(getConnectedRelays(relays));
   await Promise.allSettled(
-    relays.map(async (url) => {
-      if (status.get(url) === true) return;
-      try {
-        await pool.ensureRelay(url, { connectionTimeout: CONNECT_TIMEOUT_MS });
-      } catch {
-        /* retried on the next tick */
-      }
-    }),
+    relays
+      .filter((url) => !already.has(relayKey(url)))
+      .map(async (url) => {
+        try {
+          await pool.ensureRelay(url, { connectionTimeout: CONNECT_TIMEOUT_MS });
+        } catch {
+          /* retried on the next tick */
+        }
+      }),
   );
+  // Re-read after connecting: the snapshot above predates the new sockets.
+  updateNetworkState({ connectedCount: getConnectedRelays(relays).length });
 }
 
 /** Releases sockets and timers. Safe to call more than once. */
@@ -593,7 +648,7 @@ export async function resetIdentity(options: { wipeRecords?: boolean } = {}): Pr
   }
 
   closeAllRelays();
-  updateNetworkState({ pendingCount: 0, droppedCount: 0, isSyncing: false });
+  updateNetworkState({ pendingCount: 0, droppedCount: 0, isSyncing: false, connectedCount: 0 });
 }
 
 /** Clears a damaged identity so the next load mints a fresh one. */
@@ -607,7 +662,13 @@ export async function discardIdentity(): Promise<void> {
   } catch {
     /* ignore */
   }
-  networkState = { isOnline: networkState.isOnline, isSyncing: false, pendingCount: 0, droppedCount: 0 };
+  networkState = {
+    isOnline: networkState.isOnline,
+    isSyncing: false,
+    pendingCount: 0,
+    droppedCount: 0,
+    connectedCount: 0,
+  };
 }
 
 export async function exportKeys(): Promise<{ nsec: string; npub: string } | null> {
