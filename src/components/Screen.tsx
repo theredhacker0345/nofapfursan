@@ -55,7 +55,7 @@ export function Screen({
       <main
         id="main"
         className={cn(
-          "mx-auto w-full max-w-content flex-1 overflow-y-auto [-webkit-overflow-scrolling:touch] [touch-action:pan-y]",
+          "mx-auto w-full max-w-content flex-1 overflow-y-auto [-webkit-overflow-scrolling:touch] [touch-action:pan-y] [overscroll-behavior:contain] scrollbar-thin scrollbar-thumb-ink-muted scrollbar-track-transparent",
           !bare && "px-5",
           withNav && "nav-clearance",
           className,
