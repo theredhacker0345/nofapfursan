@@ -22,7 +22,9 @@ import {
   warmRelays,
   getConnectedRelays,
   shutdownNetwork,
+  verifyRelay,
   type NetworkState,
+  type RelayHealth,
 } from "@/services/nostr";
 
 interface RelayMetadata {
@@ -45,6 +47,7 @@ interface NostrContextType {
   relays: string[];
   connectedRelays: string[];
   relayMetadata: Record<string, RelayMetadata>;
+  relayLatency: Record<string, number>;
   profiles: Record<string, string>;
   network: NetworkState;
   addRelay: (url: string) => Promise<boolean>;
@@ -52,6 +55,7 @@ interface NostrContextType {
   publish: (event: Event) => Promise<boolean>;
   subscribe: (filter: Filter, onEvent: (event: Event) => void) => () => void;
   updateProfileName: (newName: string, privateKey: string) => Promise<boolean>;
+  pingRelay: (url: string) => Promise<number | null>;
 }
 
 const NostrContext = createContext<NostrContextType | null>(null);
@@ -66,6 +70,7 @@ export const NostrProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [relays, setRelaysState] = useState<string[]>([]);
   const [connectedRelays, setConnectedRelays] = useState<string[]>([]);
   const [relayMetadata, setRelayMetadata] = useState<Record<string, RelayMetadata>>({});
+  const [relayLatency, setRelayLatency] = useState<Record<string, number>>({});
   const [profiles, setProfiles] = useState<Record<string, string>>(() =>
     Object.fromEntries(profileCache),
   );
@@ -110,9 +115,16 @@ export const NostrProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const connected = getConnectedRelays(relays);
       if (cancelled) return;
       setConnectedRelays(connected);
-      // Poll fast while nothing is connected, slowly once we are: the previous
-      // fixed 30s interval meant the live indicator stayed wrong for half a
-      // minute after a successful connect.
+      // Measure latency for connected relays so the UI shows hop cost.
+      for (const url of connected) {
+        try {
+          const start = performance.now();
+          await getPool().querySync([url], { kinds: [0], limit: 1 }, { maxWait: 2000 });
+          if (!cancelled) setRelayLatency((prev) => ({ ...prev, [url]: Math.round(performance.now() - start) }));
+        } catch {
+          /* skip — relay is connected but slow */
+        }
+      }
       delay = connected.length > 0 ? 30_000 : 2_500;
     };
 
@@ -287,11 +299,25 @@ export const NostrProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     [],
   );
 
+  const pingRelay = useCallback(async (url: string): Promise<number | null> => {
+    if (!relays.includes(url)) return null;
+    try {
+      const start = performance.now();
+      await getPool().querySync([url], { kinds: [0], limit: 1 }, { maxWait: 2000 });
+      const ms = Math.round(performance.now() - start);
+      setRelayLatency((prev) => ({ ...prev, [url]: ms }));
+      return ms;
+    } catch {
+      return null;
+    }
+  }, [relays]);
+
   const value = useMemo<NostrContextType>(
     () => ({
       relays,
       connectedRelays,
       relayMetadata,
+      relayLatency,
       profiles,
       network,
       addRelay,
@@ -299,11 +325,13 @@ export const NostrProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       publish,
       subscribe,
       updateProfileName,
+      pingRelay,
     }),
     [
       relays,
       connectedRelays,
       relayMetadata,
+      relayLatency,
       profiles,
       network,
       addRelay,
@@ -311,6 +339,7 @@ export const NostrProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       publish,
       subscribe,
       updateProfileName,
+      pingRelay,
     ],
   );
 

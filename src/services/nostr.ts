@@ -154,6 +154,7 @@ export function closeAllRelays(): void {
 
 export interface RelayHealth {
   reachable: boolean;
+  latencyMs?: number;
   metadata?: { name?: string; description?: string; supported_nips?: number[] };
 }
 
@@ -161,6 +162,7 @@ export interface RelayHealth {
 export async function verifyRelay(url: string): Promise<RelayHealth> {
   const trimmed = url.trim().replace(/\/+$/, "");
   if (!isRelayUrl(trimmed)) return { reachable: false };
+  const start = performance.now();
   try {
     await pool.ensureRelay(trimmed, { connectionTimeout: CONNECT_TIMEOUT_MS });
   } catch {
@@ -176,14 +178,14 @@ export async function verifyRelay(url: string): Promise<RelayHealth> {
     });
     if (res.ok) {
       const data = (await res.json()) as RelayHealth["metadata"];
-      return { reachable: true, metadata: data };
+      return { reachable: true, latencyMs: Math.round(performance.now() - start), metadata: data };
     }
   } catch {
     /* NIP-11 is optional — reachability is what matters here */
   } finally {
     clearTimeout(timer);
   }
-  return { reachable: true };
+  return { reachable: true, latencyMs: Math.round(performance.now() - start) };
 }
 
 const QUERY_TIMEOUT_MS = 6000;
