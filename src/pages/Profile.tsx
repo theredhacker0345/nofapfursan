@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { AlertTriangle, ChevronRight, Upload, Download, LogOut, Settings2 } from "lucide-react";
+import { AlertTriangle, ChevronRight, Upload, Download, LogOut, Settings2, BookOpen, Activity } from "lucide-react";
 import { toast } from "sonner";
 
 import { Screen, SectionHead } from "@/components/Screen";
