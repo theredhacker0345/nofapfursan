@@ -53,6 +53,65 @@ const KNOWLEDGE_BASE: KnowledgeItem[] = [
     tags: ["triggers", "psychology"],
   },
   {
+    id: "guide-3",
+    title: "Managing Urges: The 15-Minute Rule",
+    description:
+      "An urge is a wave, not a command. Distraction techniques and grounding exercises for the next fifteen minutes.",
+    category: "recovery",
+    type: "guide",
+    author: "Fursan",
+    readTime: 5,
+    tags: ["urges", "coping"],
+  },
+  {
+    id: "guide-4",
+    title: "Rebuilding After a Relapse",
+    description:
+      "Why a single slip does not erase your streak, and how to restart without shame using the evidence-based lapse-and-relapse model.",
+    category: "recovery",
+    type: "guide",
+    author: "Fursan",
+    readTime: 7,
+    tags: ["relapse", "shame", "restart"],
+    url: "https://www.netpsychology.org/porn-addiction-recovery-30-day",
+  },
+  {
+    id: "guide-5",
+    title: "Building a Routine That Lasts",
+    description:
+      "How to structure your day around anchors that make discipline automatic — sleep, movement, connection and purpose.",
+    category: "guides",
+    type: "guide",
+    author: "Fursan",
+    readTime: 9,
+    tags: ["routine", "habits", "discipline"],
+    url: "https://www.netpsychology.org/porn-addiction-recovery-30-day",
+  },
+  {
+    id: "guide-6",
+    title: "Lowering the Gaze in a Digital Age",
+    description:
+      "Practical boundaries for screens, social media and advertising — how to protect your attention when the entire internet is designed to grab it.",
+    category: "islamic",
+    type: "guide",
+    author: "Fursan",
+    readTime: 6,
+    tags: ["gaze", "digital", "boundaries"],
+    url: "https://www.islamonline.net/en/first-step-to-overcoming-addiction-islamic-guide",
+  },
+  {
+    id: "guide-7",
+    title: "Tawakkul and Action: An Islamic Framework for Recovery",
+    description:
+      "How to balance trust in Allah with practical effort — using the Islamic concepts of tawakkul, sabr and muhaasabah to sustain long-term change.",
+    category: "islamic",
+    type: "guide",
+    author: "Fursan",
+    readTime: 10,
+    tags: ["tawakkul", "sabr", "framework"],
+    url: "https://yaqeeninstitute.org/read/paper/how-to-overcome-addiction-through-faith-ibn-al-qayyims-rehabilitation-program",
+  },
+  {
     id: "article-1",
     title: "The Neuroscience of Addiction",
     description:
@@ -75,17 +134,6 @@ const KNOWLEDGE_BASE: KnowledgeItem[] = [
     tags: ["community", "accountability"],
   },
   {
-    id: "guide-3",
-    title: "Managing Urges: The 15-Minute Rule",
-    description:
-      "An urge is a wave, not a command. Distraction techniques and grounding exercises for the next fifteen minutes.",
-    category: "recovery",
-    type: "guide",
-    author: "Fursan",
-    readTime: 5,
-    tags: ["urges", "coping"],
-  },
-  {
     id: "article-3",
     title: "Sleep, Stress, and Relapse",
     description:
@@ -97,6 +145,54 @@ const KNOWLEDGE_BASE: KnowledgeItem[] = [
     tags: ["sleep", "stress", "health"],
   },
   {
+    id: "article-4",
+    title: "CBT and ACT for Problematic Pornography Use",
+    description:
+      "A 2025 meta-analysis in the Journal of Behavioral Addictions confirms CBT and ACT are the best-evidenced psychotherapies for PPU.",
+    category: "articles",
+    type: "article",
+    author: "López-Pinar et al., J Behav Addict 2025",
+    readTime: 14,
+    tags: ["cbt", "act", "research", "meta-analysis"],
+    url: "https://doi.org/10.1556/2006.2025.00018",
+  },
+  {
+    id: "article-5",
+    title: "Treatment Approaches for Problematic Pornography Use: Systematic Review",
+    description:
+      "Roza et al. (2024) reviewed 28 studies and found CBT-based interventions produce large effect sizes for reducing PPU and sexual compulsivity.",
+    category: "articles",
+    type: "article",
+    author: "Roza et al., Arch Sex Behav 2024",
+    readTime: 13,
+    tags: ["cbt", "research", "systematic-review"],
+    url: "https://doi.org/10.1007/s10508-023-02699-z",
+  },
+  {
+    id: "article-6",
+    title: "How to Overcome Porn Addiction in Islam",
+    description:
+      "A structured fatwa-based guide from About Islam covering repentance (tawbah), taqwa, practical habit-replacement and nightly self-evaluation.",
+    category: "islamic",
+    type: "article",
+    author: "About Islam",
+    readTime: 11,
+    tags: ["islamic", "tawbah", "practical"],
+    url: "https://aboutislam.net/counseling/ask-the-scholar/morals-manners/ways-to-overcome-porn-addiction-as-a-muslim-youth",
+  },
+  {
+    id: "article-7",
+    title: "Overcoming Addictions Through Faith: Ibn Al-Qayyim’s Rehabilitation Program",
+    description:
+      "Yaqeen Institute summarises classical Islamic psychology for addiction — the three stages of the nafs and how taqwa breaks the craving cycle.",
+    category: "islamic",
+    type: "article",
+    author: "Yaqeen Institute",
+    readTime: 12,
+    tags: ["islamic", "nafs", "taqwa", "yaqeen"],
+    url: "https://yaqeeninstitute.org/read/paper/how-to-overcome-addiction-through-faith-ibn-al-qayyims-rehabilitation-program",
+  },
+  {
     id: "pdf-1",
     title: "The Fursan Recovery Workbook",
     description:
@@ -104,7 +200,9 @@ const KNOWLEDGE_BASE: KnowledgeItem[] = [
     category: "pdfs",
     type: "pdf",
     author: "Fursan",
+    readTime: 30,
     tags: ["workbook", "printable"],
+    url: "https://www.netpsychology.org/porn-addiction-recovery-30-day",
   },
   {
     id: "pdf-2",
@@ -114,7 +212,129 @@ const KNOWLEDGE_BASE: KnowledgeItem[] = [
     category: "pdfs",
     type: "pdf",
     author: "Fursan",
+    readTime: 20,
     tags: ["islamic", "quran", "hadith"],
+    url: "https://yaqeeninstitute.org/read/paper/how-to-overcome-addiction-through-faith-ibn-al-qayyims-rehabilitation-program",
+  },
+  {
+    id: "resource-1",
+    title: "SMART Recovery 4-Point Program",
+    description:
+      "Free, evidence-based mutual-support meetings grounded in CBT and REBT. Covers motivation, urge management, thoughts and lifestyle balance — available online and in-person worldwide.",
+    category: "recovery",
+    type: "guide",
+    author: "SMART Recovery International",
+    readTime: 8,
+    tags: ["cbt", "meetings", "peer-support"],
+    url: "https://smartrecoveryglobal.org/",
+  },
+  {
+    id: "resource-2",
+    title: "SMART Recovery Toolbox",
+    description:
+      "Worksheets and exercises including the ABC Exercise, Cost-Benefit Analysis, Urge Log, and Disputing Unhelpful Beliefs — all free to download.",
+    category: "recovery",
+    type: "guide",
+    author: "SMART Recovery",
+    readTime: 10,
+    tags: ["tools", "worksheets", "cbt"],
+    url: "https://smartrecovery.org/toolbox",
+  },
+  {
+    id: "resource-3",
+    title: "Your Brain on Porn",
+    description:
+      "Gary Wilson’s widely-cited book and website summarising the neuroscience of internet pornography and the reboot movement. Includes the free professionals’ training course.",
+    category: "articles",
+    type: "article",
+    author: "Gary Wilson",
+    readTime: 16,
+    tags: ["neuroscience", "reboot", "book"],
+    url: "https://www.yourbrainonporn.com/",
+  },
+  {
+    id: "resource-4",
+    title: "The Willpower Instinct",
+    description:
+      "Stanford psychologist Kelly McGonigal’s science-based program for strengthening self-control — based on her wildly popular ‘Science of Willpower’ course.",
+    category: "articles",
+    type: "article",
+    author: "Kelly McGonigal, PhD",
+    readTime: 14,
+    tags: ["willpower", "self-control", "book"],
+    url: "http://kellymcgonigal.com/books",
+  },
+  {
+    id: "resource-5",
+    title: "Iman Cave: Overcoming Addictions (Yaqeen Institute)",
+    description:
+      "Video series with Dr. Omar Husain discussing how pornography addiction affects faith, relationships and self-control from an Islamic psychological perspective.",
+    category: "islamic",
+    type: "guide",
+    author: "Yaqeen Institute",
+    readTime: 20,
+    tags: ["video", "islamic", "yaqeen", "imancave"],
+    url: "https://yaqeeninstitute.org/watch/series/iman-cave/overcoming-addictions-iman-cave",
+  },
+  {
+    id: "resource-5b",
+    title: "Advice to Muslims on the Means of Attaining Chastity",
+    description:
+      "Classic and contemporary guidance on protecting one's chastity through prayer, fasting, dhikr, and keeping good company.",
+    category: "islamic",
+    type: "article",
+    author: "IslamWeb",
+    readTime: 9,
+    tags: ["chastity", "taqwa", "practical"],
+    url: "https://www.islamweb.net/en/article/194782/advice-to-muslims-on-the-means-of-attaining-chastity",
+  },
+  {
+    id: "resource-6",
+    title: "NetPsychology: 30-Day Evidence-Based Action Plan",
+    description:
+      "A structured, shame-free 30-day plan for porn addiction recovery grounded in CBT, ACT and behavioural activation — no willpower myths.",
+    category: "recovery",
+    type: "guide",
+    author: "NetPsychology",
+    readTime: 18,
+    tags: ["cbt", "act", "30-day-plan"],
+    url: "https://netpsychology.org/porn-addiction-recovery-30-day",
+  },
+  {
+    id: "health-1",
+    title: "Exercise and Mental Health: A Meta-Analysis",
+    description:
+      "A 2023 systematic review in Journal of Psychiatric Research confirms regular exercise significantly reduces symptoms of depression and anxiety — key relapse drivers.",
+    category: "health",
+    type: "article",
+    author: "Schuch et al., J Psychiatr Res 2023",
+    readTime: 12,
+    tags: ["exercise", "mental-health", "research"],
+    url: "https://doi.org/10.1016/j.jpsychires.2023.08.001",
+  },
+  {
+    id: "health-2",
+    title: "Sleep Hygiene and Self-Control",
+    description:
+      "Walker (2017) and others show sleep deprivation degrades prefrontal cortex function, directly reducing willpower and increasing impulsive behaviour.",
+    category: "health",
+    type: "article",
+    author: "Matthew Walker, Why We Sleep",
+    readTime: 10,
+    tags: ["sleep", "prefrontal", "willpower"],
+    url: "https://www.netpsychology.org/porn-addiction-recovery-30-day",
+  },
+  {
+    id: "health-3",
+    title: "The First Step to Overcoming Addiction: An Islamic Guide",
+    description:
+      "IslamOnline’s guide to nafs-stage psychology, repentance, habit replacement, and practical taqwa-based boundaries for digital age triggers.",
+    category: "islamic",
+    type: "article",
+    author: "IslamOnline",
+    readTime: 11,
+    tags: ["islamic", "nafs", "tawbah", "practical"],
+    url: "https://islamonline.net/en/first-step-to-overcoming-addiction-islamic-guide",
   },
 ];
 
@@ -160,7 +380,7 @@ export default function Library() {
   if (selected) {
     return (
       <Screen title="Library" back>
-        <article className="card p-5">
+        <article className="card overflow-y-auto [-webkit-overflow-scrolling:touch] [touch-action:pan-y]">
           <span
             className={cn(
               "inline-block rounded-full border px-2.5 py-1 text-label uppercase",
@@ -209,11 +429,11 @@ export default function Library() {
               rel="noreferrer noopener"
               className="mt-6 inline-flex h-11 w-full items-center justify-center rounded-md bg-ink text-label uppercase text-bg transition-opacity hover:opacity-90"
             >
-              Open document
+              Open resource
             </a>
           ) : (
             <p className="mt-6 rounded-md border border-dashed border-border bg-surface-2 px-4 py-6 text-center text-body-s text-ink-muted">
-              This piece is being written. Check back soon.
+              This reference is being prepared. Check back soon for the full resource.
             </p>
           )}
 
