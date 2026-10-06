@@ -551,7 +551,7 @@ export default function Library() {
     if (selected) {
       return (
         <Screen title="Library" back>
-          <article className="card overflow-y-auto [-webkit-overflow-scrolling:touch] [touch-action:pan-y] [overscroll-behavior:contain] scrollbar-thin scrollbar-thumb-ink-muted scrollbar-track-transparent">
+          <article className="card overflow-y-auto [-webkit-overflow-scrolling:touch] [touch-action:pan-y] [overscroll-behavior:contain]">
           <span
             className={cn(
               "inline-block rounded-full border px-2.5 py-1 text-label uppercase",
