@@ -40,6 +40,7 @@ const KNOWLEDGE_BASE: KnowledgeItem[] = [
     author: "Fursan",
     readTime: 8,
     tags: ["beginner", "streak", "routine"],
+    url: "https://www.netpsychology.org/porn-addiction-recovery-30-day",
   },
   {
     id: "guide-2",
@@ -51,6 +52,7 @@ const KNOWLEDGE_BASE: KnowledgeItem[] = [
     author: "Fursan",
     readTime: 12,
     tags: ["triggers", "psychology"],
+    url: "https://www.netpsychology.org/porn-addiction-recovery-30-day",
   },
   {
     id: "article-1",
@@ -62,6 +64,7 @@ const KNOWLEDGE_BASE: KnowledgeItem[] = [
     author: "Fursan",
     readTime: 15,
     tags: ["neuroscience", "dopamine"],
+    url: "https://doi.org/10.1556/2006.2025.00018",
   },
   {
     id: "article-2",
@@ -73,6 +76,7 @@ const KNOWLEDGE_BASE: KnowledgeItem[] = [
     author: "Fursan",
     readTime: 10,
     tags: ["community", "accountability"],
+    url: "https://smartrecoveryglobal.org/",
   },
   {
     id: "guide-3",
@@ -84,6 +88,7 @@ const KNOWLEDGE_BASE: KnowledgeItem[] = [
     author: "Fursan",
     readTime: 5,
     tags: ["urges", "coping"],
+    url: "https://smartrecovery.org/toolbox",
   },
   {
     id: "article-3",
@@ -95,6 +100,7 @@ const KNOWLEDGE_BASE: KnowledgeItem[] = [
     author: "Fursan",
     readTime: 12,
     tags: ["sleep", "stress", "health"],
+    url: "https://doi.org/10.1016/j.jpsychires.2023.08.001",
   },
   {
     id: "pdf-1",
@@ -104,7 +110,9 @@ const KNOWLEDGE_BASE: KnowledgeItem[] = [
     category: "pdfs",
     type: "pdf",
     author: "Fursan",
+    readTime: 30,
     tags: ["workbook", "printable"],
+    url: "https://www.netpsychology.org/porn-addiction-recovery-30-day",
   },
   {
     id: "pdf-2",
@@ -114,7 +122,9 @@ const KNOWLEDGE_BASE: KnowledgeItem[] = [
     category: "pdfs",
     type: "pdf",
     author: "Fursan",
+    readTime: 20,
     tags: ["islamic", "quran", "hadith"],
+    url: "https://yaqeeninstitute.org/read/paper/how-to-overcome-addiction-through-faith-ibn-al-qayyims-rehabilitation-program",
   },
 ];
 
@@ -160,7 +170,7 @@ export default function Library() {
   if (selected) {
     return (
       <Screen title="Library" back>
-        <article className="card p-5">
+        <article className="card overflow-y-auto [-webkit-overflow-scrolling:touch] [touch-action:pan-y]">
           <span
             className={cn(
               "inline-block rounded-full border px-2.5 py-1 text-label uppercase",
@@ -209,11 +219,11 @@ export default function Library() {
               rel="noreferrer noopener"
               className="mt-6 inline-flex h-11 w-full items-center justify-center rounded-md bg-ink text-label uppercase text-bg transition-opacity hover:opacity-90"
             >
-              Open document
+              Open resource
             </a>
           ) : (
             <p className="mt-6 rounded-md border border-dashed border-border bg-surface-2 px-4 py-6 text-center text-body-s text-ink-muted">
-              This piece is being written. Check back soon.
+              This reference is being prepared. Check back soon for the full resource.
             </p>
           )}
 
