@@ -42,7 +42,7 @@ export function Screen({
   action,
 }: ScreenProps) {
   return (
-    <div className="flex min-h-dvh flex-col bg-bg">
+     <div className="flex h-dvh flex-col bg-bg">
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-ink focus:px-4 focus:py-2 focus:text-label focus:uppercase focus:text-bg"
@@ -55,7 +55,7 @@ export function Screen({
       <main
         id="main"
         className={cn(
-          "mx-auto w-full max-w-content flex-1 overflow-y-auto [-webkit-overflow-scrolling:touch] [touch-action:pan-y]",
+          "mx-auto w-full max-w-content flex-1 overflow-y-auto [-webkit-overflow-scrolling:touch] [touch-action:pan-y] [overscroll-behavior:contain]",
           !bare && "px-5",
           withNav && "nav-clearance",
           className,

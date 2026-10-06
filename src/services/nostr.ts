@@ -205,21 +205,39 @@ const withTimeout = async <T,>(promise: Promise<T>, ms: number, fallback: T): Pr
 /**
  * `querySync` resolves on relay arrival order and never sorts; on top of that an
  * empty/dead relay set can leave the promise pending forever. This wrapper
- * sorts by `created_at` descending and always resolves.
+ * sorts by `created_at` descending and always resolves. If `relayLatencyMs` is
+ * set, each relay is queried sequentially instead of in parallel so the delay
+ * between hops is visible.
  */
 async function queryRelays(
   filter: Record<string, unknown>,
   relays: string[],
   timeoutMs = QUERY_TIMEOUT_MS,
+  relayLatencyMs: number = 0,
 ): Promise<VerifiedEvent[]> {
   if (relays.length === 0) return [];
   try {
-    const events = await withTimeout(
-      pool.querySync(relays, filter as never, { maxWait: timeoutMs }) as Promise<VerifiedEvent[]>,
+    const queryPromises = relays.map(async (url, index) => {
+      if (relayLatencyMs > 0 && index > 0) {
+        await new Promise((resolve) => setTimeout(resolve, relayLatencyMs));
+      }
+      return pool.querySync([url], filter as never, { maxWait: timeoutMs }) as Promise<VerifiedEvent[]>;
+    });
+
+    const allEvents = await withTimeout(
+      Promise.allSettled(queryPromises).then((results) => {
+        const events: VerifiedEvent[] = [];
+        for (const result of results) {
+          if (result.status === "fulfilled") {
+            events.push(...result.value);
+          }
+        }
+        return events;
+      }),
       timeoutMs + 500,
       [] as VerifiedEvent[],
     );
-    return events.sort((a, b) => b.created_at - a.created_at);
+    return allEvents.sort((a, b) => b.created_at - a.created_at);
   } catch (error) {
     console.warn("[Nostr] Query failed", error);
     return [];
@@ -411,7 +429,7 @@ const METADATA_TIMEOUT_MS = 3000;
 const MIN_RELAY_CONFIRMATIONS = 1;
 
 /** Resolves true as soon as one relay accepts the event. */
-export async function publishEvent(event: VerifiedEvent, relays?: string[]): Promise<boolean> {
+export async function publishEvent(event: VerifiedEvent, relays?: string[], latencyMs: number = 0): Promise<boolean> {
   const targets = relays ?? (await getRelays());
   if (targets.length === 0) return false;
 
@@ -423,6 +441,10 @@ export async function publishEvent(event: VerifiedEvent, relays?: string[]): Pro
       return; // unreachable — the publish below will reject fast anyway
     }
     try {
+      // Simulate latency if specified
+      if (latencyMs > 0) {
+        await new Promise(resolve => setTimeout(resolve, latencyMs));
+      }
       const [result] = await pool.publish([url], event);
       await result;
       acked = true;
@@ -810,7 +832,7 @@ export async function saveStreak(streakData: StreakPayload): Promise<boolean> {
   }
 }
 
-export async function fetchStreak(): Promise<StreakPayload | null> {
+export async function fetchStreak(relayLatencyMs: number = 0): Promise<StreakPayload | null> {
   if (!networkState.isOnline) return null;
   try {
     const keys = await generateOrLoadKeys();
@@ -818,6 +840,7 @@ export async function fetchStreak(): Promise<StreakPayload | null> {
     const events = await queryRelays(
       { kinds: [STREAK_KIND], authors: [keys.publicKey], "#d": [STREAK_D_TAG], limit: 10 },
       relays,
+      relayLatencyMs,
     );
     // Newest first: `querySync` returns arrival order, not chronological.
     for (const event of events) {
@@ -897,7 +920,7 @@ export async function saveHealthCheck(entry: HealthCheck): Promise<boolean> {
  * a request can take seconds, and reading early meant a check-in saved while it
  * was in flight was silently dropped from the returned list.
  */
-export async function fetchHealthChecks(): Promise<HealthCheck[]> {
+export async function fetchHealthChecks(relayLatencyMs: number = 0): Promise<HealthCheck[]> {
   if (!networkState.isOnline) return getLocalHealthChecks();
 
   try {
@@ -906,6 +929,7 @@ export async function fetchHealthChecks(): Promise<HealthCheck[]> {
     const events = await queryRelays(
       { kinds: [1], authors: [keys.publicKey], "#t": [HEALTH_TAG], limit: 150 },
       relays,
+      relayLatencyMs,
     );
     const remote: HealthCheck[] = [];
     for (const event of events) {
@@ -959,7 +983,7 @@ export async function saveJournalEntry(entry: JournalEntry): Promise<boolean> {
 }
 
 /** Local ∪ relay, newest first. See `fetchHealthChecks` for the late-snapshot rule. */
-export async function fetchJournalEntries(): Promise<JournalEntry[]> {
+export async function fetchJournalEntries(relayLatencyMs: number = 0): Promise<JournalEntry[]> {
   if (!networkState.isOnline) return getLocalJournalEntries();
 
   try {
@@ -968,6 +992,8 @@ export async function fetchJournalEntries(): Promise<JournalEntry[]> {
     const events = await queryRelays(
       { kinds: [1], authors: [keys.publicKey], "#t": [JOURNAL_TAG], limit: 150 },
       relays,
+      undefined,
+      relayLatencyMs,
     );
     const remote: JournalEntry[] = [];
     for (const event of events) {

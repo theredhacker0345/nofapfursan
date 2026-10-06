@@ -147,10 +147,7 @@ export default function Vanguard() {
     };
   }, []);
 
-  useEffect(() => {
-    const node = listRef.current;
-    if (node) node.scrollTop = node.scrollHeight;
-  }, [messages.length]);
+
 
   const participants = useMemo(() => new Set(messages.map((m) => m.pubkey)).size, [messages]);
 
