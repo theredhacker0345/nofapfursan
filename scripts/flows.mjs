@@ -392,7 +392,7 @@ const main = async () => {
   /* ── 11. Corrupt local records must not crash ────────────────────────── */
   await page.evaluate(() => localStorage.removeItem("CapacitorStorage.user_nsec"));
   await page.evaluate(() => localStorage.setItem("fursan_health_log", "{{{not json"));
-  await page.evaluate(() => localStorage.setItem("fursan_journal", " "));
+  await page.evaluate(() => localStorage.setItem("fursan_journal", "\u0000\u0001"));
   await goto(page, "#/vitals");
   log(
     await waitFor(() => page.getByRole("heading", { level: 1 }).isVisible()),
