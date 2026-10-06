@@ -176,8 +176,21 @@ export default function Nutrition() {
 
   const remove = (id: string) => setItems((prev) => prev.filter((i) => i.id !== id));
 
-  const quickAdd = (preset: Omit<NutritionItem, "id" | "date">) =>
-    setItems((prev) => [...prev, { id: newId(), date, ...preset }]);
+  const quickAdd = (preset: Omit<NutritionItem, "id" | "date">, multiplier: number = 1) =>
+    setItems((prev) => [
+      ...prev,
+      {
+        id: newId(),
+        date,
+        name: preset.name,
+        calories: Math.round(preset.calories * multiplier),
+        protein: Math.round(preset.protein * multiplier),
+        carbs: Math.round(preset.carbs * multiplier),
+        fat: Math.round(preset.fat * multiplier),
+        serving: multiplier === 1 ? preset.serving : `${multiplier}× ${preset.serving ?? "portion"}`,
+        mealType: preset.mealType,
+      },
+    ]);
 
   const isToday = date === toKey(new Date());
   const macros = [
@@ -295,14 +308,33 @@ export default function Nutrition() {
           Custom
         </button>
         {QUICK_ADD.map((preset) => (
-          <button
-            key={preset.name}
-            type="button"
-            onClick={() => quickAdd(preset)}
-            className="inline-flex h-11 items-center justify-center rounded-md border border-border px-3 text-meta text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink"
-          >
-            {preset.name}
-          </button>
+          <div key={preset.name} className="flex flex-col gap-1">
+            <button
+              type="button"
+              onClick={() => quickAdd(preset, 1)}
+              className="inline-flex h-11 items-center justify-center rounded-md border border-border px-3 text-meta text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink"
+            >
+              {preset.name}
+            </button>
+            <div className="flex gap-1">
+              <button
+                type="button"
+                onClick={() => quickAdd(preset, 0.5)}
+                className="inline-flex h-8 flex-1 items-center justify-center rounded-md border border-border text-meta text-ink-faint transition-colors hover:bg-surface-2 hover:text-ink"
+                title="Half portion"
+              >
+                ½
+              </button>
+              <button
+                type="button"
+                onClick={() => quickAdd(preset, 2)}
+                className="inline-flex h-8 flex-1 items-center justify-center rounded-md border border-border text-meta text-ink-faint transition-colors hover:bg-surface-2 hover:text-ink"
+                title="Double portion"
+              >
+                2×
+              </button>
+            </div>
+          </div>
         ))}
       </div>
 
