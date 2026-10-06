@@ -695,102 +695,97 @@ export default function Library() {
   /* ── Reader ─────────────────────────────────────────────────────────── */
   if (selected) {
     return (
-      <Screen title="Library" back bare={false}>
-        <div
-          ref={articleRef}
-          onScroll={handleReaderScroll}
-          className="flex min-h-0 flex-1 flex-col overflow-y-auto [-webkit-overflow-scrolling:touch] [touch-action:pan-y] [overscroll-behavior:contain]"
-        >
-          <div className="mx-auto w-full max-w-prose px-5">
-            {progress > 0 && (
-              <div
-                className="sticky top-0 z-10 h-0.5 w-full bg-surface-2"
-                style={{ marginTop: "calc(-1 * env(safe-area-inset-top))" }}
-              >
-                <div
-                  className="h-full bg-accent transition-all duration-150"
-                  style={{ width: `${Math.min(100, Math.round(progress * 100))}%` }}
-                />
+      <Screen
+        title="Library"
+        back
+        noScrollbar
+        mainRef={articleRef}
+        onMainScroll={handleReaderScroll}
+      >
+        {progress > 0 && (
+          <div className="sticky top-0 z-10 h-0.5 w-full bg-surface-2">
+            <div
+              className="h-full bg-accent transition-all duration-150"
+              style={{ width: `${Math.min(100, Math.round(progress * 100))}%` }}
+            />
+          </div>
+        )}
+
+        <article className="py-6">
+          <span
+            className={cn(
+              "inline-block rounded-full border px-2.5 py-1 text-label uppercase",
+              TYPE_STYLE[selected.type],
+            )}
+          >
+            {selected.type}
+          </span>
+
+          <h1 className="mt-4 text-display-xl font-semibold text-ink leading-tight">
+            {selected.title}
+          </h1>
+          <p className="mt-3 text-body text-ink-muted leading-relaxed">
+            {selected.description}
+          </p>
+
+          <dl className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-2 border-y border-border py-4 font-data text-meta text-ink-muted">
+            {selected.author && (
+              <div className="inline-flex items-center gap-1.5">
+                <dt className="sr-only">Author</dt>
+                <dd>{selected.author}</dd>
               </div>
             )}
-
-            <article className="py-6">
-              <span
-                className={cn(
-                  "inline-block rounded-full border px-2.5 py-1 text-label uppercase",
-                  TYPE_STYLE[selected.type],
-                )}
-              >
-                {selected.type}
-              </span>
-
-              <h1 className="mt-4 text-display-xl font-semibold text-ink leading-tight">
-                {selected.title}
-              </h1>
-              <p className="mt-3 text-body text-ink-muted leading-relaxed">
-                {selected.description}
-              </p>
-
-              <dl className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-2 border-y border-border py-4 font-data text-meta text-ink-muted">
-                {selected.author && (
-                  <div className="inline-flex items-center gap-1.5">
-                    <dt className="sr-only">Author</dt>
-                    <dd>{selected.author}</dd>
-                  </div>
-                )}
-                {selected.readTime ? (
-                  <div className="inline-flex items-center gap-1.5">
-                    <dt className="sr-only">Reading time</dt>
-                    <Clock className="h-3.5 w-3.5" aria-hidden="true" />
-                    <dd>{selected.readTime} min read</dd>
-                  </div>
-                ) : null}
-              </dl>
-
-              {(selected.tags ?? []).length > 0 && (
-                <ul className="mt-5 flex flex-wrap gap-1.5">
-                  {(selected.tags ?? []).map((tag) => (
-                    <li
-                      key={tag}
-                      className="rounded-full bg-surface-2 px-2.5 py-1 font-data text-meta text-ink-muted"
-                    >
-                      {tag}
-                    </li>
-                  ))}
-                </ul>
-              )}
-
-              {selected.content && selected.content.length > 0 && (
-                <div className="mt-8 space-y-5 border-t border-border pt-6">
-                  {selected.content.map((paragraph, index) => (
-                    <p
-                      key={index}
-                      className="text-body leading-relaxed text-ink"
-                      style={{ lineHeight: "1.7" }}
-                    >
-                      {paragraph}
-                    </p>
-                  ))}
-                </div>
-              )}
-
-              <div className="mt-10 flex items-center justify-between border-t border-border pt-6">
-                <button
-                  type="button"
-                  onClick={() => setSelected(null)}
-                  className="inline-flex h-11 items-center gap-2 rounded-md px-4 text-label uppercase text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink"
-                >
-                  <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
-                  Back to library
-                </button>
-                <span className="font-data text-meta text-ink-faint">
-                  {selected.content?.length ?? 0} paragraph
-                  {(selected.content?.length ?? 0) === 1 ? "" : "s"}
-                </span>
+            {selected.readTime ? (
+              <div className="inline-flex items-center gap-1.5">
+                <dt className="sr-only">Reading time</dt>
+                <Clock className="h-3.5 w-3.5" aria-hidden="true" />
+                <dd>{selected.readTime} min read</dd>
               </div>
-            </article>
+            ) : null}
+          </dl>
+
+          {(selected.tags ?? []).length > 0 && (
+            <ul className="mt-5 flex flex-wrap gap-1.5">
+              {(selected.tags ?? []).map((tag) => (
+                <li
+                  key={tag}
+                  className="rounded-full bg-surface-2 px-2.5 py-1 font-data text-meta text-ink-muted"
+                >
+                  {tag}
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {selected.content && selected.content.length > 0 && (
+            <div className="mt-8 space-y-5 border-t border-border pt-6">
+              {selected.content.map((paragraph, index) => (
+                <p
+                  key={index}
+                  className="text-body leading-relaxed text-ink"
+                  style={{ lineHeight: "1.7" }}
+                >
+                  {paragraph}
+                </p>
+              ))}
+            </div>
+          )}
+
+          <div className="mt-10 flex items-center justify-between border-t border-border pt-6">
+            <button
+              type="button"
+              onClick={() => setSelected(null)}
+              className="inline-flex h-11 items-center gap-2 rounded-md px-4 text-label uppercase text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+              Back to library
+            </button>
+            <span className="font-data text-meta text-ink-faint">
+              {selected.content?.length ?? 0} paragraph
+              {(selected.content?.length ?? 0) === 1 ? "" : "s"}
+            </span>
           </div>
-        </div>
+        </article>
       </Screen>
     );
   }
