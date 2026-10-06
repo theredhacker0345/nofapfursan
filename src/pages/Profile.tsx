@@ -236,19 +236,19 @@ export default function Profile() {
           </span>
           <ChevronRight className="h-4 w-4 shrink-0 text-ink-faint" aria-hidden="true" />
         </Link>
-        <Link to="/library" className="row">
-          <BookOpen className="h-4 w-4 shrink-0 text-ink-muted" aria-hidden="true" />
-          <span className="min-w-0 flex-1">
-            <span className="block text-body-s font-medium text-ink">Library</span>
-            <span className="block text-meta text-ink-muted">Guides and practice</span>
-          </span>
-          <ChevronRight className="h-4 w-4 shrink-0 text-ink-faint" aria-hidden="true" />
-        </Link>
         <Link to="/nutrition" className="row">
           <Activity className="h-4 w-4 shrink-0 text-ink-muted" aria-hidden="true" />
           <span className="min-w-0 flex-1">
             <span className="block text-body-s font-medium text-ink">Nutrition</span>
             <span className="block text-meta text-ink-muted">Meals and macros</span>
+          </span>
+          <ChevronRight className="h-4 w-4 shrink-0 text-ink-faint" aria-hidden="true" />
+        </Link>
+        <Link to="/library" className="row">
+          <BookOpen className="h-4 w-4 shrink-0 text-ink-muted" aria-hidden="true" />
+          <span className="min-w-0 flex-1">
+            <span className="block text-body-s font-medium text-ink">Library</span>
+            <span className="block text-meta text-ink-muted">Guides and practice</span>
           </span>
           <ChevronRight className="h-4 w-4 shrink-0 text-ink-faint" aria-hidden="true" />
         </Link>

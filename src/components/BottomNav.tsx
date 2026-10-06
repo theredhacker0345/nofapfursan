@@ -1,5 +1,5 @@
 import { NavLink } from "@/components/NavLink";
-import { Shield, Activity, BookOpen, Radio } from "lucide-react";
+import { Shield, Activity, BookOpen, Radio, LayoutGrid } from "lucide-react";
 
 /**
  * Five destinations, grid-laid-out. The previous bar carried seven items with
@@ -11,7 +11,7 @@ const items = [
   { to: "/vitals", label: "Vitals", icon: Activity, end: false },
   { to: "/journal", label: "Journal", icon: BookOpen, end: false },
   { to: "/vanguard", label: "Vanguard", icon: Radio, end: false },
-  { to: "/library", label: "Library", icon: BookOpen, end: false },
+  { to: "/profile", label: "More", icon: LayoutGrid, end: false },
 ] as const;
 
 export function BottomNav() {
