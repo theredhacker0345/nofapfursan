@@ -4,6 +4,7 @@ import { Search, BookOpen, FileText, Clock, ArrowLeft } from "lucide-react";
 import { Screen, SectionHead } from "@/components/Screen";
 import { EmptyState } from "@/components/EmptyState";
 import { cn } from "@/lib/utils";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 
 interface KnowledgeItem {
   id: string;
@@ -350,6 +351,7 @@ export default function Library() {
   const [category, setCategory] = useState<string>("all");
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<KnowledgeItem | null>(null);
+  const { isOnline, isSyncing, pendingCount, droppedCount } = useNetworkStatus();
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -423,14 +425,9 @@ export default function Library() {
           )}
 
           {selected.url ? (
-            <a
-              href={selected.url}
-              target="_blank"
-              rel="noreferrer noopener"
-              className="mt-6 inline-flex h-11 w-full items-center justify-center rounded-md bg-ink text-label uppercase text-bg transition-opacity hover:opacity-90"
-            >
-              Open resource
-            </a>
+            <p className="mt-6 rounded-md border border-dashed border-border bg-surface-2 px-4 py-6 text-center text-body-s text-ink-muted">
+              {selected.description}
+            </p>
           ) : (
             <p className="mt-6 rounded-md border border-dashed border-border bg-surface-2 px-4 py-6 text-center text-body-s text-ink-muted">
               This reference is being prepared. Check back soon for the full resource.
@@ -540,6 +537,62 @@ export default function Library() {
             </ul>
           </section>
         ))
+      )}
+      {isOnline || pendingCount > 0 || droppedCount > 0 && (
+        <div className="mt-8 p-4 bg-surface/50 border border-border rounded-lg">
+          <div className="flex items-start gap-3">
+            <div className="mt-1">
+              <span className={cn(
+                "h-3.5 w-3.5 shrink-0",
+                isOnline ? "text-success" : "text-warning",
+              )}>
+                {isOnline ? "✓" : "✗"}
+              </span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-label font-medium text-ink">
+                {isOnline ? "Relays synced" : "Relays offline"}
+              </p>
+              {pendingCount > 0 && (
+                <p className="text-body-s text-ink-muted mt-0.5">
+                  {pendingCount} {pendingCount === 1 ? "message waiting" : "messages waiting"}
+                </p>
+              )}
+              {droppedCount > 0 && (
+                <p className="text-body-s text-ink-muted mt-0.5">
+                  {droppedCount} messages dropped
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      {!(isOnline && pendingCount === 0 && droppedCount === 0) && (
+        <div className="mt-8 p-4 bg-surface/50 border border-border rounded-lg">
+          <h3 className="text-label font-semibold text-ink mb-2">
+            How to find more relay networks
+          </h3>
+          <p className="text-body-s text-ink-muted">
+            To add more relays, go to <a href="/settings/relay" className="text-ink underline hover:text-accent">Settings → Relay settings</a> and enter additional WebSocket URLs. Common public relays include:
+          </p>
+          <ul className="mt-2 text-body-s text-ink-muted space-y-1">
+            <li>
+              wss://nos.lol
+            </li>
+            <li>
+              wss://relay.damus.io
+            </li>
+            <li>
+              wss://relay.snort.social
+            </li>
+          </ul>
+          <p className="mt-2 text-xs text-ink-muted">
+            You can also use the Nostr NIP-11 discovery to find relays by visiting
+            <a href="/#/vitals" className="text-ink underline hover:text-accent">
+              your vitals page
+            </a> and checking the relay status.
+          </p>
+        </div>
       )}
     </Screen>
   );
