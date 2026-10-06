@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Plus, Trash2, Loader2, AlertCircle, Wifi } from "lucide-react";
+import { Plus, Trash2, Loader2, AlertCircle, Wifi, Activity } from "lucide-react";
 import { toast } from "sonner";
 
 import { useNostrContext } from "@/context/NostrContext";
@@ -9,10 +9,11 @@ import { cn } from "@/lib/utils";
 const hostOf = (url: string) => url.replace(/^wss?:\/\//, "").replace(/\/+$/, "");
 
 export const RelaySettings = () => {
-  const { relays, connectedRelays, relayMetadata, addRelay, removeRelay } = useNostrContext();
+  const { relays, connectedRelays, relayMetadata, relayLatency, addRelay, removeRelay, pingRelay } = useNostrContext();
   const [newRelay, setNewRelay] = useState("");
   const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pinging, setPinging] = useState<string | null>(null);
 
   const handleAdd = async (e: FormEvent) => {
     e.preventDefault();
@@ -34,7 +35,7 @@ export const RelaySettings = () => {
       }
       await addRelay(url);
       setNewRelay("");
-      toast.success(`Relay added — ${health.metadata?.name || hostOf(url)}`);
+      toast.success(`Relay added — ${health.metadata?.name || hostOf(url)}${health.latencyMs != null ? ` · ${health.latencyMs}ms` : ""}`);
     } catch {
       setError("Verification failed");
     } finally {
@@ -46,6 +47,20 @@ export const RelaySettings = () => {
     const removed = await removeRelay(url);
     if (!removed) {
       toast.error("Fursan needs at least one relay to save your records.");
+    }
+  };
+
+  const handlePing = async (url: string) => {
+    setPinging(url);
+    try {
+      const ms = await pingRelay(url);
+      if (ms != null) {
+        toast.success(`${hostOf(url)} responded in ${ms}ms`);
+      } else {
+        toast.error(`${hostOf(url)} did not respond`);
+      }
+    } finally {
+      setPinging(null);
     }
   };
 
@@ -115,6 +130,7 @@ export const RelaySettings = () => {
         {relays.map((url) => {
           const isConnected = connectedRelays.includes(url);
           const name = relayMetadata[url]?.name || hostOf(url);
+          const latency = relayLatency[url];
           return (
             <li key={url} className="row">
               <span
@@ -126,9 +142,31 @@ export const RelaySettings = () => {
               />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-body-s font-medium text-ink">{name}</span>
-                <span className="block truncate font-data text-meta text-ink-muted">{hostOf(url)}</span>
+                <span className="block truncate font-data text-meta text-ink-muted">
+                  {hostOf(url)}
+                  {latency != null && isConnected && (
+                    <span className={cn("ml-1", latency > 1500 ? "text-warning" : "text-ink-faint")}>
+                      · {latency}ms
+                    </span>
+                  )}
+                </span>
               </span>
               <span className="sr-only">{isConnected ? "Connected" : "Not connected"}</span>
+              {isConnected && (
+                <button
+                  type="button"
+                  aria-label={`Ping ${name}`}
+                  onClick={() => void handlePing(url)}
+                  disabled={pinging === url}
+                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-ink-faint transition-colors hover:bg-surface-2 hover:text-ink disabled:opacity-40"
+                >
+                  {pinging === url ? (
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Activity className="h-4 w-4" aria-hidden="true" />
+                  )}
+                </button>
+              )}
               <button
                 type="button"
                 aria-label={`Remove relay ${name}`}
