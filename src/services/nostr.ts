@@ -205,21 +205,39 @@ const withTimeout = async <T,>(promise: Promise<T>, ms: number, fallback: T): Pr
 /**
  * `querySync` resolves on relay arrival order and never sorts; on top of that an
  * empty/dead relay set can leave the promise pending forever. This wrapper
- * sorts by `created_at` descending and always resolves.
+ * sorts by `created_at` descending and always resolves. If `relayLatencyMs` is
+ * set, each relay is queried sequentially instead of in parallel so the delay
+ * between hops is visible.
  */
 async function queryRelays(
   filter: Record<string, unknown>,
   relays: string[],
   timeoutMs = QUERY_TIMEOUT_MS,
+  relayLatencyMs: number = 0,
 ): Promise<VerifiedEvent[]> {
   if (relays.length === 0) return [];
   try {
-    const events = await withTimeout(
-      pool.querySync(relays, filter as never, { maxWait: timeoutMs }) as Promise<VerifiedEvent[]>,
+    const queryPromises = relays.map(async (url, index) => {
+      if (relayLatencyMs > 0 && index > 0) {
+        await new Promise((resolve) => setTimeout(resolve, relayLatencyMs));
+      }
+      return pool.querySync([url], filter as never, { maxWait: timeoutMs }) as Promise<VerifiedEvent[]>;
+    });
+
+    const allEvents = await withTimeout(
+      Promise.allSettled(queryPromises).then((results) => {
+        const events: VerifiedEvent[] = [];
+        for (const result of results) {
+          if (result.status === "fulfilled") {
+            events.push(...result.value);
+          }
+        }
+        return events;
+      }),
       timeoutMs + 500,
       [] as VerifiedEvent[],
     );
-    return events.sort((a, b) => b.created_at - a.created_at);
+    return allEvents.sort((a, b) => b.created_at - a.created_at);
   } catch (error) {
     console.warn("[Nostr] Query failed", error);
     return [];
