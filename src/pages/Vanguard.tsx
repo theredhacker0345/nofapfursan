@@ -9,6 +9,7 @@ import {
   TriangleAlert,
   ScrollText,
   Eye,
+  ArrowDown,
   type LucideIcon,
 } from "lucide-react";
 import { finalizeEvent, type Event } from "nostr-tools";
@@ -66,8 +67,22 @@ export default function Vanguard() {
   const [channel, setChannel] = useState(CHANNELS[0].id);
   const [identity, setIdentity] = useState<NostrKeys | null>(null);
   const [ready, setReady] = useState(false);
+  const [scrolledUp, setScrolledUp] = useState(false);
   const timeouts = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const listRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = (smooth = true) => {
+    const el = listRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: smooth ? "smooth" : "auto" });
+  };
+
+  const onListScroll = () => {
+    const el = listRef.current;
+    if (!el) return;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+    setScrolledUp(!nearBottom);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -282,11 +297,22 @@ export default function Vanguard() {
 
         <div
           ref={listRef}
+          onScroll={onListScroll}
           className={cn(
             "h-[52vh] min-h-[320px] space-y-3 overflow-y-auto rounded-lg border border-border bg-surface px-4 py-4",
             messages.length === 0 && "flex flex-col justify-center",
           )}
         >
+          {scrolledUp && (
+            <button
+              type="button"
+              onClick={() => scrollToBottom()}
+              aria-label="Scroll to latest message"
+              className="sticky top-2 z-10 ml-auto inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-surface-2 text-ink-muted transition-colors hover:bg-surface-3 hover:text-ink"
+            >
+              <ArrowDown className="h-4 w-4" aria-hidden="true" />
+            </button>
+          )}
           {messages.length === 0 ? (
             <EmptyState
               icon={<Radio className="h-7 w-7" aria-hidden="true" />}

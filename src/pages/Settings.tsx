@@ -130,21 +130,51 @@ export default function Settings() {
 
       <SectionHead>Companion</SectionHead>
       <div className="surface-group">
-        <a
-          href={NOOR_CONNECT_URL}
-          target="_blank"
-          rel="noreferrer noopener"
-          className="row"
-        >
-          <Bell className="h-4 w-4 shrink-0 text-ink-muted" aria-hidden="true" />
-          <span className="min-w-0 flex-1">
-            <span className="block text-body-s font-medium text-ink">Noor Connect</span>
-            <span className="block text-meta text-ink-muted">
-              Prayer times and adhan, on F-Droid
-            </span>
-          </span>
-          <ExternalLink className="h-4 w-4 shrink-0 text-ink-faint" aria-hidden="true" />
-        </a>
+        <Dialog>
+          <DialogTrigger asChild>
+            <button type="button" className="row">
+              <Bell className="h-4 w-4 shrink-0 text-ink-muted" aria-hidden="true" />
+              <span className="min-w-0 flex-1">
+                <span className="block text-body-s font-medium text-ink">Noor Connect</span>
+                <span className="block text-meta text-ink-muted">
+                  Prayer times and adhan, on F-Droid
+                </span>
+              </span>
+              <ChevronRight className="h-4 w-4 shrink-0 text-ink-faint" aria-hidden="true" />
+            </button>
+          </DialogTrigger>
+          <DialogContent className="max-w-content rounded-lg border border-border bg-surface">
+            <DialogHeader>
+              <DialogTitle className="text-section text-ink">Noor Connect</DialogTitle>
+              <DialogDescription className="text-body-s text-ink-muted">
+                Fursan does not bundle prayer times. Noor Connect is a separate,
+                open-source app that adds them.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="mt-2 space-y-4">
+              <p className="text-body-s text-ink-muted">
+                If you want adhan reminders alongside Fursan, download Noor Connect
+                from F-Droid:
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  window.open(NOOR_CONNECT_URL, "_blank", "noopener noreferrer");
+                  luxuryClickVibrate();
+                }}
+                className="inline-flex w-full items-center justify-between gap-3 rounded-md border border-border bg-surface-2 px-4 py-3 text-left transition-colors hover:border-ink-faint"
+              >
+                <span className="min-w-0">
+                  <span className="block text-body-s font-medium text-ink">F-Droid</span>
+                  <span className="block text-meta text-ink-muted truncate">
+                    {NOOR_CONNECT_URL}
+                  </span>
+                </span>
+                <ExternalLink className="h-4 w-4 shrink-0 text-ink-faint" aria-hidden="true" />
+              </button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <SectionHead>Your key</SectionHead>
@@ -228,10 +258,16 @@ export default function Settings() {
               <DialogTitle className="text-section text-ink">Support Fursan</DialogTitle>
               <DialogDescription className="text-body-s text-ink-muted">
                 No ads, no trackers, no funding. If it helped you, a contribution keeps it
-                shipping.
+                shipping. Fursan is privacy-first — we do not link your app usage to your
+                identity, so we cannot tell who has or has not donated.
               </DialogDescription>
             </DialogHeader>
             <div className="mt-2 space-y-4">
+              <p className="text-body-s text-ink-muted">
+                You can support Fursan through the project's public donation addresses.
+                We recommend copying the address and sending from your own wallet, since
+                pasting it here does not expose your identity to us.
+              </p>
               <CryptoField label="Solana" address="3Aw78BrsdtBeZNpTQvAP6kjtUpGqDBqhr8dATzEZgp8V" />
               <CryptoField label="Bitcoin" address="bc1q43nelc0skgng752wesq5ez4qzhgl09cksmlddx" />
             </div>

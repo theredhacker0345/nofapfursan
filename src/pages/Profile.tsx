@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { AlertTriangle, ChevronRight, Upload, Download, LogOut, Settings2 } from "lucide-react";
+import { AlertTriangle, ChevronRight, Upload, Download, LogOut, Settings2, BookOpen, Activity } from "lucide-react";
 import { toast } from "sonner";
 
 import { Screen, SectionHead } from "@/components/Screen";
@@ -233,6 +233,22 @@ export default function Profile() {
           <span className="min-w-0 flex-1">
             <span className="block text-body-s font-medium text-ink">App settings</span>
             <span className="block text-meta text-ink-muted">Themes, reminders, privacy</span>
+          </span>
+          <ChevronRight className="h-4 w-4 shrink-0 text-ink-faint" aria-hidden="true" />
+        </Link>
+        <Link to="/library" className="row">
+          <BookOpen className="h-4 w-4 shrink-0 text-ink-muted" aria-hidden="true" />
+          <span className="min-w-0 flex-1">
+            <span className="block text-body-s font-medium text-ink">Library</span>
+            <span className="block text-meta text-ink-muted">Guides and practice</span>
+          </span>
+          <ChevronRight className="h-4 w-4 shrink-0 text-ink-faint" aria-hidden="true" />
+        </Link>
+        <Link to="/nutrition" className="row">
+          <Activity className="h-4 w-4 shrink-0 text-ink-muted" aria-hidden="true" />
+          <span className="min-w-0 flex-1">
+            <span className="block text-body-s font-medium text-ink">Nutrition</span>
+            <span className="block text-meta text-ink-muted">Meals and macros</span>
           </span>
           <ChevronRight className="h-4 w-4 shrink-0 text-ink-faint" aria-hidden="true" />
         </Link>

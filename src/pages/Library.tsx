@@ -1,5 +1,5 @@
 import { useMemo, useState, useRef, useEffect } from "react";
-import { Search, BookOpen, FileText, Clock, ArrowLeft, Check } from "lucide-react";
+import { Search, BookOpen, FileText, Clock, ArrowLeft, Check, X } from "lucide-react";
 
 import { Screen, SectionHead } from "@/components/Screen";
 import { EmptyState } from "@/components/EmptyState";
@@ -705,7 +705,7 @@ export default function Library() {
               />
             </div>
           )}
-          <article className="card overflow-y-auto [-webkit-overflow-scrolling:touch] [touch-action:pan-y] [overscroll-behavior:contain]">
+          <article className="card">
             <span
               className={cn(
                 "inline-block rounded-full border px-2.5 py-1 text-label uppercase",
@@ -789,28 +789,41 @@ export default function Library() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Guides, articles, PDFs…"
-            className="h-12 w-full rounded-md border border-border bg-surface pl-9 pr-3 text-body text-ink placeholder:text-ink-faint"
+            className="h-12 w-full rounded-md border border-border bg-surface pl-9 pr-9 text-body text-ink placeholder:text-ink-faint"
           />
+          {query && (
+            <button
+              type="button"
+              onClick={() => setQuery("")}
+              aria-label="Clear search"
+              className="absolute right-3 top-1/2 -translate-y-1/2 inline-flex h-6 w-6 items-center justify-center rounded-md text-ink-faint transition-colors hover:bg-surface-2 hover:text-ink"
+            >
+              <X className="h-4 w-4" aria-hidden="true" />
+            </button>
+          )}
         </div>
       </div>
 
-      <div className="no-scrollbar -mx-5 mt-4 flex gap-2 overflow-x-auto px-5">
-        {CATEGORIES.map((cat) => (
-          <button
-            key={cat.id}
-            type="button"
-            onClick={() => setCategory(cat.id)}
-            aria-pressed={category === cat.id}
-            className={cn(
-              "inline-flex h-9 shrink-0 items-center rounded-full border px-3.5 text-meta font-medium transition-colors duration-fast",
-              category === cat.id
-                ? "border-ink bg-ink text-bg"
-                : "border-border text-ink-muted hover:border-ink-faint hover:text-ink",
-            )}
-          >
-            {cat.label}
-          </button>
-        ))}
+      <div className="relative">
+        <div className="no-scrollbar -mx-5 mt-4 flex gap-2 overflow-x-auto px-5 pb-2">
+          {CATEGORIES.map((cat) => (
+            <button
+              key={cat.id}
+              type="button"
+              onClick={() => setCategory(cat.id)}
+              aria-pressed={category === cat.id}
+              className={cn(
+                "inline-flex h-9 shrink-0 items-center rounded-full border px-3.5 text-meta font-medium transition-colors duration-fast",
+                category === cat.id
+                  ? "border-ink bg-ink text-bg"
+                  : "border-border text-ink-muted hover:border-ink-faint hover:text-ink",
+              )}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
+        <div className="pointer-events-none absolute right-0 top-0 h-full w-8 bg-gradient-to-l from-bg to-transparent" />
       </div>
 
       {results.length === 0 ? (
@@ -895,18 +908,11 @@ export default function Library() {
       {!(isOnline && pendingCount === 0 && droppedCount === 0) && (
         <div className="mt-8 p-4 bg-surface/50 border border-border rounded-lg">
           <h3 className="text-label font-semibold text-ink mb-2">
-            How to find more relay networks
+            Relay status
           </h3>
           <p className="text-body-s text-ink-muted">
-            To add more relays, go to <a href="/settings/relay" className="text-ink underline hover:text-accent">Settings → Relay settings</a> and enter additional WebSocket URLs. Common public relays include:
-          </p>
-          <ul className="mt-2 text-body-s text-ink-muted space-y-1">
-            <li>wss://nos.lol</li>
-            <li>wss://relay.damus.io</li>
-            <li>wss://relay.snort.social</li>
-          </ul>
-          <p className="mt-2 text-xs text-ink-muted">
-            You can also use the Nostr NIP-11 discovery to find relays by visiting your vitals page and checking the relay status.
+            Your messages may be delayed while relays reconnect. Manage your relay list at{" "}
+            <a href="/settings/relay" className="text-ink underline hover:text-accent">Settings → Relay settings</a>.
           </p>
         </div>
       )}
