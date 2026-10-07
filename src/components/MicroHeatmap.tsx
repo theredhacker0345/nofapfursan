@@ -126,7 +126,9 @@ const MicroHeatmap: React.FC<MicroHeatmapProps> = ({ data }) => {
                 </div>
                 
                 {Object.entries(micronutrientColors).map(([key, config]) => {
-                  const value = data[key as keyof typeof data][dayIndex] || 0;
+                  const micronutrientKey = key as keyof typeof data;
+                  const rawValue = data[micronutrientKey];
+                  const value = Array.isArray(rawValue) ? Number(rawValue[dayIndex]) || 0 : 0;
                   const intensityColor = getColorIntensity(value, config);
                   const textColor = getTextColor(value, config);
                   const insight = getInsight(key, value, dayIndex);

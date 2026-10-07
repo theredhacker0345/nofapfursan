@@ -121,7 +121,7 @@ const adjustGoalsForStreak = (
 export const useSmartGoals = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [goalType, setGoalType] = useState<"balanced" | "highProtein" | "keto" | "zone" | "custom">("balanced");
-  const [streak, setStreak] = useState<Stretinfo>({ days: 0, longestStreak: 0, totalRelapses: 0, isOnStreak: false });
+  const [streak, setStreak] = useState<StreakInfo>({ days: 0, longestStreak: 0, totalRelapses: 0, isOnStreak: false });
 
   // Calculate current goals whenever inputs change
   const currentGoals = useMemo(() => {
@@ -137,7 +137,7 @@ export const useSmartGoals = () => {
     setProfile(prev => prev ? { ...prev, ...updates } : null);
   }, []);
 
-  const updateStreak = useCallback((newStreak: Partial<Stretinfo>) => {
+  const updateStreak = useCallback((newStreak: Partial<StreakInfo>) => {
     setStreak(prev => ({ ...prev, ...newStreak, isOnStreak: newStreak.days > 0 }));
   }, []);
 

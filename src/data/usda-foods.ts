@@ -230,7 +230,7 @@ export const USDA_FOODS = [
   // Legumes
   {
     fdcId: 170512,
-    name: "Potato, baked, skin"
+    name: "Potato, baked, skin",
     category: "vegetables",
     grams: 100,
     calories: 103,

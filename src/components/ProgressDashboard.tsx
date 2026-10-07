@@ -39,7 +39,7 @@ const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
     { label: "Protein", current: nutritionData.protein, goal: 160, unit: "g", color: nutritionData.protein < 100 ? "red" : nutritionData.protein < 130 ? "yellow" : "green" },
     { label: "Carbs", current: nutritionData.carbs, goal: 250, unit: "g", color: nutritionData.carbs < 150 ? "red" : nutritionData.carbs < 200 ? "yellow" : "green" },
     { label: "Fat", current: nutritionData.fat, goal: 70, unit: "g", color: nutritionData.fat < 40 ? "red" : nutritionData.fat < 55 ? "yellow" : "green" },
-  ], []);
+  ], [nutritionData]);
   
   const getStreakInfo = () => {
     if (streak === 0) return { label: "Start your streak", color: "text-gray-600" };
@@ -198,7 +198,7 @@ const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
                     goal={macro.goal}
                     label={macro.label}
                     unit={macro.unit}
-                    color={macro.color as any}
+                    color={macro.color as "green" | "yellow" | "red"}
                     size={100}
                     animated={true}
                   />

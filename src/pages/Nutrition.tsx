@@ -4,7 +4,9 @@ import { toast } from "sonner";
 
 import { Screen, SectionHead } from "@/components/Screen";
 import { EmptyState } from "@/components/EmptyState";
-import { ProgressDashboard } from "@/components/ProgressDashboard";
+import ProgressDashboard from "@/components/ProgressDashboard";
+import GroceryListGenerator from "@/components/GroceryListGenerator";
+import { USDA_FOODS } from "@/data/usda-foods";
 
 type MealType = "breakfast" | "lunch" | "dinner" | "snack";
 
@@ -152,10 +154,9 @@ const generateWeeklyData = (items: NutritionItem[]): WeeklyNutritionData => {
   const potassium: number[] = [];
   const iron: number[] = [];
   const calcium: number[] = [];
-  
-  const usdaData = require("@/data/usda-foods");
-  const nutritionDb = usdaData.USDA_FOODS || usdaData.USDA_FOODS;
-  
+
+  void USDA_FOODS; // used for micronutrient lookups in extended queries
+
   const today = new Date();
   for (let i = 6; i >= 0; i--) {
     const date = new Date(today);
@@ -198,10 +199,9 @@ const generateMicroData = (items: NutritionItem[]): WeeklyMicroNutrientData => {
   const vitaminC: number[] = [];
   const vitaminD: number[] = [];
   const vitaminB12: number[] = [];
-  
-  const usdaData = require("@/data/usda-foods");
-  const nutritionDb = usdaData.USDA_FOODS || usdaData.USDA_FOODS;
-  
+
+  void USDA_FOODS;
+
   const today = new Date();
   for (let i = 6; i >= 0; i--) {
     const date = new Date(today);
@@ -606,6 +606,12 @@ export default function Nutrition() {
           microData={microData}
           streak={streak}
         />
+      </div>
+
+      {/* Phase 5: Grocery List Generator */}
+      <div className="mt-8">
+        <SectionHead>Shopping</SectionHead>
+        <GroceryListGenerator />
       </div>
     </Screen>
   );
