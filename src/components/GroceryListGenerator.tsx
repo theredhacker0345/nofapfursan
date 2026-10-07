@@ -11,6 +11,7 @@ import {
   Share2,
   Trash2,
   Plus,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -39,6 +40,7 @@ export default function GroceryListGenerator() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newItemName, setNewItemName] = useState("");
   const [newItemCategory, setNewItemCategory] = useState("other");
+  const [newItemAmount, setNewItemAmount] = useState("");
 
   useEffect(() => {
     try {
@@ -66,12 +68,11 @@ export default function GroceryListGenerator() {
   }, [list]);
 
   const handleSelectRecipe = (recipeId: string) => {
-    setSelectedRecipes((prev) => {
-      const updated = prev.includes(recipeId)
+    setSelectedRecipes((prev) =>
+      prev.includes(recipeId)
         ? prev.filter((id) => id !== recipeId)
-        : [...prev, recipeId];
-      return updated;
-    });
+        : [...prev, recipeId],
+    );
   };
 
   const handleGenerateList = () => {
@@ -88,26 +89,21 @@ export default function GroceryListGenerator() {
 
   const handleToggleItem = (id: string) => {
     if (!list) return;
-    setList({
-      ...list,
-      items: togglePurchased(list.items, id),
-    });
+    setList((prev) =>
+      prev ? { ...prev, items: togglePurchased(prev.items, id) } : prev,
+    );
   };
 
   const handleRemoveItem = (id: string) => {
     if (!list) return;
-    setList({
-      ...list,
-      items: removeItem(list.items, id),
-    });
+    setList((prev) =>
+      prev ? { ...prev, items: removeItem(prev.items, id) } : prev,
+    );
   };
 
   const handleClearAll = () => {
     if (!list) return;
-    setList({
-      ...list,
-      items: [],
-    });
+    setList({ ...list, items: [] });
     toast.success("Cleared all items");
   };
 
@@ -141,15 +137,15 @@ export default function GroceryListGenerator() {
     const item = createGroceryItem({
       name: newItemName.trim(),
       category: newItemCategory,
-      amount: undefined,
-      unit: undefined,
-      notes: undefined,
+      amount: newItemAmount ? Number(newItemAmount) : undefined,
+      unit: newItemAmount ? "g" : undefined,
     });
     setList({
       ...list,
       items: [...list.items, item],
     });
     setNewItemName("");
+    setNewItemAmount("");
     setNewItemCategory("other");
     setShowAddForm(false);
     toast.success("Added custom item");
@@ -176,14 +172,15 @@ export default function GroceryListGenerator() {
     );
     if (otherItems.length) groups.set("other", otherItems);
 
-    return Array.from(groups.entries()).map(([catId, catItems]) => ({
+    return Array.from(groups.entries()).map(([catId, items]) => ({
       category: CATEGORIES.find((c) => c.id === catId) ?? CATEGORIES[CATEGORIES.length - 1]!,
-      items: catItems,
+      items,
     }));
   }, [list]);
 
   const completedCount = list?.items.filter((i) => i.purchased).length ?? 0;
   const totalCount = list?.items.length ?? 0;
+  const pendingCount = totalCount - completedCount;
 
   const generateFromMealPlan = () => {
     toast("Generating from meal plan templates...", {
@@ -203,7 +200,7 @@ export default function GroceryListGenerator() {
 
   return (
     <motion.div
-      className="w-full space-y-6"
+      className="w-full space-y-4"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
@@ -212,7 +209,7 @@ export default function GroceryListGenerator() {
         <div>
           <h2 className="text-section font-semibold text-ink">Grocery List</h2>
           {list && (
-            <p className="mt-1 text-sm text-ink-muted">
+            <p className="mt-0.5 text-meta text-ink-muted">
               {completedCount}/{totalCount} items checked off
             </p>
           )}
@@ -221,19 +218,27 @@ export default function GroceryListGenerator() {
           <button
             type="button"
             onClick={() => setShowRecipeSelector(true)}
-            className="inline-flex h-10 items-center gap-1.5 rounded-md border border-border px-3 text-label uppercase text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink"
+            className={cn(
+              "inline-flex h-9 items-center gap-1.5 rounded-md border border-border",
+              "px-3 text-label uppercase text-ink-muted",
+              "transition-colors hover:bg-surface-2 hover:text-ink",
+            )}
           >
             <Plus className="h-3.5 w-3.5" />
-            Add recipes
+            Recipes
           </button>
           {list && (
             <button
               type="button"
               onClick={() => setShowAddForm(!showAddForm)}
-              className="inline-flex h-10 items-center gap-1.5 rounded-md border border-border px-3 text-label uppercase text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink"
+              className={cn(
+                "inline-flex h-9 items-center gap-1.5 rounded-md border border-border",
+                "px-3 text-label uppercase text-ink-muted",
+                "transition-colors hover:bg-surface-2 hover:text-ink",
+              )}
             >
-              <Plus className="h-3.5 w-3.5" />
-              Add item
+              {showAddForm ? <X className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
+              Item
             </button>
           )}
         </div>
@@ -269,19 +274,32 @@ export default function GroceryListGenerator() {
                   className="mt-1.5 h-10 w-full rounded-md border border-border bg-surface px-3 text-body text-ink placeholder:text-ink-faint"
                 />
               </div>
-              <div>
-                <label className="text-label uppercase text-ink-faint">Category</label>
-                <select
-                  value={newItemCategory}
-                  onChange={(e) => setNewItemCategory(e.target.value)}
-                  className="mt-1.5 h-10 w-full rounded-md border border-border bg-surface px-3 text-body text-ink"
-                >
-                  {CATEGORIES.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.icon} {c.name}
-                    </option>
-                  ))}
-                </select>
+              <div grid-cols-2 className="grid gap-3">
+                <div>
+                  <label className="text-label uppercase text-ink-faint">Amount</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={newItemAmount}
+                    onChange={(e) => setNewItemAmount(e.target.value)}
+                    placeholder="e.g. 500"
+                    className="mt-1.5 h-10 w-full rounded-md border border-border bg-surface px-3 text-body text-ink placeholder:text-ink-faint"
+                  />
+                </div>
+                <div>
+                  <label className="text-label uppercase text-ink-faint">Category</label>
+                  <select
+                    value={newItemCategory}
+                    onChange={(e) => setNewItemCategory(e.target.value)}
+                    className="mt-1.5 h-10 w-full rounded-md border border-border bg-surface px-3 text-body text-ink"
+                  >
+                    {CATEGORIES.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
               <div className="flex justify-end gap-2">
                 <button
@@ -310,16 +328,26 @@ export default function GroceryListGenerator() {
           <button
             type="button"
             onClick={() =>
-              setList({ ...list, items: setAllPurchased(list.items, true) })
+              setList((prev) =>
+                prev ? { ...prev, items: setAllPurchased(prev.items, true) } : prev,
+              )
             }
-            className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border px-3 text-meta text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink"
+            className={cn(
+              "inline-flex h-9 items-center gap-1.5 rounded-md border border-border",
+              "px-3 text-meta text-ink-muted",
+              "transition-colors hover:bg-surface-2 hover:text-ink",
+            )}
           >
             Mark all
           </button>
           <button
             type="button"
             onClick={handleClearPurchased}
-            className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border px-3 text-meta text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink"
+            className={cn(
+              "inline-flex h-9 items-center gap-1.5 rounded-md border border-border",
+              "px-3 text-meta text-ink-muted",
+              "transition-colors hover:bg-surface-2 hover:text-ink",
+            )}
           >
             Clear bought
           </button>
@@ -341,7 +369,7 @@ export default function GroceryListGenerator() {
                       layout
                       initial={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.95 }}
-                      className="row cursor-pointer py-2"
+                      className="row cursor-pointer"
                       onClick={() => handleToggleItem(item.id)}
                     >
                       <div className="flex items-center gap-3">
@@ -352,7 +380,8 @@ export default function GroceryListGenerator() {
                             handleToggleItem(item.id);
                           }}
                           className={cn(
-                            "flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-colors",
+                            "flex h-5 w-5 shrink-0 items-center justify-center rounded",
+                            "border transition-colors",
                             item.purchased
                               ? "border-ink bg-ink text-bg"
                               : "border-border hover:border-ink",
@@ -360,22 +389,23 @@ export default function GroceryListGenerator() {
                         >
                           {item.purchased && <Check className="h-3.5 w-3.5" />}
                         </button>
-                        <span className="flex-1">
+                        <span className="flex-1 min-w-0">
                           <span
                             className={cn(
-                              "text-body",
+                              "block text-body",
                               item.purchased && "line-through text-ink-muted",
                             )}
                           >
                             {item.name}
                           </span>
                           {item.amount && item.unit && (
-                            <span className="ml-2 text-meta text-ink-faint">
+                            <span className="block text-meta text-ink-faint">
                               {item.amount} {item.unit}
                             </span>
                           )}
                         </span>
-                        {list.selectedRecipes.length > 0 && item.sourceRecipe && (
+                        {list.selectedRecipes.length > 0 && item.sourceRecipe &&
+                          item.sourceRecipe !== category.name && (
                           <span className="text-xs text-ink-faint">
                             from: {item.sourceRecipe}
                           </span>
@@ -388,7 +418,11 @@ export default function GroceryListGenerator() {
                           handleRemoveItem(item.id);
                         }}
                         aria-label={`Remove ${item.name}`}
-                        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-ink-faint transition-colors hover:bg-surface-2 hover:text-danger"
+                        className={cn(
+                          "inline-flex h-9 w-9 shrink-0 items-center justify-center",
+                          "rounded-md text-ink-faint transition-colors",
+                          "hover:bg-surface-2 hover:text-danger",
+                        )}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -403,7 +437,11 @@ export default function GroceryListGenerator() {
             <button
               type="button"
               onClick={handleExport}
-              className="inline-flex h-10 items-center gap-1.5 rounded-md border border-border px-4 text-label uppercase text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink"
+              className={cn(
+                "inline-flex h-10 items-center gap-1.5 rounded-md border border-border",
+                "px-4 text-label uppercase text-ink-muted",
+                "transition-colors hover:bg-surface-2 hover:text-ink",
+              )}
             >
               <Download className="h-3.5 w-3.5" />
               Export text
@@ -411,7 +449,11 @@ export default function GroceryListGenerator() {
             <button
               type="button"
               onClick={handleExportJSON}
-              className="inline-flex h-10 items-center gap-1.5 rounded-md border border-border px-4 text-label uppercase text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink"
+              className={cn(
+                "inline-flex h-10 items-center gap-1.5 rounded-md border border-border",
+                "px-4 text-label uppercase text-ink-muted",
+                "transition-colors hover:bg-surface-2 hover:text-ink",
+              )}
             >
               <Share2 className="h-3.5 w-3.5" />
               Export JSON
@@ -419,21 +461,32 @@ export default function GroceryListGenerator() {
           </div>
         </div>
       ) : (
-        <div className="py-12 text-center">
-          <ShoppingCart className="mx-auto mb-4 h-12 w-12 text-ink-faint" />
+        <motion.div
+          className="py-10 text-center"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.1 }}
+        >
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-surface-2 text-ink-faint">
+            <ShoppingCart className="h-8 w-8" />
+          </div>
           <h3 className="text-section font-medium text-ink">No items yet</h3>
-          <p className="mt-2 max-w-sm text-sm text-ink-muted">
+          <p className="mt-1.5 max-w-sm text-sm text-ink-muted">
             Add recipes to auto-generate a shopping list, or add custom items manually.
           </p>
           <button
             type="button"
             onClick={() => setShowRecipeSelector(true)}
-            className="mt-4 inline-flex h-10 items-center justify-center gap-1.5 rounded-md bg-ink px-4 text-label uppercase text-bg transition-opacity hover:opacity-90"
+            className={cn(
+              "mt-4 inline-flex h-10 items-center justify-center gap-1.5",
+              "rounded-md bg-ink px-4 text-label uppercase text-bg",
+              "transition-opacity hover:opacity-90",
+            )}
           >
             <Plus className="h-3.5 w-3.5" />
             Select recipes
           </button>
-        </div>
+        </motion.div>
       )}
     </motion.div>
   );
@@ -485,13 +538,16 @@ function RecipeSelector({
       >
         <div className="flex items-center justify-between">
           <h2 className="text-section font-semibold text-ink">
-            Select Recipes for Shopping
+            Select Recipes
           </h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-md text-ink-faint hover:bg-surface-2 hover:text-ink"
+            className={cn(
+              "inline-flex h-8 w-8 items-center justify-center rounded-md",
+              "text-ink-faint hover:bg-surface-2 hover:text-ink",
+            )}
           >
             <ChevronUp className="h-4 w-4 rotate-45" />
           </button>
@@ -501,14 +557,22 @@ function RecipeSelector({
           <button
             type="button"
             onClick={onSelectAll}
-            className="h-9 flex-1 rounded-md border border-border px-3 text-label uppercase text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink"
+            className={cn(
+              "h-9 flex-1 rounded-md border border-border px-3",
+              "text-label uppercase text-ink-muted",
+              "transition-colors hover:bg-surface-2 hover:text-ink",
+            )}
           >
             Select all
           </button>
           <button
             type="button"
             onClick={onGenerateFromMealPlan}
-            className="h-9 flex-1 rounded-md border border-border px-3 text-label uppercase text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink"
+            className={cn(
+              "h-9 flex-1 rounded-md border border-border px-3",
+              "text-label uppercase text-ink-muted",
+              "transition-colors hover:bg-surface-2 hover:text-ink",
+            )}
           >
             From meal plan
           </button>
@@ -520,7 +584,11 @@ function RecipeSelector({
             return (
               <div
                 key={recipe.id}
-                className="rounded-md border border-border p-3 transition-colors"
+                className={cn(
+                  "rounded-md border border-border p-3",
+                  "transition-colors",
+                  isChecked && "border-ink bg-surface-2",
+                )}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-2">
@@ -548,7 +616,11 @@ function RecipeSelector({
                   <button
                     type="button"
                     onClick={() => toggleExpand(recipe.id)}
-                    className="inline-flex h-7 w-7 items-center justify-center rounded-md text-ink-faint hover:bg-surface-2 hover:text-ink"
+                    className={cn(
+                      "inline-flex h-7 w-7 items-center justify-center",
+                      "rounded-md text-ink-faint",
+                      "hover:bg-surface-2 hover:text-ink",
+                    )}
                   >
                     {expanded[recipe.id] ? (
                       <ChevronUp className="h-4 w-4" />
@@ -591,7 +663,11 @@ function RecipeSelector({
           <button
             type="button"
             onClick={onSelectNone}
-            className="h-10 rounded-md border border-border px-4 text-label uppercase text-ink-muted transition-colors hover:bg-surface-2"
+            className={cn(
+              "h-10 rounded-md border border-border px-4",
+              "text-label uppercase text-ink-muted",
+              "transition-colors hover:bg-surface-2",
+            )}
           >
             Clear
           </button>
@@ -599,9 +675,13 @@ function RecipeSelector({
             type="button"
             onClick={onGenerate}
             disabled={selected.length === 0}
-            className="h-10 w-full rounded-md bg-ink px-4 text-label uppercase text-bg transition-opacity hover:opacity-90 disabled:opacity-50"
+            className={cn(
+              "h-10 w-full rounded-md bg-ink px-4",
+              "text-label uppercase text-bg",
+              "transition-opacity hover:opacity-90 disabled:opacity-50",
+            )}
           >
-            Generate Shopping List ({selected.length})
+            Generate List ({selected.length})
           </button>
         </div>
       </motion.div>

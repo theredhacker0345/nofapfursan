@@ -6,7 +6,6 @@ import { Screen, SectionHead } from "@/components/Screen";
 import { EmptyState } from "@/components/EmptyState";
 import ProgressDashboard from "@/components/ProgressDashboard";
 import GroceryListGenerator from "@/components/GroceryListGenerator";
-import { USDA_FOODS } from "@/data/usda-foods";
 
 type MealType = "breakfast" | "lunch" | "dinner" | "snack";
 
@@ -155,8 +154,6 @@ const generateWeeklyData = (items: NutritionItem[]): WeeklyNutritionData => {
   const iron: number[] = [];
   const calcium: number[] = [];
 
-  void USDA_FOODS; // used for micronutrient lookups in extended queries
-
   const today = new Date();
   for (let i = 6; i >= 0; i--) {
     const date = new Date(today);
@@ -199,8 +196,6 @@ const generateMicroData = (items: NutritionItem[]): WeeklyMicroNutrientData => {
   const vitaminC: number[] = [];
   const vitaminD: number[] = [];
   const vitaminB12: number[] = [];
-
-  void USDA_FOODS;
 
   const today = new Date();
   for (let i = 6; i >= 0; i--) {
@@ -346,7 +341,7 @@ export default function Nutrition() {
     return typeof streakData === "object" && streakData && typeof streakData === "object" ? streakData.longestStreak || 0 : streakData;
   }, []);
   
-  const dailyData: DailyNutritionData = {
+  const dailyData = useMemo(() => ({
     date,
     calories: totals.calories,
     protein: totals.protein,
@@ -356,7 +351,7 @@ export default function Nutrition() {
     potassium: Math.round(totals.protein * 0.8 + Math.random() * 800),
     iron: Math.round(totals.protein * 0.05 + Math.random() * 3),
     calcium: Math.round(totals.protein * 0.02 + Math.random() * 200),
-  };
+  }), [date, totals]);
   
   return (
     <Screen title="Nutrition" subtitle={prettyDate(date)} back>
