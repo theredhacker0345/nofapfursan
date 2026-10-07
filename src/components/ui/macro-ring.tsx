@@ -168,19 +168,19 @@ export function MacroRing({
             strokeDasharray={proteinCircumference}
             strokeDashoffset={proteinCircumference * (1 - proteinProgress)}
           />
-          <text
-            x="50"
-            y="58"
-            textAnchor="middle"
-            fontSize="14"
-            fontWeight="500"
-            fill="var(--ink)"
-          >
-            {protein}{" "}
-            <tspan x="50" y="68" dy="1.2g">
-              g
-            </tspan>
-          </text>
+<text
+              x="50"
+              y="58"
+              textAnchor="middle"
+              fontSize="14"
+              fontWeight="500"
+              fill="var(--ink)"
+            >
+              {protein}{" "}
+              <tspan x="50" y="68" dy="1.2">
+                g
+              </tspan>
+            </text>
           <text
             x="50"
             y="78"
@@ -239,17 +239,17 @@ export function MacroRing({
           >
             {carbs}
           </text>
-          <text
-            x="40"
-            y="62"
-            textAnchor="middle"
-            fontSize="9"
-            fill="var(--ink-muted)"
-          >
-            <tspan x="40" y="62" dy="1.2g">
-              g
-            </tspan>
-          </text>
+<text
+              x="40"
+              y="62"
+              textAnchor="middle"
+              fontSize="9"
+              fill="var(--ink-muted)"
+            >
+              <tspan x="40" y="62" dy="1.2">
+                g
+              </tspan>
+            </text>
           <text
             x="40"
             y="74"
@@ -308,17 +308,17 @@ export function MacroRing({
           >
             {fat}
           </text>
-          <text
-            x="30"
-            y="46"
-            textAnchor="middle"
-            fontSize="8"
-            fill="var(--ink-muted)"
-          >
-            <tspan x="30" y="46" dy="1.2g">
-              g
-            </tspan>
-          </text>
+<text
+              x="30"
+              y="46"
+              textAnchor="middle"
+              fontSize="8"
+              fill="var(--ink-muted)"
+            >
+              <tspan x="30" y="46" dy="1.2">
+                g
+              </tspan>
+            </text>
           <text
             x="30"
             y="56"
