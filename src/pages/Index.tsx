@@ -22,7 +22,6 @@ import {
 
 const SECONDARY = [
   { to: "/nutrition", label: "Nutrition", hint: "Meals and macros" },
-  { to: "/library", label: "Library", hint: "Guides and practice" },
   { to: "/archives", label: "History", hint: "Milestones and log" },
   { to: "/settings", label: "Settings", hint: "Theme, relays, privacy" },
 ] as const;

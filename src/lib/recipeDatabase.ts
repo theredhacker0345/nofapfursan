@@ -5,7 +5,7 @@ import { useState, useMemo } from "react";
 import { Clock, Egg, Wheat, Coffee, Apple } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-interface FoodEntry {
+export interface FoodEntry {
   id: string;
   name: string;
   amount: number;
@@ -17,7 +17,7 @@ interface FoodEntry {
   fiber: number;
 }
 
-interface Recipe {
+export interface Recipe {
   id: string;
   name: string;
   description: string;
