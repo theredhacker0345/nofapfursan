@@ -6,6 +6,7 @@ import { Screen, SectionHead } from "@/components/Screen";
 import { EmptyState } from "@/components/EmptyState";
 import ProgressDashboard from "@/components/ProgressDashboard";
 import GroceryListGenerator from "@/components/GroceryListGenerator";
+import { MacroRing } from "@/components/ui/macro-ring";
 
 type MealType = "breakfast" | "lunch" | "dinner" | "snack";
 
@@ -355,6 +356,20 @@ export default function Nutrition() {
   
   return (
     <Screen title="Nutrition" subtitle={prettyDate(date)} back>
+      {/* Macro Ring Trio - visual progress at a glance */}
+      <div className="mb-6">
+        <MacroRing
+          calories={totals.calories}
+          protein={totals.protein}
+          carbs={totals.carbs}
+          fat={totals.fat}
+          calorieGoal={GOALS.calories}
+          proteinGoal={GOALS.protein}
+          carbsGoal={GOALS.carbs}
+          fatGoal={GOALS.fat}
+        />
+      </div>
+
       {/* Legacy UI for day entry */}
       <div className="flex items-center justify-between gap-2">
         <button
@@ -382,20 +397,6 @@ export default function Nutrition() {
         >
           <ChevronRight className="h-4 w-4" aria-hidden="true" />
         </button>
-      </div>
-
-      {/* Legacy macro overview - kept for compatibility */}
-      <div className="surface-group mt-4 grid grid-cols-2 divide-x divide-y divide-border sm:grid-cols-4 sm:divide-y-0">
-        {macros.map((macro) => (
-          <div key={macro.label} className="px-4 py-3">
-            <p className="text-label uppercase text-ink-faint">{macro.label}</p>
-            <p className="mt-0.5 font-data text-data-lg text-ink">
-              {macro.current}
-              <span className="text-ink-faint">/{macro.goal}</span>
-            </p>
-            <p className="font-data text-meta text-ink-muted">{macro.unit}</p>
-          </div>
-        ))}
       </div>
 
       <SectionHead>Meals</SectionHead>
